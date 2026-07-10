@@ -1,10 +1,14 @@
 use pyo3::prelude::*;
 
 use highuvlith_core::mask::Mask;
-use highuvlith_core::optics::ProjectionOptics;
+use highuvlith_core::optics::schwarzschild::SchwarzschildObjective;
+use highuvlith_core::optics::zone_plate::FresnelZonePlate;
+use highuvlith_core::optics::{OpticalSystem, ProjectionOptics};
 use highuvlith_core::resist::{DevelopmentModel, ResistParams};
 use highuvlith_core::source::{
-    IlluminationShape, LithographySource, LpaFelSource, SourceKind, SpectralShape, VuvSource,
+    EntangledPhotonSource, HhgGas, HhgSource, IcsSource, IlluminationShape, LithographySource,
+    LpaFelSource, LppSource, SourceKind, SpectralShape, SsmbSource, SynchrotronSource, VuvSource,
+    XfelSource,
 };
 use highuvlith_core::thinfilm::{FilmLayer, FilmStack};
 use highuvlith_core::types::{Complex64, GridConfig};
@@ -161,6 +165,154 @@ impl PySourceConfig {
         })
     }
 
+    /// Sn laser-produced-plasma source at 13.5 nm (NXE-class parameters).
+    #[staticmethod]
+    #[pyo3(signature = (sigma=0.9))]
+    fn lpp_sn_13nm5(sigma: f64) -> PyResult<Self> {
+        let inner = LppSource::sn_13nm5(sigma)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+        Ok(Self {
+            inner: SourceKind::Lpp(inner),
+        })
+    }
+
+    /// Gd laser-produced-plasma source at 6.7 nm (beyond-EUV).
+    #[staticmethod]
+    #[pyo3(signature = (sigma=0.9))]
+    fn lpp_gd_6nm7(sigma: f64) -> PyResult<Self> {
+        let inner = LppSource::gd_6nm7(sigma)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+        Ok(Self {
+            inner: SourceKind::Lpp(inner),
+        })
+    }
+
+    /// Synchrotron undulator beamline; the wavelength is DERIVED from
+    /// the resonance condition lambda = lambda_u (1 + K^2/2) / (2 n gamma^2).
+    #[staticmethod]
+    #[pyo3(signature = (electron_energy_gev=0.538, period_mm=20.0, k=1.0, num_periods=100, harmonic=1))]
+    fn synchrotron_undulator(
+        electron_energy_gev: f64,
+        period_mm: f64,
+        k: f64,
+        num_periods: usize,
+        harmonic: usize,
+    ) -> PyResult<Self> {
+        let inner =
+            SynchrotronSource::undulator(electron_energy_gev, period_mm, k, num_periods, harmonic)
+                .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+        Ok(Self {
+            inner: SourceKind::Synchrotron(inner),
+        })
+    }
+
+    /// LIGA-class bending-magnet beamline (2.5 GeV, 1.5 T, E_c = 6.23 keV).
+    #[staticmethod]
+    fn synchrotron_liga_bending_magnet() -> Self {
+        Self {
+            inner: SourceKind::Synchrotron(SynchrotronSource::liga_bending_magnet()),
+        }
+    }
+
+    /// High-harmonic generation source. Rejects even harmonics and
+    /// harmonics beyond the three-step cutoff I_p + 3.17 U_p.
+    #[staticmethod]
+    #[pyo3(signature = (driver_wavelength_nm=800.0, gas="neon", driver_intensity_w_cm2=4e14, harmonic=59, monochromator_bandwidth_pm=15.0))]
+    fn hhg(
+        driver_wavelength_nm: f64,
+        gas: &str,
+        driver_intensity_w_cm2: f64,
+        harmonic: usize,
+        monochromator_bandwidth_pm: f64,
+    ) -> PyResult<Self> {
+        let gas = match gas {
+            "helium" | "he" => HhgGas::Helium,
+            "neon" | "ne" => HhgGas::Neon,
+            "argon" | "ar" => HhgGas::Argon,
+            "krypton" | "kr" => HhgGas::Krypton,
+            "xenon" | "xe" => HhgGas::Xenon,
+            other => {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "unknown gas '{}' (expected helium/neon/argon/krypton/xenon)",
+                    other
+                )))
+            }
+        };
+        let inner = HhgSource::new(
+            driver_wavelength_nm,
+            gas,
+            driver_intensity_w_cm2,
+            harmonic,
+            monochromator_bandwidth_pm,
+        )
+        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+        Ok(Self {
+            inner: SourceKind::Hhg(inner),
+        })
+    }
+
+    /// Neon HHG preset reaching 13.56 nm at harmonic 59.
+    #[staticmethod]
+    fn hhg_ne_13nm5() -> PyResult<Self> {
+        let inner = HhgSource::ne_800nm_13nm5()
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+        Ok(Self {
+            inner: SourceKind::Hhg(inner),
+        })
+    }
+
+    /// FLASH-class SASE XFEL at 13.5 nm.
+    #[staticmethod]
+    fn xfel_flash_13nm5() -> Self {
+        Self {
+            inner: SourceKind::Xfel(XfelSource::flash_13nm5()),
+        }
+    }
+
+    /// FERMI-class seeded FEL near 13.5 nm (rel. bandwidth 5e-5).
+    #[staticmethod]
+    fn xfel_fermi_seeded() -> Self {
+        Self {
+            inner: SourceKind::Xfel(XfelSource::fermi_seeded_13nm5()),
+        }
+    }
+
+    /// Inverse-Compton-scattering source tuned to the target wavelength
+    /// (electron energy DERIVED from the Compton kinematics). Theoretical
+    /// as a lithography source.
+    #[staticmethod]
+    #[pyo3(signature = (target_wavelength_nm=13.5, laser_wavelength_nm=1030.0, laser_a0=0.1))]
+    fn ics(target_wavelength_nm: f64, laser_wavelength_nm: f64, laser_a0: f64) -> PyResult<Self> {
+        let inner = IcsSource::for_wavelength(target_wavelength_nm, laser_wavelength_nm, laser_a0)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+        Ok(Self {
+            inner: SourceKind::Ics(inner),
+        })
+    }
+
+    /// Steady-state-microbunching EUV design point (1053 nm modulation,
+    /// harmonic 78 -> 13.5 nm, projected kW average power). Theoretical.
+    #[staticmethod]
+    fn ssmb_euv_13nm5() -> PyResult<Self> {
+        let inner = SsmbSource::euv_1kw_13nm5()
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+        Ok(Self {
+            inner: SourceKind::Ssmb(inner),
+        })
+    }
+
+    /// N-photon entangled NOON-state source (entirely theoretical);
+    /// bridges the quantum lithography research module.
+    #[staticmethod]
+    #[pyo3(signature = (wavelength_nm=157.63, n=2, fidelity=1.0))]
+    fn entangled_noon(wavelength_nm: f64, n: usize, fidelity: f64) -> PyResult<Self> {
+        let inner = EntangledPhotonSource::noon(wavelength_nm, n, fidelity)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+        Ok(Self {
+            inner: SourceKind::Entangled(inner),
+        })
+    }
+
     #[getter]
     fn wavelength_nm(&self) -> f64 {
         self.inner.wavelength_nm()
@@ -178,10 +330,7 @@ impl PySourceConfig {
 
     #[getter]
     fn spectral_samples(&self) -> usize {
-        match &self.inner {
-            SourceKind::Vuv(s) => s.spectral_samples,
-            SourceKind::LpaFel(s) => s.spectral_samples,
-        }
+        self.inner.spectral_samples()
     }
 
     /// Short label identifying the source family ("vuv" or "lpa_fel").
@@ -190,62 +339,104 @@ impl PySourceConfig {
         self.inner.kind_label()
     }
 
-    /// Electron beam energy in MeV. Returns `None` for non-FEL sources.
+    /// Electron beam energy in MeV. Returns `None` for sources without
+    /// an electron-beam stage.
     #[getter]
     fn electron_energy_mev(&self) -> Option<f64> {
         match &self.inner {
             SourceKind::LpaFel(s) => Some(s.electron_energy_mev),
-            SourceKind::Vuv(_) => None,
+            _ => None,
         }
     }
 
-    /// Pulse duration in femtoseconds. Returns `None` for non-FEL sources
-    /// (excimer pulse durations are nanosecond-scale and not modeled here).
+    /// Pulse duration in femtoseconds. Returns `None` when the source
+    /// model does not track pulse duration.
     #[getter]
     fn pulse_duration_fs(&self) -> Option<f64> {
-        match &self.inner {
-            SourceKind::LpaFel(s) => Some(s.pulse_duration_fs),
-            SourceKind::Vuv(_) => None,
-        }
+        self.inner.pulse_duration_s().map(|s| s * 1e15)
     }
 
-    /// Bunch/pulse repetition rate in Hz. Defined for both source types.
+    /// Bunch/pulse repetition rate in Hz. 0.0 for CW/untracked sources.
     #[getter]
     fn rep_rate_hz(&self) -> f64 {
-        match &self.inner {
-            SourceKind::Vuv(s) => s.rep_rate_hz,
-            SourceKind::LpaFel(s) => s.rep_rate_hz,
+        LithographySource::rep_rate_hz(&self.inner).unwrap_or(0.0)
+    }
+
+    /// Transverse coherence fraction in [0, 1]. Returns `None` for
+    /// sources that do not model coherence (reported as 0 by the trait).
+    #[getter]
+    fn transverse_coherence_fraction(&self) -> Option<f64> {
+        let coherence = self.inner.transverse_coherence();
+        if coherence > 0.0 {
+            Some(coherence)
+        } else {
+            None
         }
     }
 
-    /// Transverse coherence fraction in [0, 1]. Returns `None` for non-FEL sources.
+    /// Time-averaged output power in watts (pulse energy × rep rate,
+    /// or the model's own value for CW sources). `None` when untracked.
     #[getter]
-    fn transverse_coherence_fraction(&self) -> Option<f64> {
-        match &self.inner {
-            SourceKind::LpaFel(s) => Some(s.transverse_coherence_fraction),
-            SourceKind::Vuv(_) => None,
-        }
+    fn average_power_w(&self) -> Option<f64> {
+        self.inner.average_power_w()
+    }
+
+    /// Relative rms shot-to-shot pulse-energy fluctuation (0 = stable).
+    #[getter]
+    fn shot_to_shot_rms(&self) -> f64 {
+        self.inner.shot_to_shot_rms()
     }
 
     fn __repr__(&self) -> String {
         match &self.inner {
-            SourceKind::Vuv(s) => format!(
-                "SourceConfig(kind=vuv, wavelength_nm={}, illumination={:?})",
-                s.wavelength_nm, s.illumination
-            ),
             SourceKind::LpaFel(s) => format!(
                 "SourceConfig(kind=lpa_fel, wavelength_nm={}, E_e={} MeV, tau={} fs)",
                 s.wavelength_nm, s.electron_energy_mev, s.pulse_duration_fs
+            ),
+            // Generic form: stays total as new source families are added.
+            _ => format!(
+                "SourceConfig(kind={}, wavelength_nm={})",
+                self.inner.kind_label(),
+                self.inner.wavelength_nm()
             ),
         }
     }
 }
 
-/// Projection optics configuration.
+/// Type-erased optics carrier for the Python layer: refractive projection
+/// lens, Schwarzschild reflective objective, or Fresnel zone plate.
+#[derive(Debug, Clone)]
+pub enum PyOpticsInner {
+    Refractive(ProjectionOptics),
+    Schwarzschild(SchwarzschildObjective),
+    ZonePlate(FresnelZonePlate),
+}
+
+impl PyOpticsInner {
+    pub fn as_dyn(&self) -> &dyn OpticalSystem {
+        match self {
+            PyOpticsInner::Refractive(o) => o,
+            PyOpticsInner::Schwarzschild(o) => o,
+            PyOpticsInner::ZonePlate(o) => o,
+        }
+    }
+
+    pub fn kind_label(&self) -> &'static str {
+        match self {
+            PyOpticsInner::Refractive(_) => "refractive",
+            PyOpticsInner::Schwarzschild(_) => "schwarzschild",
+            PyOpticsInner::ZonePlate(_) => "zone_plate",
+        }
+    }
+}
+
+/// Optics configuration (refractive by default; Schwarzschild and zone
+/// plate via the static factories — refractive lenses are physically
+/// impossible below ~110 nm).
 #[pyclass(name = "OpticsConfig")]
 #[derive(Debug, Clone)]
 pub struct PyOpticsConfig {
-    pub inner: ProjectionOptics,
+    pub inner: PyOpticsInner,
 }
 
 #[pymethods]
@@ -274,45 +465,114 @@ impl PyOpticsConfig {
         let base = ProjectionOptics::new(numerical_aperture)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
         Ok(Self {
-            inner: ProjectionOptics {
+            inner: PyOpticsInner::Refractive(ProjectionOptics {
                 na: numerical_aperture,
                 reduction,
                 flare_fraction,
                 ..base
-            },
+            }),
         })
     }
 
-    /// Add a Zernike aberration coefficient.
-    fn add_aberration(&mut self, fringe_index: usize, coefficient_waves: f64) {
-        self.inner
-            .zernike_coefficients
-            .push((fringe_index, coefficient_waves));
+    /// Two-mirror Schwarzschild reflective objective — the physically
+    /// correct optics for EUV/BEUV/soft-X-ray wavelengths where no
+    /// transparent lens material exists. Defaults are the 13.5 nm
+    /// Mo/Si-multilayer preset; pass `mirror_reflectivity=0.50`,
+    /// `obscuration_ratio=0.3` for the 6.7 nm La/B4C band.
+    #[staticmethod]
+    #[pyo3(signature = (numerical_aperture=0.33, obscuration_ratio=0.25, reduction=4.0, mirror_reflectivity=0.67, flare=0.03))]
+    fn schwarzschild(
+        numerical_aperture: f64,
+        obscuration_ratio: f64,
+        reduction: f64,
+        mirror_reflectivity: f64,
+        flare: f64,
+    ) -> PyResult<Self> {
+        if numerical_aperture <= 0.0 || numerical_aperture >= 1.0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "numerical_aperture must be in (0, 1), got {}",
+                numerical_aperture
+            )));
+        }
+        if !(0.0..1.0).contains(&obscuration_ratio) {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "obscuration_ratio must be in [0, 1), got {}",
+                obscuration_ratio
+            )));
+        }
+        if !(0.0..=1.0).contains(&mirror_reflectivity) {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "mirror_reflectivity must be in [0, 1], got {}",
+                mirror_reflectivity
+            )));
+        }
+        Ok(Self {
+            inner: PyOpticsInner::Schwarzschild(SchwarzschildObjective {
+                numerical_aperture,
+                obscuration_ratio,
+                reduction_ratio: reduction,
+                mirror_reflectivity,
+                flare,
+            }),
+        })
+    }
+
+    /// Fresnel zone plate (diffractive X-ray focusing): NA is set by the
+    /// outermost zone width, NA = lambda / (2 * dr_N); strongly chromatic.
+    #[staticmethod]
+    fn zone_plate(outer_zone_width_nm: f64, design_wavelength_nm: f64) -> PyResult<Self> {
+        let zp = FresnelZonePlate::new(outer_zone_width_nm, design_wavelength_nm)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+        Ok(Self {
+            inner: PyOpticsInner::ZonePlate(zp),
+        })
+    }
+
+    /// Add a Zernike aberration coefficient (refractive optics only).
+    fn add_aberration(&mut self, fringe_index: usize, coefficient_waves: f64) -> PyResult<()> {
+        match &mut self.inner {
+            PyOpticsInner::Refractive(o) => {
+                o.zernike_coefficients
+                    .push((fringe_index, coefficient_waves));
+                Ok(())
+            }
+            _ => Err(pyo3::exceptions::PyValueError::new_err(
+                "Zernike aberrations are only modeled for refractive optics",
+            )),
+        }
+    }
+
+    /// Optics family: "refractive", "schwarzschild", or "zone_plate".
+    #[getter]
+    fn kind(&self) -> &'static str {
+        self.inner.kind_label()
     }
 
     #[getter]
     fn numerical_aperture(&self) -> f64 {
-        self.inner.na
+        self.inner.as_dyn().na()
     }
 
     #[getter]
     fn reduction(&self) -> f64 {
-        self.inner.reduction
+        self.inner.as_dyn().reduction()
     }
 
     #[getter]
     fn flare_fraction(&self) -> f64 {
-        self.inner.flare_fraction
+        self.inner.as_dyn().flare_fraction()
     }
 
     fn rayleigh_resolution(&self, wavelength_nm: f64) -> f64 {
-        self.inner.rayleigh_resolution(wavelength_nm)
+        self.inner.as_dyn().rayleigh_resolution(wavelength_nm)
     }
 
     fn __repr__(&self) -> String {
         format!(
-            "OpticsConfig(NA={}, reduction={}x)",
-            self.inner.na, self.inner.reduction
+            "OpticsConfig(kind={}, NA={}, reduction={}x)",
+            self.inner.kind_label(),
+            self.inner.as_dyn().na(),
+            self.inner.as_dyn().reduction()
         )
     }
 }

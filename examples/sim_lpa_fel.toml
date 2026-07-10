@@ -41,9 +41,13 @@ rep_rate_hz         = 1000.0     # BELLA bunch rate
 # pulse_energy_uj   = 5.0        # optional; µJ-class per pulse
 
 [optics]
-# Projection lens NA. 0.55 is consistent with current EUV-class dry
-# lithography; higher-NA projection (0.75) is also viable at 25 nm
-# because zone-plate and Schwarzschild architectures remain tractable.
+# At 25 nm there is no transparent refractive lens material — reflective
+# (Schwarzschild) or diffractive (zone-plate) optics are the only options.
+# Use the two-mirror reflective objective; a bare `na` without a type would
+# default to the refractive CaF2 lens and print a "no lens material" warning.
+type = "schwarzschild"
+# Projection NA. 0.55 is consistent with EUV-class dry lithography; higher-NA
+# reflective/zone-plate architectures remain tractable at 25 nm.
 na = 0.55
 flare_fraction = 0.02
 

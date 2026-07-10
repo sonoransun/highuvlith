@@ -86,6 +86,12 @@ impl<T: Clone + Default> Grid2D<T> {
 }
 
 /// 3D grid for volumetric data (e.g., resist dose distribution).
+///
+/// Axis order of `data` is `(z, y, x)`: `data[[k, i, j]]` is depth slice
+/// `k`, row `i`, column `j` — so `data.index_axis(Axis(0), k)` yields a
+/// lateral `(y, x)` slice directly comparable to `Grid2D::data`.
+/// By convention z is measured from the resist top, positive downward
+/// (matching `FilmStack::standing_wave`).
 #[derive(Debug, Clone)]
 pub struct Grid3D<T> {
     pub data: ndarray::Array3<T>,
@@ -95,6 +101,108 @@ pub struct Grid3D<T> {
     pub y_max_nm: f64,
     pub z_min_nm: f64,
     pub z_max_nm: f64,
+}
+
+impl<T: Clone + Default> Grid3D<T> {
+    pub fn new(
+        nx: usize,
+        ny: usize,
+        nz: usize,
+        x_range: (f64, f64),
+        y_range: (f64, f64),
+        z_range: (f64, f64),
+    ) -> crate::error::Result<Self> {
+        if nx == 0 {
+            return Err(crate::error::LithographyError::InvalidParameter {
+                name: "nx",
+                value: 0.0,
+                reason: "must be positive",
+            });
+        }
+        if ny == 0 {
+            return Err(crate::error::LithographyError::InvalidParameter {
+                name: "ny",
+                value: 0.0,
+                reason: "must be positive",
+            });
+        }
+        if nz == 0 {
+            return Err(crate::error::LithographyError::InvalidParameter {
+                name: "nz",
+                value: 0.0,
+                reason: "must be positive",
+            });
+        }
+        if x_range.0 >= x_range.1 {
+            return Err(crate::error::LithographyError::InvalidParameter {
+                name: "x_range",
+                value: x_range.0,
+                reason: "x_min must be less than x_max",
+            });
+        }
+        if y_range.0 >= y_range.1 {
+            return Err(crate::error::LithographyError::InvalidParameter {
+                name: "y_range",
+                value: y_range.0,
+                reason: "y_min must be less than y_max",
+            });
+        }
+        if z_range.0 >= z_range.1 {
+            return Err(crate::error::LithographyError::InvalidParameter {
+                name: "z_range",
+                value: z_range.0,
+                reason: "z_min must be less than z_max",
+            });
+        }
+        Ok(Self {
+            data: ndarray::Array3::default((nz, ny, nx)),
+            x_min_nm: x_range.0,
+            x_max_nm: x_range.1,
+            y_min_nm: y_range.0,
+            y_max_nm: y_range.1,
+            z_min_nm: z_range.0,
+            z_max_nm: z_range.1,
+        })
+    }
+
+    pub fn nx(&self) -> usize {
+        self.data.shape()[2]
+    }
+
+    pub fn ny(&self) -> usize {
+        self.data.shape()[1]
+    }
+
+    pub fn nz(&self) -> usize {
+        self.data.shape()[0]
+    }
+
+    pub fn pixel_size_x(&self) -> f64 {
+        (self.x_max_nm - self.x_min_nm) / self.nx() as f64
+    }
+
+    pub fn pixel_size_y(&self) -> f64 {
+        (self.y_max_nm - self.y_min_nm) / self.ny() as f64
+    }
+
+    pub fn pixel_size_z(&self) -> f64 {
+        (self.z_max_nm - self.z_min_nm) / self.nz() as f64
+    }
+
+    /// Physical x-coordinate for column index.
+    pub fn x_at(&self, col: usize) -> f64 {
+        self.x_min_nm + (col as f64 + 0.5) * self.pixel_size_x()
+    }
+
+    /// Physical y-coordinate for row index.
+    pub fn y_at(&self, row: usize) -> f64 {
+        self.y_min_nm + (row as f64 + 0.5) * self.pixel_size_y()
+    }
+
+    /// Physical z-coordinate (depth from resist top) for slice index.
+    pub fn z_at(&self, slice: usize) -> f64 {
+        self.z_min_nm + (slice as f64 + 0.5) * self.pixel_size_z()
+    }
 }
 
 /// Simulation grid configuration.

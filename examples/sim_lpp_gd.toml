@@ -1,0 +1,40 @@
+# =============================================================================
+# Laser-produced plasma (LPP) — gadolinium at 6.7 nm (beyond-EUV / BEUV)
+# =============================================================================
+#
+# "Beyond-EUV" pushes past 13.5 nm to 6.x nm for a further resolution gain. A
+# Gd plasma emits an unresolved-transition-array band near 6.7 nm reflected by
+# La/B4C multilayer mirrors. The mirror band sits JUST BELOW the boron K
+# absorption edge at ~188 eV (6.59 nm): below the edge B4C is relatively
+# transparent and the La/B4C stack reflects (~0.6% band, ~40 pm here); above the
+# edge boron absorbs strongly and reflectivity collapses — so 6.7 nm is chosen
+# to stay on the transparent side of the edge. Demonstrated CE (~0.7%) is far
+# below tin's, which is the central BEUV source-power challenge.
+#
+# Reference: Otsuka et al., "Rare-earth plasma extreme ultraviolet sources at
+#            6.5–6.7 nm," Appl. Phys. Lett. 97, 111503 (2010).
+#
+# Run with:  highuvlith simulate --config examples/sim_lpp_gd.toml
+# -----------------------------------------------------------------------------
+
+[source]
+type = "lpp"
+fuel = "gd"                    # gadolinium → 6.7 nm (La/B4C band, below B K-edge)
+# Family preset: 10 kW drive, 0.7% CE, 5% transport, 40 pm band, 10 kHz.
+
+[optics]
+# 6.7 nm → reflective Schwarzschild (La/B4C multilayer BEUV preset).
+type = "schwarzschild"
+na   = 0.3
+
+[mask]
+cd_nm    = 15.0    # ~2× finer than 13.5 nm at matched NA (half the wavelength)
+pitch_nm = 30.0
+
+[grid]
+size     = 128     # 128 nm field at 1 nm pixels ≈ 4 pitches
+pixel_nm = 1.0
+
+[process]
+dose_mj_cm2 = 30.0
+focus_nm    = 0.0

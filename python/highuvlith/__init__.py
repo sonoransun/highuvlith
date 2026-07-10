@@ -1,4 +1,6 @@
-"""highuvlith: VUV laser lithography simulation framework."""
+"""highuvlith: lithography simulation framework spanning VUV (120-160 nm)
+through EUV (13.5 nm) to soft X-ray (1-10 nm), with pluggable illumination
+sources and optical systems backed by a Rust physics engine."""
 
 from highuvlith._native import (
     SourceConfig,
@@ -21,6 +23,17 @@ from highuvlith._native import (
     PySpherePacking as SpherePacking,
     PySubstrateCoupling as SubstrateCoupling,
     py_simulate_moire_emission,
+    # Volumetric / deep-layer classes and helpers
+    VolumetricResult,
+    HeightMapResult,
+    LigaResult,
+    develop_fast_marching,
+    height_map_from_times,
+    grayscale_height_map,
+    grayscale_transmittance_for_target,
+    blazed_grating,
+    microlens_array,
+    quantum_aerial_image,
 )
 
 from highuvlith.api import (
@@ -28,6 +41,13 @@ from highuvlith.api import (
     simulate_line_space,
     simulate_contact_hole,
     sweep_focus,
+    expose_volumetric,
+    simulate_liga,
+    simulate_interference,
+    simulate_grayscale,
+    simulate_quantum_line_space,
+    GrayscaleResult,
+    QuantumResult,
 )
 
 from highuvlith.mnsl import (
@@ -62,6 +82,25 @@ __all__ = [
     "simulate_line_space",
     "simulate_contact_hole",
     "sweep_focus",
+    # Volumetric / deep-layer results
+    "VolumetricResult",
+    "HeightMapResult",
+    "LigaResult",
+    # Volumetric / deep-layer API
+    "expose_volumetric",
+    "develop_fast_marching",
+    "height_map_from_times",
+    "simulate_liga",
+    "simulate_interference",
+    "simulate_grayscale",
+    "simulate_quantum_line_space",
+    "grayscale_height_map",
+    "grayscale_transmittance_for_target",
+    "blazed_grating",
+    "microlens_array",
+    "quantum_aerial_image",
+    "GrayscaleResult",
+    "QuantumResult",
     # MNSL Configuration
     "MnslConfig",
     "MnslEngine",

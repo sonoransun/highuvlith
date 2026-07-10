@@ -1,3 +1,10 @@
+//! `highuvlith` desktop GUI.
+//!
+//! An egui/eframe application for interactively exploring VUV lithography:
+//! real-time parameter sliders drive the `highuvlith-core` engine and
+//! visualize the resulting aerial image, resist profile, and process window as
+//! the user adjusts the source, optics, mask, and resist settings.
+
 mod app;
 mod state;
 

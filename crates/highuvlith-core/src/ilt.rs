@@ -1,7 +1,15 @@
 //! Inverse Lithography Technology (ILT).
 //!
 //! Gradient-based optimization of mask transmittance to produce a target
-//! aerial image. Uses the adjoint method for efficient gradient computation.
+//! aerial image, with total-variation regularization and sigmoid
+//! binarization.
+//!
+//! # Model status
+//!
+//! Simplified: the gradient is an adjoint-INSPIRED proxy
+//! (correlation-based, `2·error·sigmoid'`), not a true adjoint solve
+//! through the SOCS kernels. See `optimize_ilt` for the exact form.
+//! A rigorous adjoint gradient is planned.
 
 use crate::aerial::AerialImageEngine;
 use crate::mask::{Mask, MaskFeature, MaskType};
@@ -75,15 +83,20 @@ pub fn create_target_line_space(cd_nm: f64, pitch_nm: f64, grid: &GridConfig) ->
     target
 }
 
-/// Run ILT optimization using gradient descent with adjoint method.
+/// Run ILT optimization using gradient descent with an adjoint-inspired
+/// proxy gradient.
 ///
 /// The forward model is:
 ///   I(x,y) = Σ_k λ_k |IFFT(H_k · FFT(m))|²
 ///
 /// where m is mask transmittance, H_k are SOCS kernels, λ_k are eigenvalues.
 ///
-/// The gradient ∂cost/∂m is computed via the adjoint:
+/// A true adjoint gradient would be
 ///   ∂cost/∂m = 2 · Re[Σ_k λ_k · FFT(H_k* · IFFT(H_k · FFT(m) · (I - I_target)))]
+/// but that requires SOCS-kernel access from the optimizer. This
+/// implementation instead uses the local proxy `2·error·sigmoid'(m)`
+/// plus the TV-regularization gradient — cheaper, and adequate for the
+/// smooth targets exercised here, but NOT a rigorous adjoint solve.
 pub fn optimize_ilt(engine: &AerialImageEngine, config: &ILTConfig) -> ILTResult {
     let grid = engine.grid();
     let n = grid.size;

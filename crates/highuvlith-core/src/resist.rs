@@ -1,3 +1,36 @@
+//! Photoresist exposure, post-exposure bake, and development.
+//!
+//! Turns an aerial (or standing-wave) intensity image into a developed resist
+//! profile in three steps. Exposure uses the Dill model: the normalized
+//! photo-active-compound concentration bleaches as `m = exp(-C · dose · I)`,
+//! with bleachable (A) and non-bleachable (B) absorption setting a
+//! depth-averaged Beer–Lambert coupling factor on the incident intensity.
+//! Post-exposure bake diffuses the latent image as a separable Gaussian blur
+//! whose standard deviation is the acid diffusion length. Development converts
+//! `m` to an etch rate via the Mack model (with an `n → 1` singularity guard)
+//! or a simple threshold, and [`develop`] etches vertically for the profile.
+//!
+//! # Key equations
+//!
+//! ```text
+//!   Dill:  m(x,y) = exp(-C · dose · I_eff),   I_eff = coupling · I
+//!   Mack:  R(m) = Rmax · (a+1)(1-m)^n / (a + (1-m)^n) + Rmin
+//!          a = (n+1)/(n-1) · (1 - m_th)^n
+//! ```
+//!
+//! # Model status
+//!
+//! Depth-averaged 2D. Exposure applies a single Beer–Lambert coupling scalar
+//! with no z-resolved dose, and [`develop`] etches only the center row
+//! vertically (`height = thickness − rate · time`), so there is no lateral
+//! development front or sidewall angle. A z-resolved volumetric path is being
+//! added separately.
+//!
+//! # References
+//!
+//! - Dill et al., IEEE Trans. Electron Devices (1975) — exposure kinetics.
+//! - Mack, "Development of positive photoresists" (1987) — development rate.
+
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
 
@@ -19,6 +52,32 @@ pub enum DevelopmentModel {
         /// Development selectivity.
         n: f64,
     },
+}
+
+impl DevelopmentModel {
+    /// Development rate (nm/s) at normalized PAC concentration `m`.
+    pub fn rate(&self, m: f64) -> f64 {
+        match self {
+            DevelopmentModel::Threshold { threshold } => {
+                if m < *threshold {
+                    1000.0 // fast development (exposed)
+                } else {
+                    0.01 // minimal development (unexposed)
+                }
+            }
+            DevelopmentModel::Mack { rmax, rmin, mth, n } => {
+                let m_clamped = m.clamp(0.0, 1.0);
+                if (n - 1.0).abs() < 1e-12 {
+                    // Fallback for n=1 singularity: linear interpolation
+                    rmax * (1.0 - m_clamped) + rmin
+                } else {
+                    let a = (n + 1.0) / (n - 1.0) * (1.0 - mth).powf(*n);
+                    let one_minus_m_n = (1.0 - m_clamped).powf(*n);
+                    rmax * (a + 1.0) * one_minus_m_n / (a + one_minus_m_n) + rmin
+                }
+            }
+        }
+    }
 }
 
 impl Default for DevelopmentModel {
@@ -166,26 +225,7 @@ pub fn peb_diffuse(latent: &mut LatentImage, diffusion_nm: f64, pixel_nm: f64) {
 
 /// Compute development rate at each point from the latent image.
 pub fn development_rate(latent: &LatentImage, params: &ResistParams) -> Array2<f64> {
-    latent.pac.mapv(|m| match &params.development {
-        DevelopmentModel::Threshold { threshold } => {
-            if m < *threshold {
-                1000.0 // fast development (exposed)
-            } else {
-                0.01 // minimal development (unexposed)
-            }
-        }
-        DevelopmentModel::Mack { rmax, rmin, mth, n } => {
-            let m_clamped = m.clamp(0.0, 1.0);
-            if (n - 1.0).abs() < 1e-12 {
-                // Fallback for n=1 singularity: linear interpolation
-                rmax * (1.0 - m_clamped) + rmin
-            } else {
-                let a = (n + 1.0) / (n - 1.0) * (1.0 - mth).powf(*n);
-                let one_minus_m_n = (1.0 - m_clamped).powf(*n);
-                rmax * (a + 1.0) * one_minus_m_n / (a + one_minus_m_n) + rmin
-            }
-        }
-    })
+    latent.pac.mapv(|m| params.development.rate(m))
 }
 
 /// Simulate development to extract the resist profile along the x-axis.

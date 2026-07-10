@@ -1,3 +1,13 @@
+//! PyO3 bindings for the highuvlith VUV/EUV lithography engine.
+//!
+//! Wraps the `highuvlith-core` pipeline types as Python classes
+//! (`SourceConfig`, `OpticsConfig`, `MaskConfig`, ...) exposed through the
+//! native `highuvlith._native` module. Numpy arrays cross the boundary
+//! zero-copy, and long-running compute releases the GIL so batch sweeps
+//! parallelize across threads. Inputs pass through three validation layers —
+//! the Python wrappers, these PyO3 shims, and the Rust core — so bad
+//! parameters are rejected before any simulation work runs.
+
 use pyo3::prelude::*;
 
 mod py_config;
@@ -5,12 +15,14 @@ mod py_mnsl;
 mod py_results;
 mod py_simulation;
 mod py_sweep;
+mod py_volumetric;
 
 use py_config::*;
 use py_mnsl::*;
 use py_results::*;
 use py_simulation::*;
 use py_sweep::*;
+use py_volumetric::register_volumetric_module;
 
 /// highuvlith native module: VUV lithography simulation engine.
 #[pymodule]
@@ -37,6 +49,10 @@ fn _native(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // MNSL module
     register_mnsl_module(m)?;
+
+    // Volumetric / deep-layer module (volumetric, LIGA, grayscale,
+    // interference, quantum aerial image)
+    register_volumetric_module(m)?;
 
     Ok(())
 }

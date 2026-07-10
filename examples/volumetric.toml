@@ -1,0 +1,61 @@
+# =============================================================================
+# Volumetric exposure + development — F2 157.63 nm into 300 nm resist
+# =============================================================================
+#
+# The full 3D latent image: the lateral aerial image is combined with the exact
+# thin-film (transfer-matrix) intensity through the resist depth, the Dill
+# exposure is integrated with SPLIT-STEP bleaching, and development returns a
+# per-slice CD and sidewall angle. The separable exposure model is
+#
+#     I(x, y, z) = I_aer(x, y; d0 + z/n_r) · S(z)
+#
+# where I_aer is the aerial image refocused paraxially to depth z (computed at a
+# few defocus planes and interpolated) and S(z) is the exact standing-wave /
+# absorption profile from the film stack.
+#
+# SPLIT-STEP Dill (dose_steps): the total dose is applied in steps, and between
+# steps the resist is re-sliced with the extinction of the laterally-averaged
+# PAC. With dose_steps = 1 the absorption is static (fine for thin, weakly
+# bleaching films); raising it lets the top BLEACH and transmit more light
+# downward, so a strongly bleaching resist gets more exposure at depth — the
+# reason thick/high-A resists need several steps to converge.
+#
+# Reference: Dill et al., IEEE Trans. Electron Devices 22, 440 (1975);
+#            Mack, "Fundamental Principles of Optical Lithography" (2007), ch. 5.
+#
+# Run with:  highuvlith deep --config examples/volumetric.toml --output /tmp/vol.json
+#            (or --output /tmp/vol.png for the mid-depth PAC slice)
+# -----------------------------------------------------------------------------
+
+[source]
+wavelength_nm = 157.63   # F2 excimer laser (type defaults to "vuv")
+sigma         = 0.7
+bandwidth_pm  = 1.1
+
+[optics]
+# Refractive CaF2 projection lens — valid at 157 nm (above the ~110 nm cutoff).
+na             = 0.75
+flare_fraction = 0.02
+
+[mask]
+cd_nm    = 100.0   # 100 nm lines on a 300 nm pitch (well-resolved, k1 ≈ 0.71)
+pitch_nm = 300.0
+
+[grid]
+size     = 128     # keep the 3D volume modest (grid² × nz voxels)
+pixel_nm = 6.0     # 768 nm field ≈ 2.5 pitches
+
+[process]
+dose_mj_cm2 = 120.0  # baseline dose (overridden by [deep].dose_mj_cm2 below)
+focus_nm    = 0.0    # aerial-image focus at the resist top
+
+[deep]
+mode = "volumetric"
+
+resist_thickness_nm = 300.0   # resist layer (default film stack, resized)
+dose_mj_cm2         = 120.0   # dose chosen so the spaces clear top-to-bottom,
+                              #   giving a measurable per-slice CD and sidewall
+nz                  = 32      # depth slices
+n_defocus_planes    = 4       # aerial planes interpolated through depth
+dose_steps          = 5       # split-step Dill bleaching steps
+# develop_threshold = 0.5      # PAC threshold for per-slice CD (default 0.5)

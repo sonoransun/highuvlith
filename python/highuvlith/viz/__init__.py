@@ -9,6 +9,12 @@ from highuvlith.viz.mnsl import (
 )
 from highuvlith.viz.process_window import plot_bossung, plot_ed_window
 from highuvlith.viz.resist import plot_resist_profile
+from highuvlith.viz.volumetric import (
+    plot_xz_slice,
+    plot_depth_dose,
+    plot_height_map,
+    plot_isosurface,
+)
 
 __all__ = [
     "plot_aerial",
@@ -21,4 +27,9 @@ __all__ = [
     "plot_moire_analysis",
     "plot_rotation_sweep",
     "plot_optimization_heatmap",
+    # Volumetric / deep-layer visualization
+    "plot_xz_slice",
+    "plot_depth_dose",
+    "plot_height_map",
+    "plot_isosurface",
 ]

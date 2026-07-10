@@ -40,7 +40,7 @@ impl PySimulationEngine {
 
         let engine = AerialImageEngine::new(
             &source.inner,
-            &optics.inner,
+            optics.inner.as_dyn(),
             grid.inner.clone(),
             max_kernels,
         )
@@ -80,7 +80,7 @@ impl PySimulationEngine {
             &self.mask.inner,
             focus_nm,
             &self.source.inner,
-            &self.optics.inner,
+            self.optics.inner.as_dyn(),
         );
 
         Ok(PyAerialImageResult::from_grid2d(grid))
@@ -170,7 +170,7 @@ impl PySimulationEngine {
         format!(
             "SimulationEngine(λ={}nm, NA={}, kernels={})",
             self.source.inner.wavelength_nm(),
-            self.optics.inner.na,
+            self.optics.inner.as_dyn().na(),
             self.engine.num_kernels()
         )
     }

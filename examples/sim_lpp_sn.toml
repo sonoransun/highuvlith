@@ -1,0 +1,49 @@
+# =============================================================================
+# Laser-produced plasma (LPP) — tin at 13.5 nm (production EUV source)
+# =============================================================================
+#
+# The production EUV source: a CO2 drive laser vaporizes tin droplets into a
+# dense plasma whose Sn XIII–XV lines emit in the 2% band that Mo/Si multilayer
+# mirrors reflect around 13.5 nm. The usable in-band power follows a simple
+# efficiency chain
+#
+#     P_in-band = P_drive · CE · η_transport
+#               = 25 kW · 0.055 · 0.05 ≈ 69 W at the wafer
+#
+# where CE (conversion efficiency, ~5.5% state of the art) is the drive-power →
+# in-band fraction and η_transport folds in the collector + mirror-train losses.
+# The plasma is spatially INCOHERENT (large-σ disk illumination); the mirror
+# stack, not the plasma, sets the ~2% (270 pm) usable bandwidth.
+#
+# Reference: Fomenkov et al., "Light sources for high-volume manufacturing EUV
+#            lithography," Adv. Opt. Technol. 6, 173 (2017).
+#
+# Run with:  highuvlith simulate --config examples/sim_lpp_sn.toml
+# -----------------------------------------------------------------------------
+
+[source]
+type = "lpp"
+fuel = "sn"                    # tin → 13.5 nm (Mo/Si band)
+# Family preset supplies 25 kW drive, 5.5% CE, 5% transport, 270 pm band, 50 kHz.
+# Override any of them explicitly:
+# drive_laser_power_w    = 25000.0
+# conversion_efficiency  = 0.055
+# transport_efficiency   = 0.05
+# bandwidth_pm           = 270.0
+
+[optics]
+# 13.5 nm → reflective Schwarzschild objective (no refractive lens material).
+type = "schwarzschild"
+na   = 0.33
+
+[mask]
+cd_nm    = 30.0
+pitch_nm = 60.0
+
+[grid]
+size     = 128     # 256 nm field at 2 nm pixels
+pixel_nm = 2.0
+
+[process]
+dose_mj_cm2 = 30.0
+focus_nm    = 0.0

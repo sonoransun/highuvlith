@@ -1,3 +1,12 @@
+//! `highuvlith` command-line interface.
+//!
+//! A clap-based CLI over the `highuvlith-core` engine with four subcommands:
+//! `simulate` (aerial image for one dose/focus condition), `sweep` (dose/focus
+//! process-window analysis), `deep` (deep-layer 3D / high-aspect-ratio process
+//! modes: LIGA, grayscale, interference, volumetric), and `materials` (query
+//! the built-in optical constants). Runs are configured from TOML files (see
+//! `examples/sim.toml`); results serialize to JSON.
+
 mod commands;
 mod config;
 
@@ -50,6 +59,18 @@ enum Commands {
         dose_range: Option<String>,
     },
 
+    /// Deep-layer 3D / high-aspect-ratio process modes (LIGA, grayscale,
+    /// interference, volumetric). Mode is selected by `[deep] mode` in the TOML.
+    Deep {
+        /// Path to TOML configuration file
+        #[arg(short, long)]
+        config: std::path::PathBuf,
+
+        /// Output file path (.png writes the mode's image; otherwise .json)
+        #[arg(short, long)]
+        output: Option<std::path::PathBuf>,
+    },
+
     /// Query the VUV materials database
     Materials {
         /// Evaluate at this wavelength (nm)
@@ -83,6 +104,7 @@ fn main() -> anyhow::Result<()> {
             &focus_range,
             dose_range.as_deref(),
         ),
+        Commands::Deep { config, output } => commands::deep::run(&config, output.as_deref()),
         Commands::Materials { wavelength, name } => {
             commands::materials::run(wavelength, name.as_deref())
         }

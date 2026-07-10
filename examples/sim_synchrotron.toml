@@ -1,0 +1,57 @@
+# =============================================================================
+# Synchrotron undulator — quasi-monochromatic EUV at 13.5 nm (derived wavelength)
+# =============================================================================
+#
+# A storage-ring undulator emits quasi-monochromatic odd harmonics whose
+# wavelength is DERIVED from the machine parameters (not stored as a free
+# number) via the on-axis resonance condition
+#
+#     λ_n = λ_u (1 + K²/2) / (2 n γ²) ,   γ = 1 + E_kin / 0.511 MeV
+#
+# For a 538 MeV ring (γ ≈ 1053.8), a 20 mm period, K = 1, first harmonic:
+#
+#     λ_1 = 20e6 nm · (1 + 0.5) / (2 · 1 · 1053.8²) ≈ 13.5 nm
+#
+# The natural line width is ~1/(nN) = 1% for N = 100 periods. If you also give
+# an explicit `wavelength_nm`, it is cross-checked against this derived value
+# and REJECTED if it disagrees by more than 5% — the machine sets the color.
+#
+# Reference: Attwood, "Soft X-Rays and Extreme Ultraviolet Radiation" (1999),
+#            ch. 5 (undulator radiation).
+#
+# Run with:  highuvlith simulate --config examples/sim_synchrotron.toml
+# -----------------------------------------------------------------------------
+
+[source]
+type     = "synchrotron"
+beamline = "undulator"
+electron_energy_gev = 0.538   # 538 MeV compact ring (γ ≈ 1053.8)
+period_mm           = 20.0    # undulator period λ_u
+undulator_k         = 1.0     # deflection parameter K = 0.09337·B·λ_u[mm]
+num_periods         = 100     # sets the ~1/(nN) = 1% natural bandwidth
+harmonic            = 1       # odd harmonics only; 1 → 13.5 nm
+
+# --- Alternatively, a bending-magnet beamline (broadband; a monochromator
+#     selects the working wavelength). Uncomment and swap `beamline` above:
+# beamline            = "bending_magnet"
+# electron_energy_gev = 2.5     # E_c = 0.665·2.5²·1.5 = 6.23 keV
+# field_t             = 1.5
+# wavelength_nm       = 1.0     # monochromator selection (hard X-ray)
+# bandwidth_pm        = 0.2
+
+[optics]
+# EUV band → reflective Schwarzschild objective (no transparent lens material).
+type = "schwarzschild"
+na   = 0.3
+
+[mask]
+cd_nm    = 30.0
+pitch_nm = 60.0
+
+[grid]
+size     = 128     # 256 nm field at 2 nm pixels
+pixel_nm = 2.0
+
+[process]
+dose_mj_cm2 = 30.0
+focus_nm    = 0.0

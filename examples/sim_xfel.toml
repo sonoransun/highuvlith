@@ -1,0 +1,48 @@
+# =============================================================================
+# X-ray free-electron laser (XFEL) — SASE EUV at 13.5 nm (FLASH-class)
+# =============================================================================
+#
+# A SASE (Self-Amplified Spontaneous Emission) FEL starts from shot noise, so
+# every pulse is a different set of longitudinal modes: high peak brightness and
+# full transverse coherence, but poor LONGITUDINAL coherence and large shot-to-
+# shot fluctuations. The relative bandwidth is set by the FEL Pierce parameter ρ,
+#
+#     Δλ/λ ≈ 2 ρ   →   Δλ[pm] = 2 ρ λ[nm] · 1e3
+#                  =   2 · 3e-3 · 13.5 · 1e3 = 81 pm
+#
+# SASE intensity fluctuates ~100% shot-to-shot (M ≈ 1 mode), but averaging over
+# M independent pulses/modes suppresses the relative fluctuation as 1/√M — so a
+# dose delivered in many pulses is far more stable than any single shot. Seeded
+# / self-seeded modes trade this for a much narrower, more stable line.
+#
+# Reference: Ackermann et al. (FLASH), "Operation of a free-electron laser from
+#            the extreme ultraviolet to the water window," Nat. Photonics 1, 336
+#            (2007); Bonifacio, Pellegrini & Narducci, Opt. Commun. 50, 373 (1984).
+#
+# Run with:  highuvlith simulate --config examples/sim_xfel.toml
+# -----------------------------------------------------------------------------
+
+[source]
+type            = "xfel"
+mode            = "sase"    # sase | seeded
+wavelength_nm   = 13.5
+pierce_parameter = 3.0e-3   # ρ → SASE bandwidth Δλ/λ ≈ 2ρ ≈ 81 pm
+pulse_duration_fs = 50.0
+# rel_bandwidth = 5.0e-5     # used instead of pierce_parameter when mode="seeded"
+
+[optics]
+# EUV band → reflective Schwarzschild objective.
+type = "schwarzschild"
+na   = 0.3
+
+[mask]
+cd_nm    = 30.0
+pitch_nm = 60.0
+
+[grid]
+size     = 128     # 256 nm field at 2 nm pixels
+pixel_nm = 2.0
+
+[process]
+dose_mj_cm2 = 30.0
+focus_nm    = 0.0

@@ -1,3 +1,24 @@
+//! Optical proximity correction (OPC).
+//!
+//! Two approaches to pre-distorting the mask so the printed contour matches the
+//! target. Rule-based OPC ([`OpcRuleTable`]) looks each feature's width up in a
+//! bias table and grows or shrinks it: rectangles by moving both edges, convex
+//! polygons by a miter offset of each vertex along its edge-bisector normal,
+//! and [`MaskFeature::GrayRect`] footprints the same way as rectangles.
+//! Model-based OPC ([`model_based_opc`]) closes the loop through the
+//! aerial-image engine, measuring CD each iteration and applying a damped
+//! proportional edge correction until the CD error falls below tolerance or the
+//! iteration budget is spent.
+//!
+//! # Model status
+//!
+//! No sub-resolution assist features (SRAF) are inserted. The polygon miter
+//! offset is exact for convex polygons only; concave vertices are offset by the
+//! same rule with no self-intersection cleanup. Model-based correction applies
+//! one uniform edge bias to all rectangles per iteration (a scalar proportional
+//! controller), not a per-edge or per-fragment adjustment, and evaluates at
+//! nominal focus only.
+
 use crate::aerial::AerialImageEngine;
 use crate::mask::{Mask, MaskFeature};
 use crate::metrics;
@@ -110,6 +131,24 @@ impl OpcRuleTable {
 
                 MaskFeature::Polygon {
                     vertices: new_verts,
+                }
+            }
+            MaskFeature::GrayRect {
+                x,
+                y,
+                w,
+                h,
+                transmittance,
+            } => {
+                // Grayscale features encode dose, not edge position; OPC
+                // edge biasing still applies to their footprint.
+                let bias = self.find_bias(*w);
+                MaskFeature::GrayRect {
+                    x: *x,
+                    y: *y,
+                    w: w + 2.0 * bias,
+                    h: *h,
+                    transmittance: *transmittance,
                 }
             }
         }

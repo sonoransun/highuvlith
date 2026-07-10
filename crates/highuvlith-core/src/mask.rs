@@ -1,3 +1,25 @@
+//! Mask (reticle) geometry and its complex transmittance.
+//!
+//! A [`Mask`] is a list of geometric [`MaskFeature`]s plus a [`MaskType`] and a
+//! dark-/bright-field flag. [`Mask::rasterize`] paints the features onto the
+//! simulation grid as a complex-amplitude transmittance map, and
+//! [`Mask::spectrum`] takes its forward FFT for the imaging engine.
+//!
+//! The absorber amplitude depends on [`MaskType`]: `Binary` chrome is opaque
+//! (amplitude 0), [`MaskType::AttenuatedPSM`] carries `sqrt(T)·exp(iφ)` for its
+//! transmission T and phase φ, and alternating PSM is treated as opaque here.
+//! The [`MaskFeature::GrayRect`] feature instead carries its own continuous
+//! intensity transmittance, rasterized as amplitude `sqrt(T)` with zero phase —
+//! the building block for grayscale lithography — and bypasses the mask-type
+//! absorber value.
+//!
+//! # Model status
+//!
+//! Features are rasterized with hard, pixel-quantized edges (no sub-pixel
+//! antialiasing), so feature dimensions round to the grid pitch. Coordinates
+//! are at wafer scale (post-reduction), and line/space patterns fill the field
+//! with a fixed number of periods.
+
 use ndarray::Array2;
 use num::Complex;
 use serde::{Deserialize, Serialize};
@@ -29,6 +51,17 @@ pub enum MaskFeature {
     Rect { x: f64, y: f64, w: f64, h: f64 },
     /// Polygon defined by vertices (x, y pairs).
     Polygon { vertices: Vec<(f64, f64)> },
+    /// Rectangle with its own intensity transmittance in [0, 1]
+    /// (rasterized as amplitude sqrt(T), zero phase). The building block
+    /// for grayscale lithography masks; ignores `dark_field`/`mask_type`
+    /// because it carries its own transmission.
+    GrayRect {
+        x: f64,
+        y: f64,
+        w: f64,
+        h: f64,
+        transmittance: f64,
+    },
 }
 
 /// Mask / reticle specification.
@@ -210,6 +243,33 @@ impl Mask {
                         }
                     }
                 }
+                MaskFeature::GrayRect {
+                    x,
+                    y,
+                    w,
+                    h,
+                    transmittance,
+                } => {
+                    let amp = transmittance.clamp(0.0, 1.0).sqrt();
+                    let value = Complex64::new(amp, 0.0);
+                    let x_min = x - w / 2.0;
+                    let x_max = x + w / 2.0;
+                    let y_min = y - h / 2.0;
+                    let y_max = y + h / 2.0;
+
+                    for iy in 0..n {
+                        let py = -half + (iy as f64 + 0.5) * pixel;
+                        if py < y_min || py > y_max {
+                            continue;
+                        }
+                        for ix in 0..n {
+                            let px = -half + (ix as f64 + 0.5) * pixel;
+                            if px >= x_min && px <= x_max {
+                                mask[[iy, ix]] = value;
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -327,6 +387,44 @@ mod tests {
         // Absorber has sqrt(0.06) amplitude with 180 degree phase
         let expected_amp = 0.06_f64.sqrt();
         assert!((center.norm() - expected_amp).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_gray_rect_rasterizes_to_sqrt_transmittance() {
+        let mask = Mask {
+            mask_type: MaskType::Binary,
+            features: vec![MaskFeature::GrayRect {
+                x: 0.0,
+                y: 0.0,
+                w: 100.0,
+                h: 100.0,
+                transmittance: 0.25,
+            }],
+            dark_field: false,
+        };
+        let grid = GridConfig {
+            size: 64,
+            pixel_nm: 4.0,
+        };
+        let raster = mask.rasterize(&grid);
+        // Amplitude sqrt(0.25) = 0.5, zero phase.
+        let center = raster[[32, 32]];
+        assert!((center.re - 0.5).abs() < 1e-12);
+        assert!(center.im.abs() < 1e-12);
+        // Transmittance clamps into [0, 1].
+        let clamped = Mask {
+            mask_type: MaskType::Binary,
+            features: vec![MaskFeature::GrayRect {
+                x: 0.0,
+                y: 0.0,
+                w: 100.0,
+                h: 100.0,
+                transmittance: 1.7,
+            }],
+            dark_field: false,
+        };
+        let r2 = clamped.rasterize(&grid);
+        assert!((r2[[32, 32]].re - 1.0).abs() < 1e-12);
     }
 
     #[test]

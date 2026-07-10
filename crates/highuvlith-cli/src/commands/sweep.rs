@@ -36,7 +36,7 @@ pub fn run(
 ) -> anyhow::Result<()> {
     let config = SimConfig::load(config_path)?;
     config.validate()?;
-    let source = config.to_source();
+    let source = config.to_source()?;
     let optics = config.to_optics()?;
     let mask = config.to_mask()?;
     let grid = config.to_grid()?;
@@ -56,7 +56,7 @@ pub fn run(
         total
     );
 
-    let engine = AerialImageEngine::new(&source, &optics, grid.clone(), 20)?;
+    let engine = AerialImageEngine::new(&source, optics.as_ref(), grid.clone(), 20)?;
     eprintln!("Engine: {} SOCS kernels", engine.num_kernels());
 
     let pb = ProgressBar::new(total as u64);
@@ -104,7 +104,7 @@ pub fn run(
             "config": {
                 "wavelength_nm": source.wavelength_nm(),
                 "source_type": source.kind_label(),
-                "na": optics.na,
+                "na": optics.na(),
                 "cd_nm": config.mask.cd_nm,
                 "pitch_nm": config.mask.pitch_nm,
             },

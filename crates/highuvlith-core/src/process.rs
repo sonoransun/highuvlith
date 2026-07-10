@@ -1,3 +1,26 @@
+//! Process-window analysis over dose and focus.
+//!
+//! Sweeps a mask through a dose × focus matrix, measuring CD at each point to
+//! build a [`ProcessWindow`]. From that matrix it extracts Bossung curves
+//! (CD vs focus at each dose), the depth of focus, and the exposure latitude.
+//!
+//! Depth of focus is the focus range over which CD stays inside the tolerance
+//! band `CD_target · (1 ± tol)` at the best-fit dose row; exposure latitude is
+//! the analogous dose range at best focus, reported as a percentage of the
+//! band-center dose. Best focus is the sampled focus nearest zero, and the
+//! best dose is the one whose CD is closest to target there. [`batch_defocus`]
+//! is a parallel helper that returns raw aerial images across a focus list.
+//!
+//! # Model status
+//!
+//! CD comes from a single threshold crossing on the center cross-section of
+//! the aerial image (see [`crate::metrics::measure_cd_2d`]). The aerial image
+//! and the CD threshold are both independent of dose in the current sweep, so
+//! CD varies only with focus and every dose row of the matrix is identical;
+//! exposure latitude therefore reflects the tolerance-band width, not a
+//! dose-dependent CD response. DOF and EL are read directly off the sampled
+//! grid without curve fitting, so their resolution is the sweep step.
+
 use ndarray::Array2;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;

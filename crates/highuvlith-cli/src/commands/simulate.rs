@@ -12,7 +12,7 @@ pub fn run(
 ) -> anyhow::Result<()> {
     let config = SimConfig::load(config_path)?;
     config.validate()?;
-    let source = config.to_source();
+    let source = config.to_source()?;
     let optics = config.to_optics()?;
     let mask = config.to_mask()?;
     let grid = config.to_grid()?;
@@ -25,7 +25,7 @@ pub fn run(
         source.sigma_outer().unwrap_or(0.0),
         source.kind_label(),
     );
-    eprintln!("Optics:  NA = {:.2}", optics.na);
+    eprintln!("Optics:  NA = {:.2}", optics.na());
     eprintln!(
         "Mask:    CD = {:.1} nm, pitch = {:.1} nm",
         config.mask.cd_nm, config.mask.pitch_nm
@@ -36,7 +36,7 @@ pub fn run(
     );
     eprintln!("Focus:   {:.1} nm", focus);
 
-    let engine = AerialImageEngine::new(&source, &optics, grid.clone(), 20)?;
+    let engine = AerialImageEngine::new(&source, optics.as_ref(), grid.clone(), 20)?;
     eprintln!("Engine:  {} SOCS kernels", engine.num_kernels());
 
     let start = std::time::Instant::now();
@@ -61,7 +61,7 @@ pub fn run(
         let result = serde_json::json!({
             "wavelength_nm": source.wavelength_nm(),
             "source_type": source.kind_label(),
-            "na": optics.na,
+            "na": optics.na(),
             "cd_nm": config.mask.cd_nm,
             "pitch_nm": config.mask.pitch_nm,
             "focus_nm": focus,

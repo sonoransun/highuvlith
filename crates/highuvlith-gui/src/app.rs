@@ -56,38 +56,37 @@ impl LithApp {
         egui::CollapsingHeader::new("Source")
             .default_open(true)
             .show(ui, |ui| {
+                let type_label = |t: SourceType| match t {
+                    SourceType::Vuv => "VUV excimer",
+                    SourceType::LpaFel => "LPA-FEL (EUV)",
+                    SourceType::Lpp => "LPP plasma",
+                    SourceType::Synchrotron => "Synchrotron undulator",
+                    SourceType::Hhg => "HHG (table-top)",
+                    SourceType::Xfel => "XFEL",
+                };
                 ui.horizontal(|ui| {
                     ui.label("Type:");
                     let prev_type = p.source_type;
                     egui::ComboBox::from_id_salt("source_type_combo")
-                        .selected_text(match p.source_type {
-                            SourceType::Vuv => "VUV excimer",
-                            SourceType::LpaFel => "LPA-FEL (EUV)",
-                        })
+                        .selected_text(type_label(p.source_type))
                         .show_ui(ui, |ui| {
-                            if ui
-                                .selectable_value(
-                                    &mut p.source_type,
-                                    SourceType::Vuv,
-                                    "VUV excimer",
-                                )
-                                .clicked()
-                                && prev_type != SourceType::Vuv
-                            {
-                                p.wavelength_nm = 157.63;
-                                p.sigma = 0.7;
-                            }
-                            if ui
-                                .selectable_value(
-                                    &mut p.source_type,
-                                    SourceType::LpaFel,
-                                    "LPA-FEL (EUV)",
-                                )
-                                .clicked()
-                                && prev_type != SourceType::LpaFel
-                            {
-                                p.wavelength_nm = 25.0;
-                                p.sigma = 0.7;
+                            let entries = [
+                                (SourceType::Vuv, 157.63),
+                                (SourceType::LpaFel, 25.0),
+                                (SourceType::Lpp, 13.5),
+                                (SourceType::Synchrotron, 13.5),
+                                (SourceType::Hhg, 13.56),
+                                (SourceType::Xfel, 13.5),
+                            ];
+                            for (t, default_wl) in entries {
+                                if ui
+                                    .selectable_value(&mut p.source_type, t, type_label(t))
+                                    .clicked()
+                                    && prev_type != t
+                                {
+                                    p.wavelength_nm = default_wl;
+                                    p.sigma = 0.7;
+                                }
                             }
                         });
                     if prev_type != p.source_type {
@@ -107,19 +106,44 @@ impl LithApp {
                         p.wavelength_nm = 126.0;
                         changed = true;
                     }
-                    if ui.button("LPA-FEL 25").clicked() {
+                    if ui.button("FEL 25").clicked() {
                         p.source_type = SourceType::LpaFel;
                         p.wavelength_nm = 25.0;
                         changed = true;
                     }
+                    if ui.button("EUV 13.5").clicked() {
+                        p.source_type = SourceType::Lpp;
+                        p.lpp_fuel_gd = false;
+                        p.wavelength_nm = 13.5;
+                        changed = true;
+                    }
+                    if ui.button("BEUV 6.7").clicked() {
+                        p.source_type = SourceType::Lpp;
+                        p.lpp_fuel_gd = true;
+                        p.wavelength_nm = 6.7;
+                        changed = true;
+                    }
                 });
 
-                ui.horizontal(|ui| {
-                    ui.label("\u{03bb} (nm):");
-                    changed |= ui
-                        .add(egui::Slider::new(&mut p.wavelength_nm, 20.0..=170.0).step_by(0.1))
-                        .changed();
-                });
+                if p.wavelength_is_derived() {
+                    // Live proof the physics is live: the wavelength
+                    // follows the machine parameters.
+                    ui.label(format!(
+                        "\u{03bb} = {:.3} nm (derived from machine parameters)",
+                        p.effective_wavelength_nm()
+                    ));
+                } else {
+                    ui.horizontal(|ui| {
+                        ui.label("\u{03bb} (nm):");
+                        changed |= ui
+                            .add(
+                                egui::Slider::new(&mut p.wavelength_nm, 1.0..=170.0)
+                                    .logarithmic(true)
+                                    .step_by(0.01),
+                            )
+                            .changed();
+                    });
+                }
                 ui.horizontal(|ui| {
                     ui.label("\u{03c3}:");
                     changed |= ui
@@ -127,25 +151,102 @@ impl LithApp {
                         .changed();
                 });
 
-                if p.source_type == SourceType::LpaFel {
-                    ui.horizontal(|ui| {
-                        ui.label("E_e (MeV):");
-                        changed |= ui
-                            .add(
-                                egui::Slider::new(&mut p.electron_energy_mev, 100.0..=600.0)
-                                    .step_by(10.0),
-                            )
-                            .changed();
-                    });
-                    ui.horizontal(|ui| {
-                        ui.label("\u{03c4} (fs):");
-                        changed |= ui
-                            .add(
-                                egui::Slider::new(&mut p.pulse_duration_fs, 5.0..=50.0)
-                                    .step_by(1.0),
-                            )
-                            .changed();
-                    });
+                match p.source_type {
+                    SourceType::LpaFel => {
+                        ui.horizontal(|ui| {
+                            ui.label("E_e (MeV):");
+                            changed |= ui
+                                .add(
+                                    egui::Slider::new(&mut p.electron_energy_mev, 100.0..=600.0)
+                                        .step_by(10.0),
+                                )
+                                .changed();
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("\u{03c4} (fs):");
+                            changed |= ui
+                                .add(
+                                    egui::Slider::new(&mut p.pulse_duration_fs, 5.0..=50.0)
+                                        .step_by(1.0),
+                                )
+                                .changed();
+                        });
+                    }
+                    SourceType::Lpp => {
+                        ui.horizontal(|ui| {
+                            ui.label("Fuel:");
+                            if ui.selectable_label(!p.lpp_fuel_gd, "Sn (13.5)").clicked() {
+                                p.lpp_fuel_gd = false;
+                                p.wavelength_nm = 13.5;
+                                changed = true;
+                            }
+                            if ui.selectable_label(p.lpp_fuel_gd, "Gd (6.7)").clicked() {
+                                p.lpp_fuel_gd = true;
+                                p.wavelength_nm = 6.7;
+                                changed = true;
+                            }
+                        });
+                    }
+                    SourceType::Synchrotron => {
+                        ui.horizontal(|ui| {
+                            ui.label("E_ring (GeV):");
+                            changed |= ui
+                                .add(
+                                    egui::Slider::new(&mut p.electron_energy_gev, 0.2..=3.0)
+                                        .step_by(0.002),
+                                )
+                                .changed();
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("\u{03bb}_u (mm):");
+                            changed |= ui
+                                .add(
+                                    egui::Slider::new(&mut p.undulator_period_mm, 5.0..=50.0)
+                                        .step_by(0.5),
+                                )
+                                .changed();
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("K:");
+                            changed |= ui
+                                .add(egui::Slider::new(&mut p.undulator_k, 0.3..=3.0).step_by(0.01))
+                                .changed();
+                        });
+                    }
+                    SourceType::Hhg => {
+                        ui.horizontal(|ui| {
+                            ui.label("Harmonic q:");
+                            let mut q = p.hhg_harmonic as f64;
+                            if ui
+                                .add(egui::Slider::new(&mut q, 11.0..=71.0).step_by(2.0))
+                                .changed()
+                            {
+                                // Keep it odd.
+                                let q = q.round() as usize;
+                                p.hhg_harmonic = if q.is_multiple_of(2) { q + 1 } else { q };
+                                changed = true;
+                            }
+                        });
+                        ui.label("Ne gas, 800 nm driver, 4e14 W/cm\u{00b2}");
+                    }
+                    SourceType::Xfel => {
+                        ui.horizontal(|ui| {
+                            ui.label("Mode:");
+                            if ui.selectable_label(!p.xfel_seeded, "SASE").clicked() {
+                                p.xfel_seeded = false;
+                                changed = true;
+                            }
+                            if ui.selectable_label(p.xfel_seeded, "Seeded").clicked() {
+                                p.xfel_seeded = true;
+                                changed = true;
+                            }
+                        });
+                    }
+                    SourceType::Vuv => {}
+                }
+
+                if p.effective_wavelength_nm() < 50.0 {
+                    ui.label("Optics: Schwarzschild reflective (auto — no lens below 50 nm)");
                 }
             });
 

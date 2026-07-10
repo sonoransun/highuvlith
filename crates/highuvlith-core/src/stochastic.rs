@@ -5,7 +5,7 @@
 
 use ndarray::Array2;
 use rand::prelude::*;
-use rand_distr::{Normal, Poisson};
+use rand_distr::{Gamma, Normal, Poisson};
 
 use crate::source::LithographySource;
 
@@ -13,20 +13,27 @@ use crate::source::LithographySource;
 #[derive(Debug, Clone)]
 pub struct StochasticParams {
     /// Photon density at dose=1 mJ/cm² (photons/nm²).
-    /// At 157nm: E_photon = hc/λ = 1.27e-18 J, so 1 mJ/cm² = 7.9e12 photons/cm²
-    /// = 0.079 photons/nm².
+    /// At 157 nm: E_photon = hc/λ = 1.27e-18 J, so 1 mJ/cm² = 10 J/m²
+    /// = 7.9e18 photons/m² = 7.9 photons/nm².
     pub photon_density_per_mj_cm2: f64,
     /// PEB acid diffusion length standard deviation (nm).
     pub acid_diffusion_sigma_nm: f64,
     /// Number of Monte Carlo realizations.
     pub num_realizations: usize,
+    /// Relative rms shot-to-shot dose fluctuation (0 = perfectly stable
+    /// source). Sampled per realization from a Gamma distribution with
+    /// mean 1 and the given rms — the textbook SASE pulse-energy
+    /// statistic, and a good model for any pulsed-source dose jitter.
+    pub dose_jitter_rms: f64,
 }
 
 impl StochasticParams {
-    /// Create stochastic params from a source, computing photon density automatically.
+    /// Create stochastic params from a source: photon density and
+    /// shot-to-shot dose jitter are taken from the source model.
     pub fn from_source(source: &impl LithographySource) -> Self {
         Self {
             photon_density_per_mj_cm2: source.photon_density_per_mj_cm2(),
+            dose_jitter_rms: source.shot_to_shot_rms(),
             ..Self::default()
         }
     }
@@ -34,19 +41,18 @@ impl StochasticParams {
     /// Default parameters for F2 laser (157nm) lithography.
     pub fn default_vuv() -> Self {
         Self {
-            // hc/λ at 157nm: photon energy = 1.267e-18 J
-            // 1 mJ/cm² = 1e-3 / (1e-14) J/nm² = 1e11 J/m² = ...
-            // photon_density = dose / E_photon = (dose_mJ * 1e-3 * 1e14) / (1.267e-18)
-            // For dose_mJ=1: 1e-3 * 1e14 / 1.267e-18 = 7.89e28... that's per m²
-            // Per nm²: 7.89e28 * 1e-18 = 7.89e10... that's way too high for shot noise
-            // Actually: 1 mJ/cm² = 10 J/m² = 10 / E_photon photons/m²
-            // = 10 / 1.267e-18 = 7.89e18 photons/m² = 0.00789 photons/nm²
-            // At typical dose 30 mJ/cm²: 0.237 photons/nm²
-            // Per pixel at 1nm pixel: 0.237 photons
-            // Per pixel at 2nm pixel: 0.947 photons
-            photon_density_per_mj_cm2: 0.00789,
+            // hc/λ at 157 nm: photon energy = 1.267e-18 J
+            // 1 mJ/cm² = 10 J/m² -> 10 / 1.267e-18 = 7.89e18 photons/m²
+            // 1 nm² = 1e-18 m² -> 7.89 photons/nm²
+            // At a typical dose of 30 mJ/cm²: ~237 photons per (1 nm)² pixel.
+            // (An earlier version of this constant was 0.00789 — a
+            // m²→nm² conversion slip of 1e3 that inflated shot-noise
+            // LER by ~sqrt(1000) ≈ 32x. Pinned against the
+            // LithographySource trait default by a regression test.)
+            photon_density_per_mj_cm2: 7.89,
             acid_diffusion_sigma_nm: 5.0,
             num_realizations: 100,
+            dose_jitter_rms: 0.0,
         }
     }
 }
@@ -171,10 +177,26 @@ pub fn compute_ler_lwr(
     let mut cds = Vec::with_capacity(params.num_realizations);
 
     for _ in 0..params.num_realizations {
-        let noisy = apply_shot_noise(aerial_image, dose_mj_cm2, pixel_nm, params, &mut rng);
+        // Shot-to-shot dose jitter: Gamma-distributed with mean 1 and
+        // rms = dose_jitter_rms (Gamma(k, 1/k) with k = 1/rms²).
+        let dose_factor = if params.dose_jitter_rms > 0.0 {
+            let k = 1.0 / (params.dose_jitter_rms * params.dose_jitter_rms);
+            match Gamma::new(k, 1.0 / k) {
+                Ok(dist) => rng.sample(dist),
+                Err(_) => 1.0,
+            }
+        } else {
+            1.0
+        };
+        let dose = dose_mj_cm2 * dose_factor;
+        let noisy = apply_shot_noise(aerial_image, dose, pixel_nm, params, &mut rng);
 
-        // Extract center row cross-section
-        let profile: Vec<f64> = (0..nx).map(|j| noisy[[center_row, j]]).collect();
+        // Extract center row cross-section. The threshold is an absolute
+        // dose criterion, so a hotter/cooler pulse shifts the printed
+        // edge: scale the (dose-normalized) intensity by the dose factor.
+        let profile: Vec<f64> = (0..nx)
+            .map(|j| noisy[[center_row, j]] * dose_factor)
+            .collect();
 
         // Find threshold crossings
         let crossings = find_crossings(&profile, &x_nm, threshold);
@@ -271,6 +293,7 @@ mod tests {
             photon_density_per_mj_cm2: 0.1,
             acid_diffusion_sigma_nm: 5.0,
             num_realizations: 1,
+            dose_jitter_rms: 0.0,
         };
 
         // Average over many realizations should converge to original
@@ -320,6 +343,7 @@ mod tests {
             photon_density_per_mj_cm2: 0.01,
             acid_diffusion_sigma_nm: 3.0,
             num_realizations: 50,
+            dose_jitter_rms: 0.0,
         };
 
         let result = compute_ler_lwr(&aerial, -128.0, 128.0, 30.0, 2.0, 0.5, &params);
@@ -349,6 +373,7 @@ mod tests {
             photon_density_per_mj_cm2: 10.0, // very high
             acid_diffusion_sigma_nm: 0.1,
             num_realizations: 50,
+            dose_jitter_rms: 0.0,
         };
         let result = compute_ler_lwr(&aerial, -128.0, 128.0, 100.0, 2.0, 0.5, &params_low_noise);
         assert!(
@@ -357,5 +382,96 @@ mod tests {
             result.ler_3sigma_nm
         );
         assert!(result.cd_mean_nm > 0.0);
+    }
+
+    #[test]
+    fn test_default_photon_density_matches_source_trait() {
+        // Regression for a m²→nm² conversion slip: default_vuv() must
+        // agree with the LithographySource trait derivation for F2.
+        let src = crate::source::VuvSource::f2_laser(0.7).unwrap();
+        let expected = src.photon_density_per_mj_cm2();
+        let params = StochasticParams::default_vuv();
+        let rel_err = ((params.photon_density_per_mj_cm2 - expected) / expected).abs();
+        assert!(
+            rel_err < 0.01,
+            "default_vuv photon density {} disagrees with trait-derived {}",
+            params.photon_density_per_mj_cm2,
+            expected
+        );
+    }
+
+    #[test]
+    fn test_photon_density_at_13nm5_matches_literature() {
+        // Literature anchor for EUV stochastics: 1 mJ/cm² at 13.5 nm
+        // carries ~0.68 photons/nm² (e.g. ~10 photons/nm² at 15 mJ/cm²).
+        struct Euv;
+        impl LithographySource for Euv {
+            fn wavelength_nm(&self) -> f64 {
+                13.5
+            }
+            fn bandwidth_pm(&self) -> f64 {
+                0.0
+            }
+            fn intensity_at(&self, _fx: f64, _fy: f64) -> f64 {
+                1.0
+            }
+            fn spectral_weights(&self) -> Vec<(f64, f64)> {
+                vec![(13.5, 1.0)]
+            }
+        }
+        let density = Euv.photon_density_per_mj_cm2();
+        assert!(
+            (density - 0.68).abs() < 0.02,
+            "13.5 nm photon density should be ~0.68 photons/nm² per mJ/cm², got {}",
+            density
+        );
+    }
+
+    #[test]
+    fn test_from_source_pulls_dose_jitter() {
+        let fel = crate::source::LpaFelSource::bella_target_25nm(0.7).unwrap();
+        let params = StochasticParams::from_source(&fel);
+        assert_relative_eq!(params.dose_jitter_rms, 0.03, epsilon = 1e-12);
+        assert_relative_eq!(
+            params.photon_density_per_mj_cm2,
+            fel.photon_density_per_mj_cm2(),
+            epsilon = 1e-12
+        );
+    }
+
+    #[test]
+    fn test_dose_jitter_increases_lwr() {
+        // Smooth Gaussian feature; very high photon density so per-pixel
+        // shot noise is negligible and dose jitter dominates.
+        let n = 128;
+        let mut aerial = Array2::zeros((n, n));
+        for i in 0..n {
+            for j in 0..n {
+                let x = (j as f64 - 64.0) * 2.0;
+                let sigma = 30.0;
+                aerial[[i, j]] = (-x * x / (2.0 * sigma * sigma)).exp();
+            }
+        }
+
+        let stable = StochasticParams {
+            photon_density_per_mj_cm2: 1000.0,
+            acid_diffusion_sigma_nm: 0.1,
+            num_realizations: 60,
+            dose_jitter_rms: 0.0,
+        };
+        let jittery = StochasticParams {
+            dose_jitter_rms: 0.10,
+            ..stable.clone()
+        };
+
+        let r_stable = compute_ler_lwr(&aerial, -128.0, 128.0, 100.0, 2.0, 0.5, &stable);
+        let r_jitter = compute_ler_lwr(&aerial, -128.0, 128.0, 100.0, 2.0, 0.5, &jittery);
+
+        assert!(
+            r_jitter.lwr_3sigma_nm > r_stable.lwr_3sigma_nm,
+            "10% dose jitter should raise LWR: stable {:.3} vs jitter {:.3}",
+            r_stable.lwr_3sigma_nm,
+            r_jitter.lwr_3sigma_nm
+        );
     }
 }

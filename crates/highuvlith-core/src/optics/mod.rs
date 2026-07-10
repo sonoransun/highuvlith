@@ -1,3 +1,32 @@
+//! Optical systems and their pupil functions.
+//!
+//! Defines the [`OpticalSystem`] contract used by the aerial-image engine: a
+//! complex pupil function `P(fx, fy; defocus, λ)` whose magnitude is the pupil
+//! transmission (apodization) and whose phase carries the aberrations plus the
+//! defocus term, together with the numerical aperture, reduction ratio, flare
+//! fraction, and chromatic-defocus queries the pipeline needs.
+//!
+//! [`ProjectionOptics`] is the refractive CaF2 implementation for VUV: a
+//! circular pupil with Fringe-Zernike aberration phase, optional radial
+//! [`Apodization`], uniform flare, and an axial-chromatic coefficient
+//! (nm defocus per pm of wavelength offset) that feeds polychromatic imaging.
+//! Sibling modules [`zone_plate`] and [`schwarzschild`] provide diffractive
+//! and reflective alternatives through the same trait.
+//!
+//! # Key equations
+//!
+//! ```text
+//!   P(ρ,θ) = A(ρ) · exp[ i ( W_aberr(ρ,θ) + π z ρ² NA² / λ ) ],   ρ ≤ 1
+//!   f_cutoff = NA / λ            Rayleigh resolution = 0.61 λ / NA
+//! ```
+//! Frequencies are normalized to `f_cutoff`; the pupil is zero for ρ > 1.
+//!
+//! # Model status
+//!
+//! Scalar pupil model — transmission and phase only, no vector/polarization
+//! treatment of the pupil. Aberrations are user-supplied Zernike coefficients;
+//! chromatic defocus is linear in the wavelength offset.
+
 pub mod schwarzschild;
 pub mod zone_plate;
 

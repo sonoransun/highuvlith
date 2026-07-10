@@ -30,7 +30,7 @@ impl PyBatchSimulator {
 
         let engine = AerialImageEngine::new(
             &source.inner,
-            &optics.inner,
+            optics.inner.as_dyn(),
             grid_config.clone(),
             max_kernels,
         )

@@ -100,6 +100,60 @@ impl MaterialsDatabase {
             ],
         );
 
+        // ---- EUV band (13.5 nm / 92 eV) ----
+        // n = 1 - delta + i*beta from the CXRO Henke tables
+        // (Henke, Gullikson & Davis, At. Data Nucl. Data Tables 54, 181
+        // (1993); henke.lbl.gov). At these energies all condensed matter
+        // has n slightly BELOW 1. Mo/Si is the canonical multilayer pair
+        // (contrast in delta, low beta in Si).
+        fixed_nk.insert(
+            "Si_euv".to_string(),
+            vec![(13.5, Complex64::new(0.99901, 0.00182))],
+        );
+        fixed_nk.insert(
+            "Mo_euv".to_string(),
+            vec![(13.5, Complex64::new(0.92380, 0.00644))],
+        );
+        // Capping / absorber metals (approximate CXRO values — verify
+        // against henke.lbl.gov before quantitative reflectometry).
+        fixed_nk.insert(
+            "Ru_euv".to_string(),
+            vec![(13.5, Complex64::new(0.886, 0.017))],
+        );
+        fixed_nk.insert(
+            "Ta_euv".to_string(),
+            vec![(13.5, Complex64::new(0.943, 0.041))],
+        );
+        // Chemically amplified organic EUV resist: alpha ~ 5 /um
+        // -> k = alpha*lambda/(4*pi) ~ 0.0054.
+        fixed_nk.insert(
+            "EUV_resist".to_string(),
+            vec![(13.5, Complex64::new(0.976, 0.0054))],
+        );
+        // Metal-oxide (SnOx-class) EUV resist: alpha ~ 20 /um -> k ~ 0.021.
+        // n approximate.
+        fixed_nk.insert(
+            "MOx_resist".to_string(),
+            vec![(13.5, Complex64::new(0.935, 0.021))],
+        );
+
+        // ---- Beyond-EUV band (6.7 nm / 185 eV, La/B4C mirrors) ----
+        // 6.7 nm sits just below the boron K-edge (188 eV), where B4C is
+        // nearly transparent — the physical basis of La/B4C multilayers.
+        // Values approximate (CXRO); verify before quantitative use.
+        fixed_nk.insert(
+            "La_beuv".to_string(),
+            vec![(6.7, Complex64::new(0.988, 0.0027))],
+        );
+        fixed_nk.insert(
+            "B4C_beuv".to_string(),
+            vec![(6.7, Complex64::new(0.9947, 0.0004))],
+        );
+        fixed_nk.insert(
+            "BEUV_resist".to_string(),
+            vec![(6.7, Complex64::new(0.994, 0.002))],
+        );
+
         Self {
             sellmeier,
             fixed_nk,
@@ -204,5 +258,40 @@ mod tests {
         let n_150 = db.refractive_index("Si", 150.0).unwrap();
         // Interpolated value should be between the table entries
         assert!(n_150.re > n_140.re || n_150.re < n_140.re || n_150.re == n_140.re);
+    }
+
+    #[test]
+    fn test_euv_mo_si_multilayer_pair() {
+        let db = MaterialsDatabase::new();
+        let si = db.refractive_index("Si_euv", 13.5).unwrap();
+        let mo = db.refractive_index("Mo_euv", 13.5).unwrap();
+        // At 92 eV all condensed matter has n slightly below 1.
+        assert!(si.re < 1.0 && si.re > 0.99);
+        assert!(mo.re < 1.0);
+        // The canonical Mo/Si contrast: Mo absorbs > 3x more than Si and
+        // has the larger index decrement (that is why the pair reflects).
+        assert!(mo.im > 3.0 * si.im, "Mo k={} vs Si k={}", mo.im, si.im);
+        assert!((1.0 - mo.re) > 10.0 * (1.0 - si.re));
+    }
+
+    #[test]
+    fn test_euv_resist_absorption_ordering() {
+        let db = MaterialsDatabase::new();
+        let car = db.refractive_index("EUV_resist", 13.5).unwrap();
+        let mox = db.refractive_index("MOx_resist", 13.5).unwrap();
+        // Metal-oxide resists absorb several times more strongly than
+        // organic CARs — their EUV selling point.
+        assert!(mox.im > 3.0 * car.im);
+    }
+
+    #[test]
+    fn test_beuv_boron_transparency() {
+        let db = MaterialsDatabase::new();
+        let la = db.refractive_index("La_beuv", 6.7).unwrap();
+        let b4c = db.refractive_index("B4C_beuv", 6.7).unwrap();
+        // 6.7 nm sits just below the boron K-edge: B4C is nearly
+        // transparent while La provides the contrast.
+        assert!(b4c.im < 0.001);
+        assert!(la.im > 2.0 * b4c.im);
     }
 }

@@ -1,18 +1,29 @@
 use highuvlith_core::aerial::AerialImageEngine;
 use highuvlith_core::mask::Mask;
 use highuvlith_core::metrics;
-use highuvlith_core::optics::ProjectionOptics;
-use highuvlith_core::source::{IlluminationShape, LpaFelSource, SourceKind, VuvSource};
+use highuvlith_core::optics::schwarzschild::SchwarzschildObjective;
+use highuvlith_core::optics::{OpticalSystem, ProjectionOptics};
+use highuvlith_core::source::{
+    HhgGas, HhgSource, IlluminationShape, LithographySource, LpaFelSource, LppSource, SourceKind,
+    SynchrotronSource, VuvSource, XfelSource,
+};
+use highuvlith_core::source_models::physics;
 use highuvlith_core::types::GridConfig;
 use ndarray::Array2;
 use std::sync::{Arc, Mutex};
 use std::thread;
 
 /// Selects which concrete source type the GUI builds for simulation.
+/// (ICS/SSMB/entangled are deliberately CLI/Python-only to keep the
+/// panel usable.)
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SourceType {
     Vuv,
     LpaFel,
+    Lpp,
+    Synchrotron,
+    Hhg,
+    Xfel,
 }
 
 #[derive(Clone)]
@@ -29,6 +40,18 @@ pub struct SimParams {
     pub electron_energy_mev: f64,
     /// Pulse duration in fs. Used only when `source_type == LpaFel`.
     pub pulse_duration_fs: f64,
+    /// LPP fuel selector: false = Sn (13.5 nm), true = Gd (6.7 nm).
+    pub lpp_fuel_gd: bool,
+    /// Synchrotron ring energy in GeV (undulator beamline).
+    pub electron_energy_gev: f64,
+    /// Undulator period in mm.
+    pub undulator_period_mm: f64,
+    /// Undulator strength parameter K.
+    pub undulator_k: f64,
+    /// HHG harmonic order (odd).
+    pub hhg_harmonic: usize,
+    /// XFEL mode: false = SASE, true = seeded.
+    pub xfel_seeded: bool,
 }
 
 impl Default for SimParams {
@@ -44,7 +67,40 @@ impl Default for SimParams {
             grid_size: 128,
             electron_energy_mev: 500.0,
             pulse_duration_fs: 10.0,
+            lpp_fuel_gd: false,
+            electron_energy_gev: 0.538,
+            undulator_period_mm: 20.0,
+            undulator_k: 1.0,
+            hhg_harmonic: 59,
+            xfel_seeded: false,
         }
+    }
+}
+
+impl SimParams {
+    /// Wavelength the simulation will actually use: the slider value for
+    /// set-point sources, or the machine-DERIVED value for synchrotron
+    /// undulators (resonance condition) and HHG (driver / harmonic).
+    pub fn effective_wavelength_nm(&self) -> f64 {
+        match self.source_type {
+            SourceType::Synchrotron => {
+                let gamma = physics::gamma_from_mev(self.electron_energy_gev * 1000.0);
+                physics::undulator_resonance_nm(
+                    self.undulator_period_mm,
+                    self.undulator_k,
+                    gamma,
+                    1,
+                )
+            }
+            SourceType::Hhg => 800.0 / self.hhg_harmonic as f64,
+            _ => self.wavelength_nm,
+        }
+    }
+
+    /// True when the wavelength is derived from machine parameters
+    /// rather than set directly.
+    pub fn wavelength_is_derived(&self) -> bool {
+        matches!(self.source_type, SourceType::Synchrotron | SourceType::Hhg)
     }
 }
 
@@ -102,6 +158,14 @@ impl SimState {
         *error_ref.lock().unwrap() = None;
 
         thread::spawn(move || {
+            macro_rules! fail {
+                ($msg:expr) => {{
+                    *error_ref.lock().unwrap() = Some($msg);
+                    *computing_ref.lock().unwrap() = false;
+                    return;
+                }};
+            }
+
             let source: SourceKind = match params.source_type {
                 SourceType::Vuv => SourceKind::Vuv(VuvSource {
                     wavelength_nm: params.wavelength_nm,
@@ -117,25 +181,78 @@ impl SimState {
                 SourceType::LpaFel => {
                     let mut fel = match LpaFelSource::new(params.wavelength_nm, params.sigma) {
                         Ok(s) => s,
-                        Err(e) => {
-                            *error_ref.lock().unwrap() =
-                                Some(format!("LPA-FEL parameter error: {}", e));
-                            *computing_ref.lock().unwrap() = false;
-                            return;
-                        }
+                        Err(e) => fail!(format!("LPA-FEL parameter error: {}", e)),
                     };
                     fel.electron_energy_mev = params.electron_energy_mev;
                     fel.pulse_duration_fs = params.pulse_duration_fs;
                     fel.spectral_samples = 1;
                     SourceKind::LpaFel(fel)
                 }
+                SourceType::Lpp => {
+                    let preset = if params.lpp_fuel_gd {
+                        LppSource::gd_6nm7(params.sigma)
+                    } else {
+                        LppSource::sn_13nm5(params.sigma)
+                    };
+                    let mut lpp = match preset {
+                        Ok(s) => s,
+                        Err(e) => fail!(format!("LPP parameter error: {}", e)),
+                    };
+                    lpp.spectral_samples = 1;
+                    SourceKind::Lpp(lpp)
+                }
+                SourceType::Synchrotron => {
+                    match SynchrotronSource::undulator(
+                        params.electron_energy_gev,
+                        params.undulator_period_mm,
+                        params.undulator_k,
+                        100,
+                        1,
+                    ) {
+                        Ok(mut s) => {
+                            s.spectral_samples = 1;
+                            SourceKind::Synchrotron(s)
+                        }
+                        Err(e) => fail!(format!("Synchrotron parameter error: {}", e)),
+                    }
+                }
+                SourceType::Hhg => {
+                    match HhgSource::new(800.0, HhgGas::Neon, 4e14, params.hhg_harmonic, 15.0) {
+                        Ok(mut s) => {
+                            s.spectral_samples = 1;
+                            SourceKind::Hhg(s)
+                        }
+                        Err(e) => fail!(format!("HHG parameter error: {}", e)),
+                    }
+                }
+                SourceType::Xfel => {
+                    let mut xfel = if params.xfel_seeded {
+                        XfelSource::fermi_seeded_13nm5()
+                    } else {
+                        XfelSource::flash_13nm5()
+                    };
+                    xfel.wavelength_nm = params.wavelength_nm;
+                    xfel.spectral_samples = 1;
+                    SourceKind::Xfel(xfel)
+                }
             };
-            let optics = match ProjectionOptics::new(params.na) {
-                Ok(o) => o,
-                Err(e) => {
-                    *error_ref.lock().unwrap() = Some(format!("Optics error: {}", e));
-                    *computing_ref.lock().unwrap() = false;
-                    return;
+
+            // Optics honesty: no refractive lens material exists below
+            // ~110 nm, so auto-select a Schwarzschild reflective
+            // objective for short wavelengths.
+            let wavelength = source.wavelength_nm();
+            let optics: Box<dyn OpticalSystem> = if wavelength < 50.0 {
+                let mut objective = if wavelength < 10.0 {
+                    SchwarzschildObjective::beuv()
+                } else {
+                    SchwarzschildObjective::euv_standard()
+                };
+                objective.numerical_aperture = params.na.min(0.6);
+                Box::new(objective)
+            } else {
+                match ProjectionOptics::new(params.na) {
+                    Ok(o) => Box::new(o),
+                    Err(e) => fail!(format!("Optics error: {}", e)),
                 }
             };
             let grid = GridConfig {
@@ -152,7 +269,7 @@ impl SimState {
             };
 
             let start = std::time::Instant::now();
-            match AerialImageEngine::new(&source, &optics, grid, 15) {
+            match AerialImageEngine::new(&source, optics.as_ref(), grid, 15) {
                 Ok(engine) => {
                     let aerial = engine.compute(&mask, params.focus_nm);
                     let elapsed = start.elapsed();

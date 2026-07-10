@@ -1,0 +1,49 @@
+# =============================================================================
+# Steady-state microbunching (SSMB) — kW-class EUV at 13.5 nm  [PROJECTED]
+# =============================================================================
+#
+# SSMB uses a modulation laser to imprint and SUSTAIN microbunching on a stored
+# electron beam, so every turn radiates coherently at a high harmonic of the
+# modulation wavelength — combining storage-ring average power with FEL-like
+# coherent gain. The target wavelength must be an integer harmonic of the
+# modulation laser (enforced at construction, within 0.2%):
+#
+#     harmonic h = λ_mod / λ_target = 1053 / 13.5 = 78   (integer ✓)
+#
+# The appeal is average power: projected kW-class EUV would remove the source-
+# power bottleneck that limits EUV-lithography throughput.
+#
+# STATUS — PROJECTED: the proof of principle demonstrated one-turn microbunching
+# at visible wavelengths; steady-state EUV operation at kW power is a design
+# projection, not a demonstrated machine. The harmonic-consistency check is
+# live; the power figure is a projection.
+#
+# Reference: Deng et al., "Experimental demonstration of the mechanism of
+#            steady-state microbunching," Nature 590, 576 (2021).
+#
+# Run with:  highuvlith simulate --config examples/sim_ssmb.toml
+# -----------------------------------------------------------------------------
+
+[source]
+type                    = "ssmb"
+ring_energy_mev         = 400.0    # storage-ring energy
+modulation_wavelength_nm = 1053.0  # modulation laser (Nd:YLF)
+wavelength_nm           = 13.5     # target = harmonic 78 of 1053 nm
+average_power_w         = 1000.0   # projected kW-class average power
+
+[optics]
+# 13.5 nm → reflective Schwarzschild objective.
+type = "schwarzschild"
+na   = 0.3
+
+[mask]
+cd_nm    = 30.0
+pitch_nm = 60.0
+
+[grid]
+size     = 128     # 256 nm field at 2 nm pixels
+pixel_nm = 2.0
+
+[process]
+dose_mj_cm2 = 30.0
+focus_nm    = 0.0

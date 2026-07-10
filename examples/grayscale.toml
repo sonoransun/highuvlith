@@ -1,0 +1,61 @@
+# =============================================================================
+# Grayscale lithography — blazed grating in photoresist (analytic 2.5D)
+# =============================================================================
+#
+# Grayscale exposure varies the local dose across the field so a positive
+# resist clears to a DEPTH that follows the dose, sculpting a continuous 3D
+# surface relief in a single exposure — blazed gratings, microlenses, phase
+# ramps. The dose→depth map is the resist contrast (H–D) curve, fixed over its
+# log-linear regime by two doses: the threshold D_th (below which nothing
+# clears) and the clearing dose D_clear (at/above which it clears to the
+# substrate). The contrast slope is
+#
+#     γ = 1 / log10(D_clear / D_th)          = 1 / log10(100/10) = 1.0 here
+#
+# and the removed-depth fraction is  f(D) = clamp(γ · log10(D/D_th), 0, 1),
+# so the remaining height is  h(D) = thickness · (1 − f(D)).  Inverting,
+# the dose needed to leave a target height uses  D(f) = D_th · 10^(f/γ).
+#
+# This mode builds the target relief (a blazed sawtooth here), synthesizes the
+# continuous-transmittance mask that prints it via the inverse map, then
+# re-prints it in the ideal 2.5D model (local dose = exposure_dose × mask
+# transmittance) and reports the achieved height and its RMS error vs target —
+# a self-consistency check on the contrast-curve inversion.
+#
+# Reference: C. M. Waits et al., "Investigation of gray-scale technology for
+#            large area 3D silicon MEMS structures," J. Micromech. Microeng.
+#            13, 170 (2003); Dill et al., IEEE TED 22, 440 (1975).
+#
+# Run with:  highuvlith deep --config examples/grayscale.toml --output /tmp/gray.json
+#            (or --output /tmp/gray.png for the height map)
+# -----------------------------------------------------------------------------
+
+[source]
+# Grayscale is typically done on an i-line mask aligner / DMD writer. The source
+# is unused by this analytic 2.5D mode (only [grid].size sets the array); the
+# 365 nm value is documentary.
+wavelength_nm = 365.0
+
+[optics]
+na = 0.4        # unused by the 2.5D height model; present for the shared schema
+
+[mask]
+cd_nm    = 1000.0   # unused by this mode (the relief is built parametrically)
+pitch_nm = 3200.0
+
+[grid]
+size     = 256      # n × n height-map array
+pixel_nm = 100.0    # 0.1 µm pixels → 25.6 µm field
+
+[deep]
+mode   = "grayscale"
+target = "blazed"     # blazed | microlens | staircase
+
+# Contrast (H–D) curve: γ = 1/log10(D_clear/D_th) = 1/log10(10) = 1.0.
+d_th    = 10.0        # threshold dose (mJ/cm²)
+d_clear = 100.0       # clearing dose (mJ/cm²)
+
+thickness_nm = 1000.0 # resist film thickness
+period_px    = 32     # blaze period in pixels (32 px × 100 nm = 3.2 µm)
+depth_nm     = 600.0  # peak-to-valley blaze depth
+dose_mj_cm2  = 100.0  # single-exposure dose the mask is synthesized against

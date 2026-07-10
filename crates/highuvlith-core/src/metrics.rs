@@ -1,3 +1,29 @@
+//! Lithographic image metrics.
+//!
+//! Scalar figures of merit computed from an aerial image or its cross-section:
+//! critical dimension, normalized image log-slope, contrast, and a
+//! modulation-based MTF proxy.
+//!
+//! CD is measured by linear-interpolated threshold crossing, returning the
+//! width between the two crossings that straddle the field center
+//! ([`measure_cd`]; [`measure_cd_2d`] takes the center row of a 2D image).
+//! NILS multiplies the feature width by the intensity slope at that edge
+//! divided by the threshold. Contrast is the Michelson modulation of the whole
+//! image, and [`mtf_from_image`] returns the same modulation on the center row.
+//!
+//! # Key equations
+//!
+//! ```text
+//!   NILS = w · |dI/dx| / I_threshold                 (at the feature edge)
+//!   contrast = (I_max − I_min) / (I_max + I_min)
+//! ```
+//!
+//! # Model status
+//!
+//! [`mtf_from_image`] reports the image modulation at whatever pitch the image
+//! already contains; it is not a transfer function swept versus spatial
+//! frequency. Edge slopes use a one-sided finite difference at the grid pitch.
+
 use ndarray::Array2;
 
 /// Measure critical dimension (CD) from an aerial image cross-section.
@@ -130,6 +156,38 @@ pub fn image_contrast(image: &Array2<f64>) -> f64 {
     }
 }
 
+/// Depth-resolved CD: measure the center-row CD in every z-slice of a
+/// volumetric latent image (threshold on the PAC value: a point is
+/// "inside the feature" where the profile crosses `threshold`).
+/// Returns one `Option<f64>` per slice, top to bottom.
+pub fn cd_at_z(volume: &crate::types::Grid3D<f64>, threshold: f64) -> Vec<Option<f64>> {
+    let (nz, _ny, _nx) = volume.data.dim();
+    (0..nz)
+        .map(|k| {
+            let slice = volume.data.index_axis(ndarray::Axis(0), k);
+            let owned = slice.to_owned();
+            measure_cd_2d(&owned, volume.x_min_nm, volume.x_max_nm, threshold)
+        })
+        .collect()
+}
+
+/// Sidewall angle in degrees from top and bottom CDs of a developed
+/// feature (trench convention: 90° = perfectly vertical walls; < 90°
+/// means the trench narrows toward the bottom).
+pub fn sidewall_angle_deg(cd_top_nm: f64, cd_bottom_nm: f64, thickness_nm: f64) -> f64 {
+    (2.0 * thickness_nm)
+        .atan2(cd_top_nm - cd_bottom_nm)
+        .to_degrees()
+}
+
+/// Aspect ratio of a developed feature: depth / lateral width.
+pub fn aspect_ratio(depth_nm: f64, width_nm: f64) -> f64 {
+    if width_nm <= 0.0 {
+        return f64::INFINITY;
+    }
+    depth_nm / width_nm
+}
+
 /// Modulation Transfer Function (MTF) at a given spatial frequency.
 /// Computed from the aerial image of a line/space pattern at that pitch.
 pub fn mtf_from_image(image: &Array2<f64>) -> f64 {
@@ -166,6 +224,54 @@ mod tests {
 
         let cd = measure_cd(&intensity, &x_nm, 0.5).unwrap();
         assert_relative_eq!(cd, 50.0, epsilon = 2.0);
+    }
+
+    #[test]
+    fn test_sidewall_angle_conventions() {
+        // Vertical walls: top CD == bottom CD -> 90 degrees.
+        assert_relative_eq!(
+            sidewall_angle_deg(100.0, 100.0, 500.0),
+            90.0,
+            epsilon = 1e-9
+        );
+        // Narrowing trench (bottom smaller): angle < 90.
+        assert!(sidewall_angle_deg(120.0, 80.0, 500.0) < 90.0);
+        // Re-entrant (bottom wider): angle > 90.
+        assert!(sidewall_angle_deg(80.0, 120.0, 500.0) > 90.0);
+        // 45-degree taper: width difference of 2*thickness.
+        assert_relative_eq!(
+            sidewall_angle_deg(1100.0, 100.0, 500.0),
+            45.0,
+            epsilon = 1e-9
+        );
+    }
+
+    #[test]
+    fn test_aspect_ratio() {
+        assert_relative_eq!(aspect_ratio(500_000.0, 5_000.0), 100.0, epsilon = 1e-12);
+        assert!(aspect_ratio(1.0, 0.0).is_infinite());
+    }
+
+    #[test]
+    fn test_cd_at_z_synthetic() {
+        // Volume with a 40 nm-wide exposed stripe in the top half only.
+        let mut vol =
+            crate::types::Grid3D::<f64>::new(20, 20, 4, (-40.0, 40.0), (-40.0, 40.0), (0.0, 40.0))
+                .unwrap();
+        vol.data.fill(1.0);
+        for k in 0..2 {
+            for i in 0..20 {
+                for j in 5..15 {
+                    vol.data[[k, i, j]] = 0.0;
+                }
+            }
+        }
+        let cds = cd_at_z(&vol, 0.5);
+        assert_eq!(cds.len(), 4);
+        // Top slices: a ~40 nm feature; bottom slices: nothing to measure.
+        assert!(cds[0].is_some());
+        assert!((cds[0].unwrap() - 40.0).abs() < 8.0);
+        assert!(cds[3].is_none());
     }
 
     #[test]

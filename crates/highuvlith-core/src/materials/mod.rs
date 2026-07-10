@@ -1,3 +1,4 @@
+pub mod attenuation;
 pub mod database;
 pub mod diamond;
 pub mod dispersion;

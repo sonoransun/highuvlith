@@ -1,3 +1,40 @@
+//! Aerial image formation by Hopkins partially-coherent imaging.
+//!
+//! Computes the intensity image an optical system forms from a mask under an
+//! extended (partially coherent) source. The four-dimensional Transmission
+//! Cross-Coefficient (TCC) that couples every pair of mask frequencies is
+//! built by integrating the pupil over a 31×31 grid of source points, then
+//! eigendecomposed (deflated power iteration) into a handful of
+//! Sum-Of-Coherent-Systems (SOCS) kernels. The image is the eigenvalue-weighted
+//! sum of the squared magnitudes of each kernel applied to the mask spectrum,
+//! so cost scales with the number of retained kernels rather than the full
+//! TCC. Kernel convolutions run in parallel across Rayon threads.
+//!
+//! Polychromatic imaging loops over the source's spectral samples, adding a
+//! per-sample chromatic focus shift while reusing the TCC built at the center
+//! wavelength — valid for the narrow bandwidths of excimer/FEL sources.
+//!
+//! # Key equations
+//!
+//! ```text
+//!   I(x,y) = Σ_k  σ_k · |IFFT( K_k(f) · defocus(f) · M(f) )|²
+//!   defocus phase  W(ρ) = π · z · ρ² · NA² / λ         (ρ = f / f_cutoff)
+//! ```
+//! where (σ_k, K_k) are the SOCS eigenvalue/kernel pairs and M is the mask
+//! spectrum. Uniform flare is added as a fixed fraction of the mean intensity.
+//!
+//! # Model status
+//!
+//! Scalar diffraction only — no polarization or vector (high-NA) effects, so
+//! results are simplified as NA approaches 1. The in-pupil frequency count is
+//! capped (`MAX_PUPIL_SAMPLES`) so short wavelengths on fine grids fail loudly
+//! instead of exhausting memory.
+//!
+//! # References
+//!
+//! - Hopkins, "On the diffraction theory of optical images" (1953).
+//! - Cobb, "Fast optical and process proximity correction" (1998) — SOCS.
+
 use ndarray::Array2;
 use num::Complex;
 #[cfg(feature = "parallel")]
@@ -65,8 +102,33 @@ impl AerialImageEngine {
     /// The aerial image is the sum of weighted coherent images:
     ///   I(x,y) = sum_k eigenvalue_k * |IFFT(kernel_k * mask_spectrum)|^2
     pub fn compute(&self, mask: &Mask, defocus_nm: f64) -> Grid2D<f64> {
+        let transmittance = mask.rasterize(&self.grid);
+        self.compute_from_transmittance(&transmittance, defocus_nm)
+    }
+
+    /// Compute the aerial image from a raw complex transmittance map in
+    /// the space domain (same grid as the engine).
+    ///
+    /// This is the entry point for continuous-transmittance patterns that
+    /// are not geometric [`Mask`] features — e.g. grayscale lithography
+    /// masks or externally generated transmittance maps. [`Self::compute`]
+    /// delegates here after rasterizing.
+    ///
+    /// # Panics
+    /// Panics if `transmittance` does not match the engine grid size.
+    pub fn compute_from_transmittance(
+        &self,
+        transmittance: &Array2<Complex64>,
+        defocus_nm: f64,
+    ) -> Grid2D<f64> {
         let n = self.grid.size;
-        let mask_spectrum = mask.spectrum(&self.grid, &self.fft);
+        assert_eq!(
+            transmittance.dim(),
+            (n, n),
+            "transmittance map must match the engine grid ({n}x{n})"
+        );
+        let mut mask_spectrum = transmittance.clone();
+        self.fft.forward(&mut mask_spectrum);
 
         // Apply defocus to kernels and compute SOCS sum
         let defocus_phase_grid = self.compute_defocus_phase(defocus_nm);
@@ -252,6 +314,15 @@ impl AerialImageEngine {
     }
 }
 
+/// Upper bound on in-pupil frequency samples for TCC construction.
+///
+/// The TCC matrix holds n_freq² complex entries (16 bytes each); at 20k
+/// samples that is already 6.4 GB. Short wavelengths on fine grids blow
+/// past this fast (λ = 1 nm, NA 0.3, 256×1 nm grid → ~18,600 samples),
+/// so exceeding the limit returns a descriptive error instead of an
+/// out-of-memory abort.
+const MAX_PUPIL_SAMPLES: usize = 20_000;
+
 /// Compute TCC and decompose into SOCS kernels.
 ///
 /// The TCC is a 4D function TCC(f1, f2) describing the cross-correlation
@@ -293,6 +364,12 @@ fn compute_tcc_socs(
     let n_freq = freq_indices.len();
     if n_freq == 0 {
         return Err(LithographyError::NoDiffractionOrders);
+    }
+    if n_freq > MAX_PUPIL_SAMPLES {
+        return Err(LithographyError::PupilSamplingTooDense {
+            samples: n_freq,
+            max: MAX_PUPIL_SAMPLES,
+        });
     }
 
     // Build TCC matrix: TCC(m, n) = integral_over_source J(fs) * H(fs+fm) * H*(fs+fn) d_fs
@@ -542,6 +619,43 @@ mod tests {
             let right = image.data[[center_row, n - 1 - j]];
             assert_relative_eq!(left, right, epsilon = 1e-6);
         }
+    }
+
+    #[test]
+    fn test_compute_from_transmittance_matches_compute() {
+        // The refactored compute() delegates to compute_from_transmittance;
+        // going through either path must give bit-identical images.
+        let engine = make_test_engine(0.5, 0.75);
+        let mask = Mask::line_space(65.0, 180.0).unwrap();
+
+        let via_mask = engine.compute(&mask, 50.0);
+        let transmittance = mask.rasterize(engine.grid());
+        let via_map = engine.compute_from_transmittance(&transmittance, 50.0);
+
+        assert_eq!(via_mask.data.dim(), via_map.data.dim());
+        for (a, b) in via_mask.data.iter().zip(via_map.data.iter()) {
+            assert_eq!(a, b, "images must be bit-identical");
+        }
+    }
+
+    #[test]
+    fn test_pupil_sampling_guard_rejects_dense_pupil() {
+        // Soft-X-ray wavelength on a fine, large grid: the pupil covers
+        // far more frequency samples than the TCC can hold in memory.
+        let source = VuvSource {
+            wavelength_nm: 1.0,
+            ..VuvSource::f2_laser(0.5).unwrap()
+        };
+        let optics = ProjectionOptics::new(0.3).unwrap();
+        let grid = GridConfig {
+            size: 512,
+            pixel_nm: 1.0,
+        };
+        let result = AerialImageEngine::new(&source, &optics, grid, 20);
+        assert!(
+            matches!(result, Err(LithographyError::PupilSamplingTooDense { .. })),
+            "expected PupilSamplingTooDense error"
+        );
     }
 
     #[test]

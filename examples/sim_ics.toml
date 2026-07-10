@@ -1,0 +1,50 @@
+# =============================================================================
+# Inverse Compton scattering (ICS) — compact EUV at 13.5 nm  [THEORETICAL]
+# =============================================================================
+#
+# A laser pulse collides head-on with a relativistic electron bunch; the
+# back-scattered photons are Doppler-upshifted by ~4γ², so only MeV-class
+# electrons are needed to reach EUV from an optical laser — the promise of a
+# room-sized short-wavelength source. The on-axis scattered wavelength is
+#
+#     λ_X = λ_L (1 + a0²/2 + γ²θ²) / (4 γ²)   ≈  λ_L / (4 γ²)   (small a0, on-axis)
+#
+# The electron energy is DERIVED from the target wavelength: for 13.5 nm from a
+# 1030 nm Yb laser, γ = √(λ_L / (4 λ_X)) = √(1030 / 54) ≈ 4.37 (≈ 1.7 MeV). The
+# nonlinear (a0) and off-axis (θ) terms both redshift the line and set the
+# bandwidth.
+#
+# STATUS — THEORETICAL: the Compton kinematics are exact, but ICS as a
+# *lithography* source is a parameterized concept — flux at wafer-relevant dose
+# rates has not been demonstrated. Treat outputs as research projections.
+#
+# Reference: Krafft & Priebe, "Compton sources of electromagnetic radiation,"
+#            Rev. Accel. Sci. Technol. 3, 147 (2010).
+#
+# Run with:  highuvlith simulate --config examples/sim_ics.toml
+# -----------------------------------------------------------------------------
+
+[source]
+type                 = "ics"
+wavelength_nm        = 13.5     # target; sets the required electron energy
+laser_wavelength_nm  = 1030.0   # Yb drive laser (must exceed the target)
+laser_a0             = 0.1      # normalized vector potential (a0 ≪ 1 = linear)
+# collection_half_angle_mrad = 1.0
+# electron_energy_spread_rel = 0.005
+
+[optics]
+# 13.5 nm → reflective Schwarzschild objective.
+type = "schwarzschild"
+na   = 0.3
+
+[mask]
+cd_nm    = 30.0
+pitch_nm = 60.0
+
+[grid]
+size     = 128     # 256 nm field at 2 nm pixels
+pixel_nm = 2.0
+
+[process]
+dose_mj_cm2 = 30.0
+focus_nm    = 0.0

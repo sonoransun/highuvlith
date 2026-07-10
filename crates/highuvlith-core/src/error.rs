@@ -15,6 +15,13 @@ pub enum LithographyError {
     #[error("no diffraction orders pass the pupil (pitch too small or NA too low)")]
     NoDiffractionOrders,
 
+    #[error(
+        "pupil sampling too dense: {samples} in-pupil frequency samples exceeds the limit of {max}; \
+         the TCC matrix would not fit in memory. Use a coarser grid (larger pixel_nm), a smaller \
+         field (smaller grid size), or a lower NA / longer wavelength"
+    )]
+    PupilSamplingTooDense { samples: usize, max: usize },
+
     #[error("material not found: {0}")]
     MaterialNotFound(String),
 
