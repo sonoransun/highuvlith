@@ -23,8 +23,10 @@ def resist():
 
 
 @pytest.fixture
-def grid():
-    return huv.GridConfig(size=128, pixel_nm=2.0)
+def grid(mask):
+    # One 180 nm period across 128 px (1.40625 nm pixels): the FFT field is
+    # periodic, so the field must hold a whole number of pitches.
+    return mask.commensurate_grid(size=128, target_pixel_nm=2.0)
 
 
 @pytest.fixture

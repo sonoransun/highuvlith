@@ -1,4 +1,5 @@
 pub mod cpu;
+pub mod parallel;
 
 use crate::types::Complex64;
 

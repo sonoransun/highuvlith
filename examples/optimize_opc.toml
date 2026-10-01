@@ -1,0 +1,43 @@
+# =============================================================================
+# Fragment model OPC — isolated 90 nm × 500 nm line, F2 157.63 nm, NA 0.75
+# =============================================================================
+#
+#   highuvlith optimize --config examples/optimize_opc.toml -o opc.json
+#
+# Status: ✅ model-based OPC (fragment EPE feedback through the full imaging
+# engine; constant-threshold resist, no etch model). The threshold is anchored
+# so the line centre prints 90 nm wide in focus (dose_to_size_cd_nm = 90 →
+# t = 0.2614; k1 = 90 · 0.75 / 157.63 ≈ 0.43). Fragment sizes, bias clamp and
+# tolerances default to multiples of λ/NA ≈ 210 nm (FragmentOpcConfig::
+# for_engine) — starting points, not a calibrated recipe.
+#
+# Uncorrected, both line ends pull back by ~27 nm; OPC extends them by
+# +25.0 nm each and converges in 6 iterations:
+#
+#   EPE rms:  9.417 -> 0.633 nm    max |EPE|: 26.511 -> 1.731 nm
+#
+# -o x.json lists every fragment (kind, control point, bias, final EPE) and the
+# corrected polygons; -o x.png is the corrected mask.
+
+[source]
+wavelength_nm = 157.63
+sigma = 0.6
+
+[optics]
+na = 0.75
+
+[mask]
+pattern = "features"
+features = [{ type = "rect", x = 0.0, y = 0.0, w = 90.0, h = 500.0 }]
+
+[grid]
+size = 64
+pixel_nm = 12.0
+commensurate = false
+
+[imaging]
+max_kernels = 12
+
+[optimize]
+method = "opc"
+dose_to_size_cd_nm = 90.0

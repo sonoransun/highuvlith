@@ -1,0 +1,25 @@
+{#- Theme overrides for the highuvlith site (theme.custom_dir in mkdocs.yml). -#}
+{% extends "base.html" %}
+
+{% block extrahead %}
+  {{ super() }}
+  {#- Link-preview metadata. A page can set `description:` in its front matter. -#}
+  {%- if page and page.meta and page.meta.description -%}
+    {%- set huv_description = page.meta.description -%}
+  {%- else -%}
+    {%- set huv_description = config.site_description -%}
+  {%- endif -%}
+  {%- if page and page.title and not page.is_homepage -%}
+    {%- set huv_title = page.title ~ " - " ~ config.site_name -%}
+  {%- else -%}
+    {%- set huv_title = config.site_name -%}
+  {%- endif %}
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ config.site_name }}">
+  <meta property="og:title" content="{{ huv_title | striptags }}">
+  <meta property="og:description" content="{{ huv_description | striptags }}">
+  {%- if page and page.canonical_url %}
+  <meta property="og:url" content="{{ page.canonical_url }}">
+  {%- endif %}
+  <meta name="twitter:card" content="summary">
+{% endblock %}

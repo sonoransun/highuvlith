@@ -9,7 +9,7 @@ class TestDefocusSymmetry:
         source = huv.SourceConfig.f2_laser(sigma=0.5)
         optics = huv.OpticsConfig(numerical_aperture=0.75)
         mask = huv.MaskConfig.line_space(cd_nm=65.0, pitch_nm=180.0)
-        grid = huv.GridConfig(size=128, pixel_nm=2.0)
+        grid = mask.commensurate_grid(size=128, target_pixel_nm=2.0)
         engine = huv.SimulationEngine(source, optics, mask, grid=grid)
 
         c_pos = engine.image_contrast(focus_nm=150.0)
@@ -22,7 +22,7 @@ class TestIntensityBounds:
         source = huv.SourceConfig.f2_laser(sigma=0.7)
         optics = huv.OpticsConfig(numerical_aperture=0.75)
         mask = huv.MaskConfig.line_space(cd_nm=65.0, pitch_nm=180.0)
-        grid = huv.GridConfig(size=128, pixel_nm=2.0)
+        grid = mask.commensurate_grid(size=128, target_pixel_nm=2.0)
         engine = huv.SimulationEngine(source, optics, mask, grid=grid)
 
         for focus in [-200.0, 0.0, 200.0]:
@@ -38,7 +38,7 @@ class TestMonotonicity:
         source = huv.SourceConfig.f2_laser(sigma=0.7)
         optics = huv.OpticsConfig(numerical_aperture=0.75)
         mask = huv.MaskConfig.line_space(cd_nm=65.0, pitch_nm=180.0)
-        grid = huv.GridConfig(size=128, pixel_nm=2.0)
+        grid = mask.commensurate_grid(size=128, target_pixel_nm=2.0)
         engine = huv.SimulationEngine(source, optics, mask, grid=grid)
 
         # Test within moderate defocus range (contrast reversal can occur at extreme defocus)
@@ -54,7 +54,7 @@ class TestHigherNABetterContrast:
         """Higher NA should give higher contrast at the same conditions."""
         source = huv.SourceConfig.f2_laser(sigma=0.7)
         mask = huv.MaskConfig.line_space(cd_nm=65.0, pitch_nm=180.0)
-        grid = huv.GridConfig(size=128, pixel_nm=2.0)
+        grid = mask.commensurate_grid(size=128, target_pixel_nm=2.0)
 
         optics_low = huv.OpticsConfig(numerical_aperture=0.5)
         optics_high = huv.OpticsConfig(numerical_aperture=0.9)
@@ -76,7 +76,7 @@ class TestEnergyConservation:
         source = huv.SourceConfig.f2_laser(sigma=0.5)
         optics = huv.OpticsConfig(numerical_aperture=0.75)
         mask = huv.MaskConfig.line_space(cd_nm=65.0, pitch_nm=180.0)
-        grid = huv.GridConfig(size=128, pixel_nm=2.0)
+        grid = mask.commensurate_grid(size=128, target_pixel_nm=2.0)
         engine = huv.SimulationEngine(source, optics, mask, grid=grid)
 
         e0 = np.asarray(engine.compute_aerial_image(focus_nm=0.0).intensity).sum()

@@ -1,0 +1,66 @@
+# =============================================================================
+# Laser-wakefield betatron X-rays — LIGA-style exposure  [THEORETICAL]
+# =============================================================================
+#
+# Electrons accelerated in a laser-driven plasma wake oscillate in the ion
+# channel and radiate a femtosecond, synchrotron-like keV burst. Everything is
+# DERIVED from the machine parameters below:
+#
+#     ω_p  = sqrt(n_e e² / ε0 m_e)            = 1.78e14 rad/s   (n_e = 1e19 cm⁻³)
+#     ω_β  = ω_p / sqrt(2γ)                   (γ = 392 at 200 MeV) → λ_β = 296 µm
+#     K    = γ k_β r_β                        = 8.3   (r_β = 1 µm → wiggler regime)
+#     ħω_c = (3/2) γ³ ħ ω_β² r_β / c          = 8.1 keV
+#     N_γ  = (5π√3/6) α K ≈ 3.31e-2 K         = 0.28 photons / period / electron
+#            (planar orbit; a helical orbit would double it)
+#     photons/shot = (Q/e) · (L/λ_β) · N_γ    ≈ 8.7e8   (50 pC, 3 mm)
+#     P = 0.35 µJ/shot · 10 Hz                ≈ 3.5 µW  →  ~7e7x short of 250 W
+#
+# The synchrotron-like spectrum (critical energy E_c) is handed to the LIGA
+# depth-dose module as a RELATIVE XraySpectrum::BendingMagnet
+# { critical_energy_kev } (dose ratios, no exposure time): for 100 µm PMMA the
+# run gives a top/bottom dose ratio of 4.6. With [deep] source_distance_m
+# (commented below) the flux is ABSOLUTE (flat-top cone of half-angle
+# K/γ ≈ 21 mrad, averaged over the 10 Hz rate): at 0.5 m the bottom dose takes
+# ≈ 4.5e8 s (~14 years). The two runs print 4.589 (relative: default 100 bins
+# in ln E) and 4.566 (absolute: a 200-bin table in E); both are quadrature
+# estimates of the same ≈ 4.56 (energy_bins = 1000 gives 4.559) — the
+# attenuation tables' absorption edges make the bin sum converge only to
+# first order in the bin width. Betatron X-rays are keV,
+# broadband, ~10 Hz imaging sources, not lithography sources: treat every
+# output as a research projection (planar-orbit, single-energy, single-
+# amplitude model; LWFA shot-to-shot fluctuations are tens of percent).
+#
+# Reference: S. Corde et al., Rev. Mod. Phys. 85, 1 (2013).
+#
+# Run with:  highuvlith deep --config examples/sim_betatron.toml --output /tmp/betatron_liga.json
+# -----------------------------------------------------------------------------
+
+[source]
+type                  = "betatron"
+electron_energy_mev   = 200.0   # sets γ
+plasma_density_cm3    = 1.0e19  # sets ω_p (must be underdense)
+betatron_amplitude_um = 1.0     # r_β; K < 1 (undulator regime) is rejected
+interaction_length_mm = 3.0     # sets the number of betatron periods
+bunch_charge_pc       = 50.0
+rep_rate_hz           = 10.0
+# pulse_duration_fs   = 10.0
+
+[optics]
+# Unused by LIGA shadow printing; the CLI notes it is ignored (may be omitted).
+na = 0.2
+
+[mask]
+cd_nm    = 20000.0
+pitch_nm = 40000.0
+
+[grid]
+size     = 64
+pixel_nm = 2000.0    # snapped to 1.875 µm → 120 µm field = 3 mask periods (note)
+
+[deep]
+mode = "liga"
+resist_thickness_um = 100.0
+proximity_gap_um    = 100.0
+nz                  = 64
+min_feature_nm      = 5000.0
+# source_distance_m = 0.5      # absolute flux → exposure time (≈ 4.5e8 s)

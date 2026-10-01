@@ -56,8 +56,9 @@ fn test_moire_period_calculation() {
 
     let period = engine.calculate_moire_period();
 
-    // For small rotation angles, period ≈ pitch / (2 * sin(angle))
-    let expected_period = 300.0 / (2.0 * (5.0 * std::f64::consts::PI / 180.0).sin());
+    // Two identical lattices rotated by θ: period a / (2 sin(θ/2)) ≈ a/θ for
+    // small θ (this test used to pin the incorrect a / (2 sin θ)).
+    let expected_period = 300.0 / (2.0 * (2.5 * std::f64::consts::PI / 180.0).sin());
     assert_relative_eq!(period, expected_period, epsilon = 0.1);
 }
 

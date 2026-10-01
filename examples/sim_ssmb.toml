@@ -13,10 +13,23 @@
 # The appeal is average power: projected kW-class EUV would remove the source-
 # power bottleneck that limits EUV-lithography throughput.
 #
+# With the radiator fields below the power is DERIVED from first principles
+# (coherent emission of a bunched beam):
+#     P = 2π² α ħ N Q₁(K) |b|² (I_avg/e)(I_pk/e)  ≈ 592 W · N Q₁ |b|² I²[A]
+# With 1 A, N = 100, K = 1.6 (7.3 mm resonant period at 400 MeV) the 1 kW
+# projection REQUIRES a bunching factor b ≈ 0.146 at harmonic 78 — ≈ 4 nm rms
+# microbunches sustained turn after turn. P scales as b²: b = 0.1 → 470 W,
+# b = 0.01 → 4.7 W. That quadratic sensitivity is the whole feasibility question.
+#
 # STATUS — PROJECTED: the proof of principle demonstrated one-turn microbunching
 # at visible wavelengths; steady-state EUV operation at kW power is a design
 # projection, not a demonstrated machine. The harmonic-consistency check is
 # live; the power figure is a projection.
+#
+# The design point matches the Tsinghua SSMB-EUV design class (≥400 MeV, ≥1 A,
+# ≥1 kW in a 2 % band; Acta Phys. Sin. 71, 152901); the mechanism has only been
+# demonstrated for one turn at 1064 nm (Deng et al. 2021; Kruschinski et al.,
+# Commun. Phys. 7, 160 (2024)).
 #
 # Reference: Deng et al., "Experimental demonstration of the mechanism of
 #            steady-state microbunching," Nature 590, 576 (2021).
@@ -30,19 +43,30 @@ ring_energy_mev         = 400.0    # storage-ring energy
 modulation_wavelength_nm = 1053.0  # modulation laser (Nd:YLF)
 wavelength_nm           = 13.5     # target = harmonic 78 of 1053 nm
 average_power_w         = 1000.0   # projected kW-class average power
+average_current_a       = 1.0      # radiator fields → derived coherent power
+radiator_periods        = 100
+radiator_k              = 1.6
+# bunching_factor       = 0.1      # omit: the b the projection requires (0.146);
+#                                  #   give it (and delete average_power_w) → P ∝ b², 470 W
 
 [optics]
-# 13.5 nm → reflective Schwarzschild objective.
-type = "schwarzschild"
-na   = 0.3
+# EUV has no transparent lens material, so the optics are mirrors: the
+# NXE-class projection pupil (NA 0.33, unobscured). Do not pair this nearly
+# coherent laser-like fill (sigma ~0.05) with a centrally obscured
+# Schwarzschild (type = "schwarzschild", obscuration 0.25-0.3 of the NA): the
+# obscuration blocks the zero diffraction order and the image becomes DARK
+# FIELD (frequency-doubled fringes; the CLI warns). A Schwarzschild needs a
+# pupil fill larger than its obscuration.
+type = "euv_projection"
+na   = 0.33
 
 [mask]
 cd_nm    = 30.0
 pitch_nm = 60.0
 
 [grid]
-size     = 128     # 256 nm field at 2 nm pixels
-pixel_nm = 2.0
+size     = 128     # 2 nm requested; the CLI snaps to 1.875 nm so the 240 nm
+pixel_nm = 2.0     #   field holds exactly 4 pitches (it prints a note)
 
 [process]
 dose_mj_cm2 = 30.0

@@ -4,10 +4,18 @@ Example: Moiré Nanosphere Lithographic Reflection (MNSL) Simulation
 
 This example demonstrates the MNSL capabilities of highuvlith for
 enhanced emission control through nanosphere array rotation.
+
+Model status: 🧪 Theoretical (see docs/capability-matrix.md). The lattice geometry
+and the moiré period are exact; the emission map is a heuristic (static Rayleigh
+polarizability, intensity-over-mean "enhancement", one scalar substrate factor).
+At small rotation angles the moiré period (several µm) is far larger than the
+simulated field (grid_size × pixel_nm, here 0.5 µm), so the "best angle" and
+"enhancement" numbers below exercise the API; they are not physical predictions.
+
+Run:  python examples/mnsl_example.py   (writes four PNGs to the current directory)
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 import highuvlith as huv
 
@@ -34,6 +42,7 @@ def main():
     print(f"Peak enhancement: {result.peak_enhancement:.2f}×")
     print(f"Total emission power: {result.total_emission_power:.2e}")
     print(f"Number of emission peaks: {result.num_peaks}")
+    print("Model status: theoretical (heuristic emission map; see the module docstring)")
     print()
 
     # Example 2: Parameter Sweep
@@ -77,26 +86,18 @@ def main():
     print(f"Moiré period: {optimization['moire_period_nm']:.1f} nm")
     print()
 
-    # Example 4: Material Comparison
-    print("4. Material Comparison")
+    # Example 4: Coarse-grid check
+    print("4. Coarse-grid check (silica)")
     print("-" * 40)
 
-    # Compare silica vs polystyrene spheres
+    # Silica spheres on a coarser grid (other materials: create_nanosphere_array(material=...))
     silica_result = huv.simulate_moire_emission(
         200.0, 300.0, 5.0,
         sphere_material="silica",
         grid_size=128, pixel_nm=4.0
     )
 
-    # For polystyrene, we need to use the low-level API
-    ps_array_bottom = huv.create_nanosphere_array(
-        200.0, 300.0, material="polystyrene"
-    )
-    ps_array_top = huv.create_nanosphere_array(
-        200.0, 300.0, orientation_deg=5.0, material="polystyrene"
-    )
-
-    print(f"Silica spheres:")
+    print("Silica spheres:")
     print(f"  Enhancement: {silica_result.peak_enhancement:.2f}×")
     print(f"  Total power: {silica_result.total_emission_power:.2e}")
     print()
@@ -109,7 +110,7 @@ def main():
     x_coords, x_emission = result.cross_section_x(y_nm=0.0)
     y_coords, y_emission = result.cross_section_y(x_nm=0.0)
 
-    print(f"Cross-section statistics:")
+    print("Cross-section statistics:")
     print(f"  X-direction FWHM: {estimate_fwhm(x_coords, x_emission):.1f} nm")
     print(f"  Y-direction FWHM: {estimate_fwhm(y_coords, y_emission):.1f} nm")
     print()
@@ -118,26 +119,28 @@ def main():
     try:
         import matplotlib.pyplot as plt
 
+        from highuvlith import viz
+
         print("6. Creating Visualizations")
         print("-" * 40)
 
         # Plot emission pattern
-        fig1 = huv.viz.plot_emission_pattern(result, show_peaks=True)
+        viz.plot_emission_pattern(result, show_peaks=True)
         plt.savefig("mnsl_emission_pattern.png", dpi=300, bbox_inches="tight")
         print("Saved: mnsl_emission_pattern.png")
 
         # Plot comprehensive analysis
-        fig2 = huv.viz.plot_moire_analysis(result)
+        viz.plot_moire_analysis(result)
         plt.savefig("mnsl_analysis.png", dpi=300, bbox_inches="tight")
         print("Saved: mnsl_analysis.png")
 
         # Plot rotation sweep
-        fig3 = huv.viz.plot_rotation_sweep(sweep_data)
+        viz.plot_rotation_sweep(sweep_data)
         plt.savefig("mnsl_rotation_sweep.png", dpi=300, bbox_inches="tight")
         print("Saved: mnsl_rotation_sweep.png")
 
         # Plot optimization heatmap
-        fig4 = huv.viz.plot_optimization_heatmap(optimization)
+        viz.plot_optimization_heatmap(optimization)
         plt.savefig("mnsl_optimization.png", dpi=300, bbox_inches="tight")
         print("Saved: mnsl_optimization.png")
 

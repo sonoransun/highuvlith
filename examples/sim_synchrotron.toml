@@ -12,9 +12,15 @@
 #
 #     λ_1 = 20e6 nm · (1 + 0.5) / (2 · 1 · 1053.8²) ≈ 13.5 nm
 #
-# The natural line width is ~1/(nN) = 1% for N = 100 periods. If you also give
-# an explicit `wavelength_nm`, it is cross-checked against this derived value
-# and REJECTED if it disagrees by more than 5% — the machine sets the color.
+# The natural line is sinc²(π n N Δλ/λ): first zeros at ±1/(nN) = ±1% for N = 100,
+# FWHM 0.886% (120 pm). If you also give an explicit `wavelength_nm`, it is
+# cross-checked against this derived value and REJECTED if it disagrees by more
+# than 5% — the machine sets the color.
+#
+# Also DERIVED: the central-cone line power π α Q₁(K) (I/e) E_ph ≈ 0.23 W at
+# 200 mA (Kim/Attwood; 21 W total undulator power, three orders of magnitude
+# short of a 250 W HVM source), and — from the ring emittances — the transverse
+# coherent fraction ζ_x ζ_y = (λ/4π)/(ε_x+λ/4π) · (λ/4π)/(ε_y+λ/4π) ≈ 0.089.
 #
 # Reference: Attwood, "Soft X-Rays and Extreme Ultraviolet Radiation" (1999),
 #            ch. 5 (undulator radiation).
@@ -30,6 +36,10 @@ period_mm           = 20.0    # undulator period λ_u
 undulator_k         = 1.0     # deflection parameter K = 0.09337·B·λ_u[mm]
 num_periods         = 100     # sets the ~1/(nN) = 1% natural bandwidth
 harmonic            = 1       # odd harmonics only; 1 → 13.5 nm
+ring_current_ma     = 200.0   # sets the absolute flux / power
+emittance_x_nm_rad  = 10.0    # illustrative compact-ring emittances: they
+emittance_y_nm_rad  = 0.1     # DERIVE the coherent fraction (and pupil fill)
+electron_energy_spread_rel = 5.0e-4
 
 # --- Alternatively, a bending-magnet beamline (broadband; a monochromator
 #     selects the working wavelength). Uncomment and swap `beamline` above:
@@ -40,17 +50,24 @@ harmonic            = 1       # odd harmonics only; 1 → 13.5 nm
 # bandwidth_pm        = 0.2
 
 [optics]
-# EUV band → reflective Schwarzschild objective (no transparent lens material).
-type = "schwarzschild"
-na   = 0.3
+# EUV has no transparent lens material, so the optics are mirrors: the
+# NXE-class projection pupil (NA 0.33, unobscured). The undulator's coherent
+# fraction derives a small, nearly coherent pupil fill (sigma ~0.17); a
+# centrally obscured Schwarzschild (type = "schwarzschild", obscuration 0.25-0.3
+# of the NA) would block most of the zero diffraction order — only ~40 % of the
+# clear-field light passes, the image is dominated by frequency-doubled
+# fringes and the printed CD is meaningless. A Schwarzschild needs a pupil
+# fill larger than its obscuration.
+type = "euv_projection"
+na   = 0.33
 
 [mask]
 cd_nm    = 30.0
 pitch_nm = 60.0
 
 [grid]
-size     = 128     # 256 nm field at 2 nm pixels
-pixel_nm = 2.0
+size     = 128     # 2 nm requested; the CLI snaps to 1.875 nm so the 240 nm
+pixel_nm = 2.0     #   field holds exactly 4 pitches (it prints a note)
 
 [process]
 dose_mj_cm2 = 30.0

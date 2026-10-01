@@ -32,7 +32,10 @@
 //! Convention: z runs downward into the resist, so propagating beams have
 //! `k̂_z > 0`; absorption scaling is skipped for any beam with `k̂_z ≤ 0`. The
 //! exposure and voxel-writing helpers emit photo-active-compound (PAC) volumes
-//! that can feed the volumetric development tiers in [`crate::volumetric`].
+//! that can feed the volumetric bake and development tiers in
+//! [`crate::volumetric`]. Two-grating EUV interference lithography builds its
+//! beam pair here too
+//! ([`crate::talbot::TwoGratingInterference::to_interference_setup`]).
 //!
 //! # References
 //!

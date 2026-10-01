@@ -10,47 +10,54 @@
 #
 # Depth dose (absorbed-energy density vs depth z into the resist):
 #
-#     u(z) = Σ_j w_j E_j T_j μ_j exp(-μ_j z)
+#     D(z) = Σ_j N_j E_j T_j μ_en,j exp(-μ_j z)
 #
-# summed over the sampled photon-energy bins j (weight w_j, energy E_j, beam-
-# filter/membrane transmission T_j, resist attenuation μ_j). The beam HARDENS
-# with depth — soft photons are absorbed first — so the local decay rate falls
-# and u(z) is flatter than a single exponential. The figure of merit is the
-# top/bottom dose ratio: PMMA has a usable dose window of ~2–4 kJ/cm³ (below
-# 2 it will not clear, above ~20 it foams/damages), so the whole resist column
-# must be kept inside that window. This config scales the bottom to the 3 kJ/cm³
-# clearing dose and reports the top dose against the 20 kJ/cm³ damage ceiling.
-# With this UNFILTERED 6.23 keV beam the top overshoots (~22 kJ/cm³, ratio ~7.4,
-# damage flag EXCEEDED) — which is exactly why real LIGA beamlines add a
-# beam-hardening filter (Be/Al/Kapton) to absorb the soft photons and flatten
-# u(z); the depth-dose module supports upstream filters, they are just not
-# exposed through this minimal TOML.
+# summed over photon-energy bins j (photon number N_j — bins equally spaced in
+# ln E with weight G1(E/E_c) for a bending magnet — energy E_j, filter/membrane
+# transmission T_j, resist attenuation μ_j and energy absorption μ_en,j from
+# the NIST tables). The beam HARDENS with depth — soft photons are absorbed
+# first. PMMA needs ~2–4 kJ/cm³ at the bottom to clear and foams above
+# ~20 kJ/cm³ at the top, so the top/bottom ratio must stay below ~7.
+# Unfiltered, this 6.23 keV beam through 2 µm Ti gives a ratio of ~21 (top
+# ~62 kJ/cm³: damaged). The 20 µm Al filter below absorbs the soft photons:
+# ratio ~2.9, top ~8.6 kJ/cm³ — inside the window.
 #
 # Bending-magnet critical energy (half the radiated power lies above it):
 #
 #     E_c[keV] = 0.665 · E²[GeV²] · B[T] = 0.665 · 2.5² · 1.5 = 6.23 keV
 #
-# (KIT/ANKA-class parameters). E_c is DERIVED from the [source] machine
-# parameters below; set [deep] critical_energy_kev instead to give it directly.
+# (KIT/ANKA-class parameters), DERIVED from the [source] machine parameters.
 #
-# Reference: Bley et al., "The LIGA process," and Malek & Saile,
-#            Microelectron. J. 35, 131 (2004).
+# Absolute exposure time: with [deep] source_distance_m and vertical_scan_mm
+# the flux is absolute — dN/dθ = 2.457e13 E[GeV] I[A] G1(y) photons s⁻¹
+# mrad⁻¹ (0.1% BW)⁻¹, spread over L[m] mm × H mm by a uniform vertical scan —
+# and the run reports the time to reach the bottom dose (996 s ≈ 17 min here,
+# 55.3 mA·h at 200 mA; 605 s unfiltered). Approximations: uniform scan taller than the beam
+# (~L/γ = 3 mm), collimated normal-incidence beam, no beamline mirrors.
+#
+# Proximity diffraction: diffraction = "fresnel" propagates the complex Au
+# absorber field (attenuation + phase) over gap + depth for every energy bin;
+# "gaussian" is the legacy σ = ½√(λg) blur. The ~1.9 µm pixels below cannot
+# resolve the ~0.16–0.31 µm Fresnel scale (the run warns and the depth map is
+# the pixel-averaged shadow); edge_profile = true adds the exact straight-edge
+# dose profile at 10 nm sampling and the resulting sidewall angle.
 #
 # Run with:  highuvlith deep --config examples/liga.toml --output /tmp/liga.json
 #            (or --output /tmp/liga.png for the developed-depth map)
 # -----------------------------------------------------------------------------
 
 [source]
-# Bending-magnet white beam. The wavelength/critical energy is DERIVED from the
-# ring energy and field, not stored — E_c = 0.665·2.5²·1.5 = 6.23 keV.
+# Bending-magnet white beam. The critical energy is DERIVED from the ring
+# energy and field; the ring current sets the absolute flux.
 type     = "synchrotron"
 beamline = "bending_magnet"
 electron_energy_gev = 2.5      # storage-ring energy
 field_t             = 1.5      # bending-magnet field
+ring_current_ma     = 200.0    # stored current
 
 [optics]
-# Unused by LIGA shadow printing (there is no projection lens); present only to
-# satisfy the shared config schema. No optics warning is emitted for `deep`.
+# Unused by LIGA shadow printing (there is no projection lens); the CLI prints
+# a note that [optics] is ignored, and the table may be omitted entirely.
 na = 0.2
 
 [mask]
@@ -62,17 +69,42 @@ pitch_nm = 40000.0
 
 [grid]
 size     = 64        # small field; LIGA features are microns, not nanometers
-pixel_nm = 2000.0    # 2 µm pixels → 128 µm field (≈ 3 mask periods)
+pixel_nm = 2000.0    # 2 µm requested; the CLI snaps to 1.875 µm → 120 µm field
+                     #   = exactly 3 mask periods (it prints a note)
 
 [deep]
 mode = "liga"
 
-# Omit critical_energy_kev to derive E_c from the [source] bending magnet above.
-# Uncomment to override with a measured/target value instead:
+# Omit critical_energy_kev to derive E_c from the [source] bending magnet above
+# (it must be omitted for an absolute exposure).
 # critical_energy_kev = 6.23
 
 resist_thickness_um = 500.0    # thick PMMA — the hallmark of LIGA
-proximity_gap_um    = 100.0    # mask-to-resist gap; sets the Fresnel penumbra
-nz                  = 64        # depth slices for the volumetric develop map
+proximity_gap_um    = 100.0    # absorber-to-resist gap (Fresnel scale √(λg))
+diffraction         = "fresnel"  # or "gaussian" (legacy fast blur)
+nz                  = 64       # depth slices for the volumetric develop map
 min_feature_nm      = 5000.0   # 5 µm minimum bar → aspect-ratio figure of merit
-# develop_threshold_kj_cm3 = 3.0   # defaults to the bottom clearing dose
+# Developer threshold (defaults to the 3 kJ/cm³ bottom dose, which makes the
+# bottom edge exactly marginal); 2.5 kJ/cm³ clears the full depth with margin.
+develop_threshold_kj_cm3 = 2.5
+
+# Absolute bending-magnet exposure geometry → exposure time.
+source_distance_m          = 15.0   # source-to-mask distance
+horizontal_acceptance_mrad = 5.0    # 75 mm wide field at 15 m
+vertical_scan_mm           = 50.0   # uniform vertical scan height
+
+# Mask stack (defaults shown): 20 µm Au absorber on a 2 µm Ti membrane.
+absorber              = "Au"
+absorber_thickness_um = 20.0
+membrane              = "Ti"
+membrane_thickness_um = 2.0
+
+# Fine straight-edge dose profile (exact Fresnel solution) for the sidewall.
+edge_profile       = true
+edge_dx_nm         = 10.0
+edge_half_width_nm = 3000.0
+
+# Beam-hardening filter upstream of the mask (preset or "<formula>@<density>").
+[[deep.filters]]
+material     = "Al"
+thickness_um = 20.0

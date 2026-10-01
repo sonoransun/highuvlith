@@ -151,12 +151,11 @@ mod tests {
             Colormap::BlueRed,
             Colormap::Viridis,
         ] {
-            let (r0, g0, b0) = apply_colormap(0.0, cmap);
-            let (r1, g1, b1) = apply_colormap(1.0, cmap);
-            // Just verify no panics at boundaries
-            assert!(r0 <= 255 && g0 <= 255 && b0 <= 255);
-            assert!(r1 <= 255 && g1 <= 255 && b1 <= 255);
+            // The two ends of every colormap are distinct colours.
+            assert_ne!(apply_colormap(0.0, cmap), apply_colormap(1.0, cmap));
         }
+        assert_eq!(apply_colormap(0.0, Colormap::Grayscale), (0, 0, 0));
+        assert_eq!(apply_colormap(1.0, Colormap::Grayscale), (255, 255, 255));
     }
 
     #[test]

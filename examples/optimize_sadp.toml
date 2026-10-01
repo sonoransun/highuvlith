@@ -1,0 +1,25 @@
+# =============================================================================
+# Self-aligned double patterning (SADP) — geometric pitch splitting
+# =============================================================================
+#
+#   highuvlith optimize --config examples/optimize_sadp.toml
+#
+# Status: 🔶 multiple patterning (geometry only: conformal spacers on a
+# mandrel grating — no imaging, deposition/etch bias, or line-edge roughness).
+#
+# Mandrels W = 34 nm every P = 128 nm with s = 32 nm spacers (spacer is the
+# line): two 32 nm lines per mandrel period, nominal pitch P/2 = 64 nm. The
+# mandrel is 2 nm wider than the walk-free value P/2 − s = 32 nm, so the spaces
+# alternate W = 34 nm / P − W − 2s = 30 nm and the pitches W + s = 66 nm /
+# P − (W + s) = 62 nm:
+#
+#   Pitch walk |2(W + s) − P| = 4.000 nm, CD range 0.000 nm
+#
+# method = "saqp" with spacer1_nm / spacer2_nm runs two spacer steps (P/4).
+# No [source]/[optics]/[mask] tables are read.
+
+[optimize]
+method = "sadp"
+mandrel_pitch_nm = 128.0
+mandrel_cd_nm = 34.0
+spacer_nm = 32.0

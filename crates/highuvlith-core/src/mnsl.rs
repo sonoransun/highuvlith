@@ -3,6 +3,36 @@
 //! Models enhanced emission control through in-plane twisting and rotation
 //! between stacked layers of nanosphere arrays to create Moiré interference
 //! patterns for next-generation nanophotonic applications.
+//!
+//! # Key equations
+//!
+//! Moiré period of two line gratings with pitches `p₁`, `p₂` at a relative
+//! rotation `θ` (period of the difference of the reciprocal vectors,
+//! `2π / |k₁ − k₂|`):
+//!
+//! `L = p₁ p₂ / sqrt(p₁² + p₂² − 2 p₁ p₂ cos θ)`, which reduces to
+//! `a / (2 sin(θ/2))` for equal pitches and to `p₁ p₂ / |p₁ − p₂|` for
+//! parallel layers.
+//!
+//! # Model status
+//!
+//! 🧪 Theoretical — a qualitative, unvalidated emission heuristic, not a
+//! solution of Maxwell's equations:
+//! - each sphere contributes `α e^{ikr}/r²` with the static
+//!   Clausius–Mossotti polarizability `α = V(n²−1)/(n²+2)`; this is neither the
+//!   dipole near field (∝ 1/r³) nor its far field (∝ k²/r), and the Rayleigh
+//!   form assumes `d ≪ λ` while the silica preset uses d = 200 nm at 157 nm;
+//! - the two layers are summed in one plane with a uniform phase `k·separation`;
+//!   there is no multiple scattering between spheres or layers;
+//! - the "enhancement" is the local intensity over its field mean, clamped at 1;
+//! - substrate coupling is one scalar from [`FilmStack::standing_wave`] at
+//!   `z = separation` of the configured stack (for the default 157 nm resist
+//!   stack it is 1.346 since the 2026-09-30 thin-film reflectance fix, 0.745
+//!   before), applied uniformly to the whole map.
+//!
+//! The lattice geometry and the moiré period are exact; the period formula
+//! was corrected on 2026-09-30 (it used `p / (2 sin θ)`, half the true period
+//! at small angles, and ignored `p₂` for rotated layers).
 
 use ndarray::Array2;
 use serde::{Deserialize, Serialize};
@@ -439,23 +469,21 @@ impl MnslEngine {
     }
 
     /// Calculate theoretical Moiré period.
+    ///
+    /// `L = p₁ p₂ / sqrt(p₁² + p₂² − 2 p₁ p₂ cos θ)` (period of `k₁ − k₂`);
+    /// `a / (2 sin(θ/2))` for equal pitches. Identical, unrotated layers have
+    /// no moiré; that case returns the sentinel 1e6 nm.
     pub fn calculate_moire_period(&self) -> f64 {
         let pitch1 = self.config.bottom_array.pitch_nm;
         let pitch2 = self.config.top_array.pitch_nm;
         let angle_rad = self.config.top_array.orientation_deg * PI / 180.0;
 
-        if angle_rad.abs() < 1e-12 {
-            // Parallel layers: period determined by pitch difference
-            if (pitch1 - pitch2).abs() < 1e-12 {
-                // Same pitch: infinite period
-                1e6
-            } else {
-                pitch1 * pitch2 / (pitch1 - pitch2).abs()
-            }
-        } else {
-            // Rotated layers: period determined by rotation angle
-            pitch1 / (2.0 * angle_rad.sin().abs())
+        if angle_rad.abs() < 1e-12 && (pitch1 - pitch2).abs() < 1e-12 {
+            // Same pitch, no rotation: infinite period
+            return 1e6;
         }
+        let beat_sq = pitch1 * pitch1 + pitch2 * pitch2 - 2.0 * pitch1 * pitch2 * angle_rad.cos();
+        pitch1 * pitch2 / beat_sq.max(0.0).sqrt()
     }
 
     /// Find local maxima in emission pattern (peak positions).
@@ -540,6 +568,45 @@ mod tests {
 
         let period = engine.calculate_moire_period();
         assert!(period > 0.0, "Moiré period should be positive");
+    }
+
+    /// Regression (2026-09-30): the period used `p / (2 sin θ)`. Fixtures
+    /// computed independently with Python `math` from `p₁p₂/√(p₁²+p₂²−2p₁p₂cosθ)`
+    /// and confirmed by the FFT beat of two rotated cosine gratings.
+    #[test]
+    fn test_moire_period_fixtures() {
+        let grid = GridConfig::new(64, 4.0).unwrap();
+        let period = |p1: f64, p2: f64, deg: f64| {
+            let mut config = MnslConfig::default();
+            config.bottom_array.pitch_nm = p1;
+            config.top_array.pitch_nm = p2;
+            config.top_array.orientation_deg = deg;
+            MnslEngine::new(config, grid.clone()).calculate_moire_period()
+        };
+        // equal pitches: a / (2 sin(θ/2))
+        assert_relative_eq!(
+            period(300.0, 300.0, 5.0),
+            3438.8378439080343,
+            max_relative = 1e-12
+        );
+        assert_relative_eq!(period(300.0, 300.0, 60.0), 300.0, max_relative = 1e-12);
+        // parallel layers: p1 p2 / |p1 − p2|
+        assert_relative_eq!(period(300.0, 280.0, 0.0), 4200.0, max_relative = 1e-12);
+        // rotated and different pitches: both enter
+        assert_relative_eq!(
+            period(300.0, 280.0, 5.0),
+            2605.618092951418,
+            max_relative = 1e-12
+        );
+        // small-angle limit L·θ → a
+        let theta = 0.1_f64.to_radians();
+        assert_relative_eq!(
+            period(300.0, 300.0, 0.1) * theta,
+            300.0,
+            max_relative = 1e-6
+        );
+        // identical unrotated layers keep the "no moiré" sentinel
+        assert_eq!(period(300.0, 300.0, 0.0), 1e6);
     }
 
     #[test]

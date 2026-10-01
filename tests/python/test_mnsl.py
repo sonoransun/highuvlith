@@ -1,6 +1,5 @@
 """Tests for MNSL module."""
 import pytest
-import numpy as np
 from highuvlith.mnsl import (
     simulate_moire_emission,
     create_nanosphere_array,
@@ -153,3 +152,41 @@ class TestSweepRotationAngle:
                 array_pitch_nm=300.0,
                 angle_steps=1,
             )
+
+
+def test_sim_result_carries_honesty_labels():
+    result = simulate_moire_emission(
+        sphere_diameter_nm=200.0,
+        array_pitch_nm=300.0,
+        rotation_angle_deg=5.0,
+        grid_size=32,
+        pixel_nm=8.0,
+    )
+    assert result.status == result.result.status == "🧪"  # capability matrix: MNSL 🧪
+    assert result.notes == list(result.result.notes)
+    assert any("heuristic" in n for n in result.notes)
+
+
+def test_python_result_wrappers_forward_status_and_notes():
+    """Drift guard: a Python result wrapper whose required field is a native
+    result carrying status/notes must expose both itself, so the honesty
+    labels never get lost one layer up."""
+    import dataclasses
+    import inspect
+    import typing
+
+    import highuvlith
+
+    checked = []
+    for name in highuvlith.__all__:
+        cls = getattr(highuvlith, name)
+        if not (inspect.isclass(cls) and dataclasses.is_dataclass(cls)):
+            continue
+        hints = typing.get_type_hints(cls)
+        for f in dataclasses.fields(cls):
+            t = hints.get(f.name)
+            if inspect.isclass(t) and hasattr(t, "status") and hasattr(t, "notes"):
+                checked.append(name)
+                assert hasattr(cls, "status") or "status" in hints, name
+                assert hasattr(cls, "notes") or "notes" in hints, name
+    assert "MnslSimResult" in checked

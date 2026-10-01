@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 420" width="860" height="420" role="img" aria-labelledby="t d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif">
+<title id="t">Why water immersion raises the numerical aperture</title>
+<desc id="d">Two panels showing the last lens element above a wafer. In the dry case a steep ray inside the glass is totally internally reflected at the glass-air surface, because n sin theta cannot exceed 1 in air, so NA stays below 1. With water (n about 1.44 at 193 nm) filling the gap, the same steep ray leaves the lens and reaches the wafer, so NA = n sin theta can reach about 1.35.</desc>
+<defs><marker id="a5b36c9" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#5b36c9"/></marker><marker id="aeb6834" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#eb6834"/></marker></defs>
+<text x="215.0" y="30.0" font-size="19.0" text-anchor="middle" fill="#1d1c1a" font-weight="bold">Dry: air gap</text>
+<path d="M45.0,222 L45.0,182 Q215,72.0 385.0,182 L385.0,222 Z" fill="#e3eefb" stroke="#2a78d6" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="215.0" y="113.0" font-size="13.4" text-anchor="middle" fill="#52514e" font-weight="normal">last lens element (n ≈ 1.56)</text>
+<text x="393.0" y="252.0" font-size="13.4" text-anchor="start" fill="#52514e" font-weight="normal">air</text>
+<rect x="25.0" y="272.0" width="380.0" height="10.0" rx="0" fill="#fbd5bf" stroke="#c8551f" stroke-width="1.2"/>
+<rect x="25.0" y="282.0" width="380.0" height="22.0" rx="0" fill="#d6d4cc" stroke="#8a8780" stroke-width="1.2"/>
+<line x1="72.5" y1="166.5" x2="111.8" y2="222.0" stroke="#5b36c9" stroke-width="2" stroke-linecap="round"/>
+<line x1="111.8" y1="222.0" x2="215.0" y2="272.0" stroke="#5b36c9" stroke-width="2" stroke-linecap="round" marker-end="url(#a5b36c9)"/>
+<line x1="357.5" y1="166.5" x2="318.2" y2="222.0" stroke="#5b36c9" stroke-width="2" stroke-linecap="round"/>
+<line x1="318.2" y1="222.0" x2="215.0" y2="272.0" stroke="#5b36c9" stroke-width="2" stroke-linecap="round" marker-end="url(#a5b36c9)"/>
+<line x1="61.1" y1="172.3" x2="127.6" y2="222.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<line x1="127.6" y1="222.0" x2="167.5" y2="192.2" stroke="#eb6834" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 4" marker-end="url(#aeb6834)"/>
+<line x1="368.9" y1="172.3" x2="302.4" y2="222.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<line x1="302.4" y1="222.0" x2="262.5" y2="192.2" stroke="#eb6834" stroke-width="2" stroke-linecap="round" stroke-dasharray="5 4" marker-end="url(#aeb6834)"/>
+<text x="215.0" y="330.0" font-size="14.6" text-anchor="middle" fill="#52514e" font-weight="normal">The steep ray (n·sinθ &gt; 1) is totally</text>
+<text x="215.0" y="346.9" font-size="14.6" text-anchor="middle" fill="#52514e" font-weight="normal">internally reflected: in air NA &lt; 1</text>
+<text x="215.0" y="363.8" font-size="14.6" text-anchor="middle" fill="#52514e" font-weight="normal">(dry ArF lenses stopped near 0.93).</text>
+<text x="645.0" y="30.0" font-size="19.0" text-anchor="middle" fill="#1d1c1a" font-weight="bold">Immersion: water</text>
+<path d="M475.0,222 L475.0,182 Q645,72.0 815.0,182 L815.0,222 Z" fill="#e3eefb" stroke="#2a78d6" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="645.0" y="113.0" font-size="13.4" text-anchor="middle" fill="#52514e" font-weight="normal">last lens element (n ≈ 1.56)</text>
+<rect x="495.0" y="222.0" width="300.0" height="50.0" rx="0" fill="#d4eef8" stroke="#0e7490" stroke-width="1.2"/>
+<text x="803.0" y="252.0" font-size="13.4" text-anchor="start" fill="#52514e" font-weight="normal">water</text>
+<rect x="455.0" y="272.0" width="380.0" height="10.0" rx="0" fill="#fbd5bf" stroke="#c8551f" stroke-width="1.2"/>
+<rect x="455.0" y="282.0" width="380.0" height="22.0" rx="0" fill="#d6d4cc" stroke="#8a8780" stroke-width="1.2"/>
+<line x1="550.2" y1="144.4" x2="605.0" y2="222.0" stroke="#5b36c9" stroke-width="2" stroke-linecap="round"/>
+<line x1="605.0" y1="222.0" x2="645.0" y2="272.0" stroke="#5b36c9" stroke-width="2" stroke-linecap="round" marker-end="url(#a5b36c9)"/>
+<line x1="739.8" y1="144.4" x2="685.0" y2="222.0" stroke="#5b36c9" stroke-width="2" stroke-linecap="round"/>
+<line x1="685.0" y1="222.0" x2="645.0" y2="272.0" stroke="#5b36c9" stroke-width="2" stroke-linecap="round" marker-end="url(#a5b36c9)"/>
+<line x1="491.1" y1="172.3" x2="557.6" y2="222.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<line x1="557.6" y1="222.0" x2="645.0" y2="272.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round" marker-end="url(#aeb6834)"/>
+<line x1="798.9" y1="172.3" x2="732.4" y2="222.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round"/>
+<line x1="732.4" y1="222.0" x2="645.0" y2="272.0" stroke="#eb6834" stroke-width="2" stroke-linecap="round" marker-end="url(#aeb6834)"/>
+<text x="645.0" y="330.0" font-size="14.6" text-anchor="middle" fill="#52514e" font-weight="normal">Both rays reach the wafer: NA = n·sinθ</text>
+<text x="645.0" y="346.9" font-size="14.6" text-anchor="middle" fill="#52514e" font-weight="normal">up to ≈ 1.35 with water (n ≈ 1.44 at 193 nm);</text>
+<text x="645.0" y="363.8" font-size="14.6" text-anchor="middle" fill="#52514e" font-weight="normal">inside the water λ/n ≈ 134 nm.</text>
+<text x="856.0" y="412.0" font-size="12.3" text-anchor="end" fill="#6b6a66" font-weight="normal">Schematic, not to scale: the real gap is thin and only the last element is drawn. Ray angles follow Snell's law.</text>
+</svg>

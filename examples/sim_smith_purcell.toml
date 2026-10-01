@@ -1,0 +1,60 @@
+# =============================================================================
+# Smith–Purcell free-electron grating — tunable EUV at 13.5 nm  [THEORETICAL]
+# =============================================================================
+#
+# An electron passing a periodic structure radiates at the Smith–Purcell
+# wavelength, tunable by angle, beam energy or period:
+#
+#     λ = (a/m) (1/β − cos θ)
+#
+# With 30 keV (SEM-class) electrons, β = 0.328, first order at θ = 90°, a
+# 13.5 nm line needs a = mλβ = 4.43 nm (the period is DERIVED from the target
+# when grating_period_nm is omitted). The electron's evanescent field reaches
+# only h_int = βγλ/4π = 0.37 nm, so EUV emission from a beam passing ABOVE a
+# grating is exponentially suppressed; nanometre/sub-nm "gratings" (multilayers,
+# van-der-Waals crystal planes) are traversed instead.
+#
+# PURELY THEORETICAL at 13.5 nm: Smith–Purcell emission has been demonstrated
+# only down to ~230 nm (Ye et al., 2019). The only measured short-wavelength
+# free-electron anchor, van-der-Waals-crystal X-ray emission, gives ~80
+# photons/s per nA of beam current (Huang et al., 2023).
+#
+# Power (ORDER-OF-MAGNITUDE estimate, coupling ε ASSUMED = 1e-3 — optimistic:
+# ~4.6e6 photons/s per nA, ~5e4x the measured vdW yield):
+#
+#     photons/electron = α ε N exp(−h/h_int) = (1/137) · 1e-3 · 100 ≈ 7.3e-4
+#     P = (I/e) · 7.3e-4 · 91.8 eV ≈ 0.67 nW at 10 nA   →  ~4e11x short of 250 W
+#     ideal-coupling value (ε = 1, h = 0; heuristic scale, not a rigorous
+#     limit) ≈ 0.67 µW  →  still ~4e8x short
+#
+# Run with:  highuvlith simulate --config examples/sim_smith_purcell.toml
+# -----------------------------------------------------------------------------
+
+[source]
+type                  = "smith_purcell"
+wavelength_nm         = 13.5    # target; the structure period is derived
+electron_energy_kev   = 30.0    # SEM-class beam
+diffraction_order     = 1
+observation_angle_deg = 90.0    # from the electron direction
+num_periods           = 100     # sets the 1/(mN) line width and the yield
+beam_current_na       = 10.0
+# grating_period_nm   = 4.433   # give the period instead of the target
+# impact_height_nm    = 0.0     # >0: yield × exp(−h/h_int)
+# coupling_efficiency = 1e-3    # ASSUMED lumped form factor / absorption
+
+[optics]
+# 13.5 nm → reflective Schwarzschild objective.
+type = "schwarzschild"
+na   = 0.3
+
+[mask]
+cd_nm    = 30.0
+pitch_nm = 60.0
+
+[grid]
+size     = 128     # 2 nm requested; the CLI snaps to 1.875 nm so the 240 nm
+pixel_nm = 2.0     #   field holds exactly 4 pitches (it prints a note)
+
+[process]
+dose_mj_cm2 = 30.0
+focus_nm    = 0.0

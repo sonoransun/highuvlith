@@ -1,0 +1,38 @@
+# =============================================================================
+# Mercury g-line (435.8 nm) — the first wafer-stepper wavelength
+# =============================================================================
+#
+# The first commercial wafer stepper, the GCA 4800 DSW (introduced 1978),
+# used a 10:1 Zeiss reduction lens with NA 0.28 and the spectrally isolated
+# mercury g-line from a high-pressure Hg arc lamp (J. H. Bruning, "Optical
+# Lithography … 40 years and holding", Proc. SPIE 6520, 652004 (2007)).
+# ASML's first systems also used the g-line and printed ~1 µm features.
+#
+# Preset `hg_g`: NIST air wavelength 435.8328 nm, a REPRESENTATIVE 3 nm FWHM
+# filter passband, CW (no pulse metadata), one spectral sample (lamp-era lenses
+# were colour-corrected over the filtered band). Photon energy 2.84 eV:
+# 21.9 photons/nm² per mJ/cm², 32× the photon count of 13.5 nm EUV per dose.
+#
+# Run with:  highuvlith simulate --config examples/sim_hg_gline.toml
+# -----------------------------------------------------------------------------
+
+[source]
+type   = "vuv"      # the optical-source family (lamps and excimer lasers)
+preset = "hg_g"     # f2 | ar2 | arf | krf | hg_i | hg_h | hg_g
+sigma  = 0.5
+
+[optics]
+na             = 0.45   # late g-line steppers; the GCA 4800 DSW had NA 0.28
+flare_fraction = 0.02
+
+[mask]
+cd_nm    = 700.0     # k1 = 700 x 0.45 / 435.8 = 0.72
+pitch_nm = 1400.0
+
+[grid]
+size     = 128
+pixel_nm = 21.875    # 2800 nm field = exactly 2 pitches
+
+[process]
+dose_mj_cm2 = 100.0
+focus_nm    = 0.0

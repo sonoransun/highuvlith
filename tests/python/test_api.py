@@ -1,7 +1,6 @@
 """Tests for the high-level convenience API."""
 import pytest
 import numpy as np
-import highuvlith as huv
 from highuvlith.api import simulate_line_space, simulate_contact_hole, sweep_focus
 
 

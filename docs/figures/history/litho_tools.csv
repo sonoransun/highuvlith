@@ -1,0 +1,87 @@
+year,vendor,model,wavelength_nm,na,resolution_nm,optics,year_note,sources
+1973,Perkin-Elmer,Micralign,,0.167,,dry,introduced,KATO;MACK
+1978,GCA,DSW 4800,436,0.28,,dry,introduced (beta tool at IBM 1977),KATO;MACK
+1980,Nikon,NSR-1010G,436,,1000,dry,introduced,NIKON_HIST;KATO
+1981,Nikon,NSR-1505G,436,0.30,1200,dry,introduced,NIKON_HIST;SHMJ
+1984,Nikon,NSR-1010i3,365,,800,dry,first shipped (Nikon's history page lists it as NSR-1010i2),NIKON_HIST;KATO;MACK
+1984,Canon,FPA-1500FA,436,,,dry,first shipped,KATO;MACK
+1986,Canon,FPA-1550MII,436,0.43,800,dry,developed,SHMJ
+1987,Nikon,NSR-1505G4D,436,0.45,750,dry,developed (SHMJ only),SHMJ
+1987,ASML,PAS 2500/40,365,0.40,700,dry,first shipped,KATO;MACK
+1988,Nikon,NSR-1505EX,248,0.42,500,dry,first shipped (R&D tool),KATO;NIKON_HIST
+1991,ASML,PAS 5000/70,248,0.42,,dry,first shipped,KATO;MACK
+1994,Nikon,NSR-2205i11D,365,0.63,350,dry,introduced,NIKON_HIST;NIKON_ARCH
+1995,Nikon,NSR-S201A,248,0.60,250,dry,introduced,NIKON_HIST;NIKON_ARCH;MACK
+1996,SVG Lithography,Micrascan III,248,0.60,250,dry,introduced,KATO;MACK
+1996,Nikon,NSR-2205EX12B,248,0.55,280,dry,introduced,NIKON_HIST;NIKON_ARCH
+1997,ASML,PAS 5500/500,248,0.63,220,dry,first shipped,KATO;MACK
+1997,Nikon,NSR-2205EX14C,248,0.60,250,dry,introduced,NIKON_HIST;NIKON_ARCH
+1998,Nikon,NSR-S203B,248,0.68,180,dry,introduced,NIKON_HIST;NIKON_ARCH
+1999,Nikon,NSR-S204B,248,0.68,150,dry,introduced,NIKON_HIST;NIKON_ARCH
+1999,Nikon,NSR-S305B,193,0.68,110,dry,introduced,NIKON_HIST;NIKON_ARCH
+1999,Canon,FPA-3000EX6,248,0.65,150,dry,announced,CANON_EX6_NEWS;CANON_EX6
+1999,SVG Lithography,Micrascan 193,193,0.60,,dry,introduced,MACK
+2000,Nikon,NSR-S205C,248,0.75,130,dry,introduced,NIKON_HIST;NIKON_ARCH
+2001,Nikon,NSR-S306C,193,0.78,100,dry,introduced,NIKON_HIST;NIKON_ARCH
+2002,Nikon,NSR-S206D,248,0.82,110,dry,introduced,NIKON_HIST;NIKON_ARCH
+2003,Nikon,NSR-S307E,193,0.85,80,dry,introduced,NIKON_HIST;NIKON_ARCH
+2004,Nikon,NSR-S308F,193,0.92,65,dry,introduced,NIKON_HIST;NIKON_ARCH
+2004,ASML,TWINSCAN XT:1400,193,0.93,,dry,introduced,ASML_20F_2004
+2004,ASML,TWINSCAN XT:1250i,193,0.85,70,immersion,first shipped (announced Dec 2003),KATO;ASML_20F_2004
+2005,Nikon,NSR-S609B,193,1.07,55,immersion,introduced,NIKON_HIST;NIKON_ARCH;KATO
+2006,ASML,TWINSCAN XT:1700i,193,1.20,45,immersion,first shipped,KATO;ASML_20F_2010
+2006,Nikon,NSR-S610C,193,1.30,45,immersion,introduced (first shipped 2007),NIKON_HIST;NIKON_ARCH;KATO
+2007,ASML,TWINSCAN XT:1900i,193,1.35,40,immersion,volume shipments,ASML_HIST;ASML_20F_2010
+2007,Nikon,NSR-S310F,193,0.92,65,dry,introduced,NIKON_HIST;NIKON_ARCH
+2008,Nikon,NSR-S620D,193,1.35,38,immersion,introduced,NIKON_HIST;NIKON_ARCH
+2008,ASML,TWINSCAN NXT:1950i,193,1.35,38,immersion,launched,ASML_TWINSCAN20;ASML_20F_2010
+2011,Nikon,NSR-S320F,193,0.92,65,dry,introduced,NIKON_HIST;NIKON_ARCH
+2012,Nikon,NSR-S621D,193,1.35,38,immersion,introduced,NIKON_HIST;NIKON_ARCH
+2012,Canon,FPA-6300ES6a,248,0.86,90,dry,sales launched,CANON_ES6A;CANON_ES6A_NEWS
+2013,Nikon,NSR-S622D,193,1.35,38,immersion,introduced,NIKON_HIST;NIKON_ARCH
+2014,Nikon,NSR-S630D,193,1.35,38,immersion,introduced,NIKON_HIST;NIKON_ARCH
+2015,ASML,TWINSCAN NXT:1980Di,193,1.35,38,immersion,first shipped (38 nm with dipole; 40 nm with C-quad),ASML_1980DI
+2016,Nikon,NSR-S631E,193,1.35,38,immersion,introduced,NIKON_HIST;NIKON_ARCH
+2016,Canon,FPA-5550iZ2,365,0.57,350,dry,released,CANON_IZ2;CANON_IZ2_NEWS
+2020,ASML,TWINSCAN NXT:1470,193,0.93,57,dry,first shipped,ASML_TWINSCAN20;ASML_1470
+2021,ASML,TWINSCAN XT:860N,248,0.80,110,dry,first shipped,ASML_Q4_2021;ASML_860N
+2022,ASML,TWINSCAN NXT:2100i,193,1.35,38,immersion,released,ASML_IMM_STORY;ASML_2100I
+2023,Nikon,NSR-S636E,193,1.35,38,immersion,introduced,NIKON_HIST;NIKON_LINEUP
+2023,Nikon,NSR-2205iL1,365,0.45,350,dry,introduced,NIKON_HIST;NIKON_LINEUP
+2025,Nikon,NSR-S333F,193,0.92,65,dry,introduced,NIKON_HIST;NIKON_LINEUP
+2025,ASML,TWINSCAN XT:260,365,0.35,400,dry,first shipped (packaging tool; 2:1 reduction),ASML_HIST;ASML_XT260
+2006,ASML,EUV Alpha Demo Tool,13.5,0.25,,euv,first shipped (to Albany and IMEC),ASML_20F_2006;ASML_EUV_STORY
+2010,ASML,TWINSCAN NXE:3100,13.5,0.25,27,euv,first shipped (pre-production),ASML_20F_2010;ASML_20F_2013
+2013,ASML,TWINSCAN NXE:3300B,13.5,0.33,22,euv,first shipped,ASML_20F_2013;ASML_20F_2015
+2015,ASML,TWINSCAN NXE:3350B,13.5,0.33,16,euv,first shipped,ASML_20F_2015
+2017,ASML,TWINSCAN NXE:3400B,13.5,0.33,13,euv,volume shipments,ASML_3400B;ASML_20F_2017
+2019,ASML,TWINSCAN NXE:3400C,13.5,0.33,13,euv,volume production from 2H 2019,ASML_3400C
+2021,ASML,TWINSCAN NXE:3600D,13.5,0.33,13,euv,first shipped,ASML_Q2_2021;ASML_3600D
+2023,ASML,TWINSCAN EXE:5000,13.5,0.55,8,euv,first shipped (to Intel),ASML_Q4_2023;ASML_EXE5000
+2024,ASML,TWINSCAN NXE:3800E,13.5,0.33,13,euv,first shipped,ASML_Q1_2024;ASML_3800E
+2025,ASML,TWINSCAN EXE:5200B,13.5,0.55,8,euv,first shipped,ASML_Q2_2025;ASML_EXE5200B
+1987,Nikon,NSR-1505G4B,436,,900,dry,introduced (first stepper below 1 µm per Kato),NIKON_HIST;KATO
+1988,Nikon,NSR-1505G6E,436,,650,dry,introduced,NIKON_HIST
+1989,Nikon,NSR-1505i6A,365,,650,dry,introduced,NIKON_HIST
+1989,Nikon,NSR-1755G7A,436,,650,dry,introduced,NIKON_HIST
+1990,Nikon,NSR-2005G8C,436,,550,dry,introduced,NIKON_HIST
+1990,Canon,FPA-2000i1,365,,,dry,first shipped (Canon's first i-line stepper),KATO;MACK
+1991,Nikon,NSR-1755EX8A,248,,450,dry,introduced,NIKON_HIST
+1993,Nikon,NSR-2005i10C,365,,450,dry,introduced,NIKON_HIST
+1994,Canon,FPA-3000i4,365,0.63,350,dry,introduced,CANON_IP_HIST
+1996,Canon,FPA-3000EX3,248,,,dry,introduced (Canon's excimer-laser stepper),CANON_IP_HIST
+1996,Nikon,NSR-2205i12D,365,0.63,350,dry,introduced,NIKON_HIST;NIKON_ARCH
+1997,Nikon,NSR-2205i14E,365,0.63,350,dry,introduced,NIKON_HIST;NIKON_ARCH
+1997,Canon,FPA-4000ES1,248,,,dry,first shipped (Canon's first KrF scanner),KATO;MACK
+1998,ASML,PAS 5500/900,193,,130,dry,"developed (ASML's first ArF step-and-scan); NA left blank because sources disagree: ASML's product description gives 0.45 to <0.6, Bruning 2007 Table 4 lists the Zeiss '900' lens at 0.63 (the NA EE Times gives for the PAS 5500/950); 130 nm is in both",KATO;MACK;BRUNING2007;ASML_5500_900
+1999,Canon,FPA-5000AS1,193,,,dry,first shipped (Canon's first ArF scanner),KATO;MACK
+1999,Nikon,NSR-S302A,193,,180,dry,introduced (Nikon: first dry ArF scanner),NIKON_HIST;KATO
+1999,Nikon,NSR-2205i14E2,365,0.63,350,dry,introduced,NIKON_HIST;NIKON_ARCH
+1999,Nikon,NSR-SF100,365,0.52,400,dry,introduced,NIKON_HIST;NIKON_ARCH
+2004,Nikon,NSR-S208D,248,0.82,110,dry,introduced,NIKON_HIST;NIKON_ARCH
+2005,Nikon,NSR-SF140,365,0.62,280,dry,introduced,NIKON_HIST;NIKON_ARCH
+2007,Nikon,NSR-S210D,248,0.82,110,dry,introduced,NIKON_HIST;NIKON_ARCH
+1990,SVG Lithography,Micrascan I,250,0.35,350,dry,introduced (first step-and-scan; ~250 nm mercury-lamp DUV),BRUNING2007;KATO;MACK
+1992,SVG Lithography,Micrascan II,250,0.50,250,dry,introduced June 1992 per Mack (1993 per Bruning); ~250 nm lamp DUV,MACK;BRUNING2007
+2001,SVG Lithography,Micrascan V,193,0.75,130,dry,introduced,BRUNING2007
+2003,SVG Lithography / ASML,Micrascan VII,157,0.75,100,dry,prototype 157 nm scanner; first one shipped to IMEC in 2003,BRUNING2007;KATO;MACK

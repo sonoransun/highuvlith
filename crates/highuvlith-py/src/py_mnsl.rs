@@ -414,6 +414,23 @@ impl PyMnslResult {
             .collect()
     }
 
+    /// Capability badge of the model behind this result (see
+    /// docs/capability-matrix.md): "✅" implemented, "🔶" simplified, "🧪"
+    /// theoretical; split badges name exact and approximate parts.
+    #[getter]
+    fn status(&self) -> &'static str {
+        "🧪"
+    }
+
+    /// The model's stated approximations for this result.
+    #[getter]
+    fn notes(&self) -> Vec<&'static str> {
+        vec![
+            "heuristic emission map: static Rayleigh polarizability, uniform interlayer phase",
+            "one scalar substrate factor; exact lattice geometry and moire period",
+        ]
+    }
+
     fn __repr__(&self) -> String {
         format!(
             "MnslResult(period={:.1}nm, peak_enhancement={:.2}x, {} peaks)",
@@ -442,9 +459,9 @@ impl PyMnslEngine {
         })
     }
 
-    /// Compute the complete MNSL emission pattern.
-    fn compute_emission(&self) -> PyMnslResult {
-        let result = self.inner.compute_emission();
+    /// Compute the complete MNSL emission pattern (GIL released).
+    fn compute_emission(&self, py: Python<'_>) -> PyMnslResult {
+        let result = py.allow_threads(|| self.inner.compute_emission());
         PyMnslResult { inner: result }
     }
 }
@@ -453,6 +470,7 @@ impl PyMnslEngine {
 #[pyfunction]
 #[pyo3(signature = (sphere_diameter_nm, array_pitch_nm, rotation_angle_deg, separation_nm=100.0, grid_size=256, pixel_nm=2.0))]
 fn py_simulate_moire_emission(
+    py: Python<'_>,
     sphere_diameter_nm: f64,
     array_pitch_nm: f64,
     rotation_angle_deg: f64,
@@ -463,13 +481,15 @@ fn py_simulate_moire_emission(
     let grid = GridConfig::new(grid_size, pixel_nm)
         .map_err(|e| pyo3::exceptions::PyValueError::new_err(format!("{:?}", e)))?;
 
-    let result = simulate_moire_emission(
-        sphere_diameter_nm,
-        array_pitch_nm,
-        rotation_angle_deg,
-        separation_nm,
-        grid,
-    );
+    let result = py.allow_threads(|| {
+        simulate_moire_emission(
+            sphere_diameter_nm,
+            array_pitch_nm,
+            rotation_angle_deg,
+            separation_nm,
+            grid,
+        )
+    });
 
     Ok(PyMnslResult { inner: result })
 }

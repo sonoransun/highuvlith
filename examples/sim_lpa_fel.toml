@@ -1,17 +1,33 @@
 # =============================================================================
-# Laser-plasma driven free electron laser (LPA-FEL) — 25 nm EUV lithography
+# Laser-plasma driven free electron laser (LPA-FEL) — 25 nm EUV  [PROJECTION]
 # =============================================================================
 #
-# Models the BELLA/LBNL target configuration after the funded 500 MeV
-# electron-beam upgrade. The current demo at 100 MeV reached 420 nm with
-# 1 kHz bunch rate, feedback-stabilized for 8+ continuous hours; scaling
-# the electron energy to 500 MeV lands the fundamental resonance
-# wavelength in the 20-30 nm EUV band via
+# Demonstrated anchor: LBNL BELLA's LPA-driven FEL lased (SASE) at 420 nm with
+# 100 MeV beams at 1 Hz for more than 8 hours without operator input (~15,000
+# shots); only the unamplified laser front end runs at 1 kHz. This config is a
+# DESIGN PROJECTION to ~500 MeV / 25 nm / 1 kHz (LPA-FEL lasing has been
+# reported down to 27 nm, none at 13.5 nm). Scaling the electron energy to
+# 500 MeV lands the fundamental resonance wavelength in the 20-30 nm band via
 #
 #     λ_r = (λ_u / 2γ²) (1 + K²/2)
 #
-# Reference: Kohrell et al., Phys. Rev. Accel. Beams, April 16 2026.
-# Coverage:  https://phys.org/news/2026-04-laser-plasma-free-electron-hours.html
+# With an undulator given, the resonance above is DERIVED and must match
+# wavelength_nm within 5 %; with beam parameters the 1D FEL physics is derived
+# too. The illustrative LPA-class beam below (1 kA, 0.5 µm, 1 % energy spread)
+# gives ρ ≈ 5.3e-3 — but σ_δ/ρ ≈ 1.9 > 1 violates the FEL gain criterion (Ming Xie
+# Λ ≈ 49): percent-level LPA energy spread is why LPA-FELs need decompression or
+# transverse-gradient undulators. The 3D gain length (Ming Xie) is 8.6 m, so
+# the 4 m undulator is only ~2 % of the ~186 m saturation length: this beam
+# would not reach saturation. The 5 mW average power (5 µJ default pulse
+# energy × 1 kHz) is therefore a STORED projection, not derived from the beam.
+# `highuvlith simulate` prints these numbers.
+#
+# Reference: F. Kohrell et al., "Over 8 hours of continuous operation of a
+#            free-electron laser driven by a laser-plasma accelerator,"
+#            Phys. Rev. Accel. Beams 29, 041301 (2026), doi:10.1103/z2d3-bhyt.
+#
+# Result: contrast 0.783, NILS 2.99, printed CD 28.7 nm (30 nm lines, 100 nm
+# pitch, Schwarzschild NA 0.55, σ 0.7).
 #
 # Run with:  highuvlith simulate --config examples/sim_lpa_fel.toml
 # -----------------------------------------------------------------------------
@@ -21,24 +37,35 @@
 # Omit this field (or set "vuv") for F2/Ar2 excimer configs.
 type = "lpa_fel"
 
-# Center wavelength in nm. BELLA 500 MeV target lands at ~25 nm.
+# Center wavelength in nm (projected ~500 MeV study point: ~25 nm).
 wavelength_nm = 25.0
 
 # Partial-coherence factor (outer sigma) for conventional illumination.
 # FEL output is already highly transverse-coherent; moderate sigma is fine.
 sigma = 0.7
 
-# Spectral bandwidth FWHM in picometers. FEL is narrow-band:
-#   SASE     Δλ/λ ~ 10⁻³  → ~25 pm at 25 nm
-#   Seeded   Δλ/λ ~ 10⁻⁴  → ~2.5 pm at 25 nm
-# 25 pm is a conservative choice representative of SASE output.
-bandwidth_pm = 25.0
+# Spectral bandwidth: with the undulator + beam below it is DERIVED as the
+# SASE estimate Δλ ≈ 2ρλ (≈ 266 pm = 1.06 % here; printed as bandwidth_fwhm).
+# An explicit value overrides it, e.g. a seeded / self-seeded line
+# (Δλ/λ ~ 10⁻⁴ → ~2.5 pm at 25 nm):
+# bandwidth_pm = 2.5
 
-# FEL-specific fields (ignored when type = "vuv").
+# FEL-specific fields (rejected for other source types — the CLI is strict).
 electron_energy_mev = 500.0      # γ ≈ 979 at 500 MeV kinetic
 pulse_duration_fs   = 10.0       # femtosecond-scale coherent output
-rep_rate_hz         = 1000.0     # BELLA bunch rate
-# pulse_energy_uj   = 5.0        # optional; µJ-class per pulse
+rep_rate_hz         = 1000.0     # PROJECTION (the BELLA FEL demonstrated 1 Hz)
+# pulse_energy_uj   = 5.0        # optional; µJ-class per pulse (5 µJ is the default)
+
+# Optional undulator (illustrative, not BELLA specifications): K is chosen so
+# the resonance lands on 25 nm; a K that misses by > 5 % is rejected.
+period_mm   = 20.0
+undulator_k = 1.6724
+num_periods = 200                # 4 m
+# Optional beam parameters (illustrative LPA-class values):
+peak_current_a    = 1000.0
+norm_emittance_um = 0.5
+electron_energy_spread_rel = 0.01   # try 0.001 to see the gain criterion pass
+beta_m            = 1.0
 
 [optics]
 # At 25 nm there is no transparent refractive lens material — reflective
@@ -58,8 +85,8 @@ cd_nm    = 30.0
 pitch_nm = 100.0
 
 [grid]
-size     = 256
-pixel_nm = 1.0
+size     = 256     # 1 nm requested; the CLI snaps to 0.78125 nm so the 200 nm
+pixel_nm = 1.0     #   field holds exactly 2 pitches (it prints a note)
 
 [process]
 dose_mj_cm2 = 30.0

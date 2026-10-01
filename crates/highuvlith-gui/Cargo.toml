@@ -1,7 +1,13 @@
 [package]
 name = "highuvlith-gui"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
+description = "egui desktop front end for the highuvlith lithography simulator"
+license = "MIT"
+repository = "https://github.com/sonoransun/highuvlith"
+homepage = "https://sonoransun.github.io/highuvlith/"
+documentation = "https://sonoransun.github.io/highuvlith/"
+readme = "../../README.md"
 
 [dependencies]
 highuvlith-core = { path = "../highuvlith-core" }
@@ -10,3 +16,5 @@ egui_plot = "0.30"
 serde = { version = "1.0", features = ["derive"] }
 num = "0.4"
 ndarray = "0.16"
+# Already in the tree through eframe/image; used directly for compressed PNG export.
+png = "0.18"

@@ -1,0 +1,54 @@
+# =============================================================================
+# Inverse lithography (ILT) — 2 × 2 array of 90 nm contacts, F2 157.63 nm
+# =============================================================================
+#
+#   highuvlith optimize --config examples/optimize_ilt.toml -o ilt.png
+#
+# Status: ✅ ILT (exact adjoint gradient through the engine's SOCS kernels; see
+# docs/research-modules.md). The target is the drawn [mask]: four 90 nm square
+# holes at 180 nm pitch on a dark field, k1 = 90 · 0.75 / 157.63 ≈ 0.43. The
+# cost is a sigmoid resist (threshold 0.25, steepness 50) on the clear-field-
+# normalized aerial image; conjugate gradient with Armijo line search.
+#
+# Printed at t = 0.25 the drawn mask misses the holes almost entirely
+# (484 of 4096 pixels misprinted); after 40 iterations (~30 ms release):
+#
+#   Cost:          1.0754e-1 -> 1.0555e-2   (40 iterations, max_iterations)
+#   Misprinted px: drawn mask 484 -> optimized 96 (binary 184)
+#
+# "binary" thresholds the continuous mask at m = 0.5; add binarization_weight /
+# binarization_after for a manufacturable two-level mask. Output: -o x.png is
+# the optimized transmission m ∈ (0, 1); -o x.json carries the cost history,
+# the mask arrays and the counts above.
+
+[source]
+wavelength_nm = 157.63
+sigma = 0.6
+
+[optics]
+na = 0.75
+
+[mask]
+pattern = "features"
+dark_field = true
+features = [
+  { type = "rect", x = -90.0, y = -90.0, w = 90.0, h = 90.0 },
+  { type = "rect", x = 90.0, y = -90.0, w = 90.0, h = 90.0 },
+  { type = "rect", x = -90.0, y = 90.0, w = 90.0, h = 90.0 },
+  { type = "rect", x = 90.0, y = 90.0, w = 90.0, h = 90.0 },
+]
+
+[grid]
+size = 64
+pixel_nm = 8.0
+commensurate = false
+
+[imaging]
+max_kernels = 12
+
+[optimize]
+method = "ilt"
+cost = "resist"
+threshold = 0.25
+steepness = 50.0
+max_iterations = 40

@@ -1,8 +1,19 @@
-"""Aerial image visualization."""
+"""Aerial image visualization (Hopkins/SOCS images from ``SimulationEngine``)."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
+
+from highuvlith.viz.style import (
+    axes_or_new,
+    categorical,
+    ink,
+    resolve_theme,
+    sequential_cmap,
+    style_axes,
+    style_colorbar,
+    use_theme,
+)
 
 if TYPE_CHECKING:
     from highuvlith import AerialImageResult
@@ -12,33 +23,38 @@ def plot_aerial(
     result: AerialImageResult,
     *,
     title: str | None = None,
-    cmap: str = "inferno",
+    cmap: Any = None,
     show_colorbar: bool = True,
-    ax=None,
-):
-    """Plot 2D aerial image intensity."""
-    import matplotlib.pyplot as plt
+    ax: Any = None,
+    theme: str | None = None,
+) -> Any:
+    """Plot a 2D aerial image.
 
-    if ax is None:
-        fig, ax = plt.subplots(1, 1, figsize=(8, 6))
-
-    x = result.x_nm
-    y = result.y_nm
-    intensity = result.intensity
-
-    im = ax.imshow(
-        intensity,
-        extent=[x[0], x[-1], y[-1], y[0]],
-        cmap=cmap,
-        aspect="equal",
-    )
-    ax.set_xlabel("x (nm)")
-    ax.set_ylabel("y (nm)")
-    ax.set_title(title or "Aerial Image Intensity")
-
-    if show_colorbar:
-        plt.colorbar(im, ax=ax, label="Intensity")
-
+    Intensity is relative to the clear field (the engine default; absolute
+    when the engine used ``normalization="absolute"``); axes in nm, y up.
+    ``cmap`` defaults to the theme's sequential blue ramp. Returns the Axes.
+    """
+    th = resolve_theme(theme)
+    with use_theme(th):
+        ax = axes_or_new(ax, (6.4, 5.2))
+        x_min, x_max, y_min, y_max = result.extent_nm
+        im = ax.imshow(
+            result.intensity,
+            extent=(x_min, x_max, y_min, y_max),
+            origin="lower",
+            cmap=sequential_cmap(th) if cmap is None else cmap,
+            aspect="equal",
+            interpolation="nearest",
+        )
+        ax.set_xlabel("x (nm)")
+        ax.set_ylabel("y (nm)")
+        ax.set_title(title or "Aerial image")
+        ax.grid(False)
+        if show_colorbar:
+            cbar = ax.figure.colorbar(im, ax=ax, label="Relative intensity")
+            style_colorbar(cbar, th)
+        style_axes(ax, th)
+        ax.grid(False)
     return ax
 
 
@@ -48,24 +64,34 @@ def plot_cross_section(
     y_nm: float = 0.0,
     threshold: float | None = None,
     title: str | None = None,
-    ax=None,
-):
-    """Plot 1D cross-section of aerial image along x at given y."""
-    import matplotlib.pyplot as plt
+    ax: Any = None,
+    theme: str | None = None,
+) -> Any:
+    """Plot the intensity along x at the row nearest ``y_nm`` (nm).
 
-    if ax is None:
-        fig, ax = plt.subplots(1, 1, figsize=(10, 4))
-
-    x, intensity = result.cross_section(y_nm=y_nm)
-
-    ax.plot(x, intensity, "b-", linewidth=1.5)
-    ax.set_xlabel("x (nm)")
-    ax.set_ylabel("Intensity")
-    ax.set_title(title or f"Aerial Image Cross-Section (y={y_nm:.1f} nm)")
-    ax.grid(True, alpha=0.3)
-
-    if threshold is not None:
-        ax.axhline(y=threshold, color="r", linestyle="--", alpha=0.7, label=f"Threshold={threshold}")
-        ax.legend()
-
+    ``threshold`` (relative intensity) draws the print threshold with a
+    direct label. Returns the Axes.
+    """
+    th = resolve_theme(theme)
+    with use_theme(th):
+        ax = axes_or_new(ax, (8.0, 3.4))
+        x, intensity = result.cross_section(y_nm=y_nm)
+        ax.plot(x, intensity, color=categorical(0, th), linewidth=1.5)
+        ax.set_xlabel("x (nm)")
+        ax.set_ylabel("Relative intensity")
+        ax.set_title(title or f"Aerial image cross-section (y = {y_nm:.1f} nm)")
+        if threshold is not None:
+            ax.axhline(threshold, color=ink("muted", th), linestyle="--", linewidth=1.0)
+            ax.annotate(
+                f"threshold {threshold:.2f}",
+                xy=(1.0, threshold),
+                xycoords=("axes fraction", "data"),
+                xytext=(-4, 3),
+                textcoords="offset points",
+                ha="right",
+                va="bottom",
+                fontsize=8,
+                color=ink("secondary", th),
+            )
+        style_axes(ax, th)
     return ax

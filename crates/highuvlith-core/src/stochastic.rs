@@ -2,6 +2,29 @@
 //!
 //! Models photon shot noise and acid diffusion randomness to predict
 //! Line Edge Roughness (LER) and Line Width Roughness (LWR).
+//!
+//! # Model status
+//!
+//! 🔶 Simplified: Poisson photon shot noise per pixel (Gaussian
+//! approximation above 1000 photons) with the source-derived photon
+//! density, an empirical Gaussian acid-noise term, and a Gamma-distributed
+//! per-exposure dose factor. [`StochasticParams::from_source`] applies the
+//! source's single-pulse energy rms to the whole exposure (exact for
+//! single-shot exposures, conservative otherwise);
+//! [`StochasticParams::from_source_multi_pulse`] divides it by `sqrt(N)`
+//! for an exposure integrating `N` independent pulses (e.g. the
+//! `pulses_per_point` of `source_models::throughput`). Photon counting is
+//! one-photon: N-photon absorption of entangled sources is not modeled.
+//!
+//! By default the photon density is the INCIDENT density (0.68 photons/nm²
+//! per mJ/cm² at 13.5 nm, consistent with Bhattarai et al., J. Vac. Sci.
+//! Technol. B 35, 061602 (2017): 15 mJ/cm² → 10.2 photons/nm²). Only
+//! absorbed photons drive the resist chemistry, so
+//! [`StochasticParams::with_resist_absorption`] can rescale it to the
+//! absorbed density with Beer–Lambert, `1 - exp(-alpha d)`: a 35 nm organic
+//! CAR at ~4.8 µm⁻¹ absorbs ~15 % (Fallica et al., J. Micro/Nanolith. MEMS
+//! MOEMS 17, 023505 (2018)); metal-oxide resists at 12–20 µm⁻¹ absorb
+//! ~35–50 %.
 
 use ndarray::Array2;
 use rand::prelude::*;
@@ -38,6 +61,46 @@ impl StochasticParams {
         }
     }
 
+    /// Like [`Self::from_source`], for an exposure that integrates
+    /// `pulses_per_exposure` statistically independent source pulses: the
+    /// exposure-dose rms is the single-pulse rms divided by
+    /// `sqrt(pulses_per_exposure)` (values below 1 are treated as 1).
+    /// A scanner exposes each point with many pulses — ~10^2 for an EUV
+    /// LPP, ~10^4 for a 100 MHz-class FEL — so single-pulse SASE jitter of
+    /// tens of percent averages down to the sub-percent level.
+    pub fn from_source_multi_pulse(
+        source: &impl LithographySource,
+        pulses_per_exposure: f64,
+    ) -> Self {
+        let n = if pulses_per_exposure.is_finite() {
+            pulses_per_exposure.max(1.0)
+        } else {
+            1.0
+        };
+        Self {
+            dose_jitter_rms: source.shot_to_shot_rms() / n.sqrt(),
+            ..Self::from_source(source)
+        }
+    }
+
+    /// Count only ABSORBED photons in the shot-noise model: scales
+    /// `photon_density_per_mj_cm2` by `absorbed_fraction` (clamped to
+    /// (0, 1]; non-finite values leave the params unchanged). Without this
+    /// call the density is the incident one (the historical default).
+    pub fn with_absorbed_fraction(mut self, absorbed_fraction: f64) -> Self {
+        if absorbed_fraction.is_finite() && absorbed_fraction > 0.0 {
+            self.photon_density_per_mj_cm2 *= absorbed_fraction.min(1.0);
+        }
+        self
+    }
+
+    /// [`Self::with_absorbed_fraction`] for a resist film of thickness
+    /// `thickness_nm` and absorption coefficient `absorption_per_um` (1/µm),
+    /// using [`resist_absorbed_fraction`].
+    pub fn with_resist_absorption(self, thickness_nm: f64, absorption_per_um: f64) -> Self {
+        self.with_absorbed_fraction(resist_absorbed_fraction(thickness_nm, absorption_per_um))
+    }
+
     /// Default parameters for F2 laser (157nm) lithography.
     pub fn default_vuv() -> Self {
         Self {
@@ -61,6 +124,16 @@ impl Default for StochasticParams {
     fn default() -> Self {
         Self::default_vuv()
     }
+}
+
+/// Fraction of the incident photons a resist film absorbs (Beer–Lambert,
+/// whole film): `1 - exp(-alpha d)`, `alpha` in 1/µm, `d` in nm. E.g. 35 nm
+/// at 4.8 µm⁻¹ (organic CAR) → 0.155; at 20 µm⁻¹ (metal-oxide) → 0.503.
+pub fn resist_absorbed_fraction(thickness_nm: f64, absorption_per_um: f64) -> f64 {
+    if !(thickness_nm > 0.0 && absorption_per_um > 0.0) {
+        return 0.0;
+    }
+    1.0 - (-absorption_per_um * thickness_nm * 1e-3).exp()
 }
 
 /// Result of stochastic LER/LWR analysis.
@@ -436,6 +509,87 @@ mod tests {
             params.photon_density_per_mj_cm2,
             fel.photon_density_per_mj_cm2(),
             epsilon = 1e-12
+        );
+    }
+
+    #[test]
+    fn test_resist_absorption_scales_photon_density() {
+        // Beer-Lambert fixtures (mpmath): 35 nm at 4.8 / 12 / 20 per um.
+        assert_relative_eq!(
+            resist_absorbed_fraction(35.0, 4.8),
+            0.154_646_165_315_341_28,
+            max_relative = 1e-12
+        );
+        assert_relative_eq!(
+            resist_absorbed_fraction(35.0, 12.0),
+            0.342_953_180_184_943_2,
+            max_relative = 1e-12
+        );
+        assert_relative_eq!(
+            resist_absorbed_fraction(35.0, 20.0),
+            0.503_414_696_208_590_5,
+            max_relative = 1e-12
+        );
+        assert_eq!(resist_absorbed_fraction(0.0, 5.0), 0.0);
+        // Incident density at 13.5 nm x 15 % absorption.
+        struct Euv;
+        impl LithographySource for Euv {
+            fn wavelength_nm(&self) -> f64 {
+                13.5
+            }
+            fn bandwidth_pm(&self) -> f64 {
+                0.0
+            }
+            fn intensity_at(&self, _fx: f64, _fy: f64) -> f64 {
+                1.0
+            }
+            fn spectral_weights(&self) -> Vec<(f64, f64)> {
+                vec![(13.5, 1.0)]
+            }
+        }
+        let incident = StochasticParams::from_source(&Euv);
+        let absorbed = StochasticParams::from_source(&Euv).with_resist_absorption(35.0, 4.8);
+        assert_relative_eq!(
+            absorbed.photon_density_per_mj_cm2,
+            incident.photon_density_per_mj_cm2 * 0.154_646_165_315_341_28,
+            max_relative = 1e-12
+        );
+        // 15 mJ/cm^2 -> 10.2 incident photons/nm^2 (Bhattarai et al. 2017).
+        assert!((incident.photon_density_per_mj_cm2 * 15.0 - 10.2).abs() < 0.05);
+        // Fraction clamps to 1 and ignores nonsense.
+        let same = StochasticParams::default_vuv().with_absorbed_fraction(2.0);
+        assert_relative_eq!(same.photon_density_per_mj_cm2, 7.89);
+        let untouched = StochasticParams::default_vuv().with_absorbed_fraction(f64::NAN);
+        assert_relative_eq!(untouched.photon_density_per_mj_cm2, 7.89);
+    }
+
+    #[test]
+    fn test_multi_pulse_jitter_averages_down() {
+        // SASE XFEL: single-pulse rms 1/sqrt(M); 100 pulses per point -> /10.
+        let xfel = crate::source::XfelSource::flash_13nm5();
+        let single = StochasticParams::from_source(&xfel);
+        let multi = StochasticParams::from_source_multi_pulse(&xfel, 100.0);
+        assert_relative_eq!(
+            multi.dose_jitter_rms,
+            single.dose_jitter_rms / 10.0,
+            max_relative = 1e-12
+        );
+        assert_relative_eq!(
+            multi.photon_density_per_mj_cm2,
+            single.photon_density_per_mj_cm2,
+            max_relative = 1e-12
+        );
+        // < 1 pulse and non-finite counts fall back to single-pulse statistics.
+        let fel = crate::source::LpaFelSource::bella_target_25nm(0.7).unwrap();
+        assert_relative_eq!(
+            StochasticParams::from_source_multi_pulse(&fel, 0.2).dose_jitter_rms,
+            0.03,
+            max_relative = 1e-12
+        );
+        assert_relative_eq!(
+            StochasticParams::from_source_multi_pulse(&fel, f64::NAN).dose_jitter_rms,
+            0.03,
+            max_relative = 1e-12
         );
     }
 

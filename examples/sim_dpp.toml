@@ -1,0 +1,65 @@
+# =============================================================================
+# Discharge-produced plasma (DPP / LDP) — Sn at 13.5 nm  [SIMPLIFIED]
+# =============================================================================
+#
+# A pulsed discharge heats a small Sn (or Xe) plasma column that radiates into
+# the 2% band Mo/Si mirrors reflect. Electrical energy goes straight into the
+# plasma (no drive laser), which made DPP the low-cost alternative to LPP
+# during EUV development; it lost the HVM race on power scaling (electrode heat
+# load) and étendue (mm-scale pinch vs ~0.1 mm LPP plasma). The live chain —
+# note the two planes: DPP powers are quoted into 2π sr AT THE SOURCE, scanner
+# requirements AT INTERMEDIATE FOCUS (IF):
+#
+#     P_2π  = CE · P_elec                     = 0.02 · 18 kW  = 360 W  (at the source)
+#     P_col = P_2π · (Ω_c / 2π) · η_c         = 360 · (1.5/2π) · 0.4 ≈ 34.4 W
+#     G_src = d · l · Ω_c                     = 0.4 · 1.0 · 1.5 = 0.6 mm²·sr
+#     f_G   = min(1, G_ill / G_src)           = 1  (G_ill = 3.3 mm²·sr)
+#     P_IF  = P_col · f_G                     ≈ 34.4 W (at IF) →  ~7x short of 250 W HVM
+#
+# Anchors (reported): the preset's 360 W into 2π (180 mJ × 2 kHz) is the
+# continuous level of the TRINITI rotating-disk Sn DPP (Borisov et al., 2010;
+# 1 kW for 10 s at 63 kW); Philips' Sn lamp ran 200 W/2π continuous (2005);
+# the XTREME/Ushio laser-assisted DPP on the NXE:3100 gave ≈18–20 W at IF
+# (2011); Xe metrology DPPs give ~10–40 W into 2π (Energetiq, Fraunhofer ILT).
+# CE values are reported orders of magnitude (Sn ≈ 2%, Xe ≈ 0.5%, in band,
+# 2π sr); pinch size, collector solid angle/throughput and the illuminator
+# étendue are ASSUMPTIONS (override below). The plasma is incoherent.
+#
+# Result (highuvlith simulate): 34.4 W at IF (hvm_power_gap 7.3x); with the
+# σ 0.9 fill the obscured Schwarzschild images in bright field: contrast 0.750,
+# NILS 3.25, printed CD 30.3 nm.
+#
+# Run with:  highuvlith simulate --config examples/sim_dpp.toml
+# -----------------------------------------------------------------------------
+
+[source]
+type  = "dpp"
+fuel  = "sn"          # "sn" (DPP / laser-assisted LDP) | "xe" (metrology-class pinch)
+sigma = 0.9
+# Preset: 18 kW electrical, CE 2%, 0.4 x 1.0 mm plasma, 1.5 sr / 40% collector,
+# 3.3 mm²·sr illuminator étendue, 2 kHz. Override any of them:
+# electrical_power_w         = 18000.0
+# conversion_efficiency      = 0.02
+# source_diameter_mm         = 0.4
+# source_length_mm           = 1.0
+# collector_solid_angle_sr   = 1.5      # (LPP key collection_solid_angle_sr also accepted)
+# collector_efficiency       = 0.4
+# illuminator_etendue_mm2_sr = 3.3
+# rep_rate_hz                = 2000.0
+
+[optics]
+# 13.5 nm → reflective Schwarzschild objective (no refractive lens material).
+type = "schwarzschild"
+na   = 0.33
+
+[mask]
+cd_nm    = 30.0
+pitch_nm = 60.0
+
+[grid]
+size     = 128     # 2 nm requested; the CLI snaps to 1.875 nm so the 240 nm
+pixel_nm = 2.0     #   field holds exactly 4 pitches (it prints a note)
+
+[process]
+dose_mj_cm2 = 30.0
+focus_nm    = 0.0

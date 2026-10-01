@@ -85,7 +85,7 @@ def interactive_aerial(
             )
             opt = huv.OpticsConfig(numerical_aperture=na.value)
             msk = huv.MaskConfig.line_space(cd_nm=cd.value, pitch_nm=pitch.value)
-            grid = huv.GridConfig(size=grid_size, pixel_nm=2.0)
+            grid = msk.commensurate_grid(grid_size, 2.0)  # whole periods in the field
             engine = huv.SimulationEngine(src, opt, msk, grid=grid)
             result = engine.compute_aerial_image(focus_nm=focus.value)
 

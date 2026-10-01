@@ -1,0 +1,272 @@
+# MkDocs configuration for the highuvlith documentation site (GitHub Pages).
+#
+# Local preview (a separate venv keeps the docs toolchain out of the project env):
+#   python -m venv .venv-docs && .venv-docs/bin/pip install -r docs/requirements-docs.txt
+#   .venv-docs/bin/mkdocs serve              # live reload at http://127.0.0.1:8000
+#   .venv-docs/bin/mkdocs build --strict     # what CI runs
+#
+# Deployment: .github/workflows/pages.yml builds on every push to main and publishes
+# with the official GitHub Pages actions. One-time repository setting required:
+# Settings -> Pages -> Build and deployment -> Source = "GitHub Actions".
+
+site_name: highuvlith
+site_description: >-
+  An honesty-first lithography simulator from VUV through EUV to X-ray, with a guided
+  tour of lithography's history, today's process nodes, and where the physics may go.
+site_author: highuvlith contributors
+
+# repo_url and the branch in edit_uri also drive docs/hooks/repo_links.py, which turns
+# links to source files outside docs/ into GitHub URLs.
+site_url: https://sonoransun.github.io/highuvlith/
+repo_url: https://github.com/sonoransun/highuvlith
+repo_name: sonoransun/highuvlith
+edit_uri: edit/main/docs/
+
+copyright: Copyright &copy; 2026 the highuvlith authors &middot; MIT License
+
+theme:
+  name: material
+  custom_dir: docs/overrides
+  language: en
+  logo: assets/brand/logo.svg
+  favicon: assets/brand/favicon.svg
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
+  palette:
+    # Follow the operating-system preference until the reader picks a scheme.
+    - media: "(prefers-color-scheme)"
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/weather-night
+        name: Switch to system preference
+  features:
+    - content.action.edit
+    - content.action.view
+    - content.code.annotate
+    - content.code.copy
+    - content.footnote.tooltips
+    - content.tabs.link
+    - content.tooltips
+    - navigation.footer
+    - navigation.indexes
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.path
+    - navigation.sections
+    - navigation.tabs
+    - navigation.top
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - toc.follow
+
+# Site plumbing that lives under docs/ but is not published as pages or assets.
+# Links to these files from pages are rewritten to GitHub by docs/hooks/repo_links.py.
+exclude_docs: |
+  hooks/
+  includes/
+  overrides/
+  figures/
+  javascripts/tests/
+  __pycache__/
+  /requirements-docs.txt
+
+hooks:
+  # Links leaving docs/ (../crates/..., ../README.md, ../examples/...) -> GitHub URLs.
+  - docs/hooks/repo_links.py
+  # Nav entries for pages not yet in this checkout are skipped locally, strict in CI.
+  - docs/hooks/pending_nav.py
+  # **Status:** lines and the ✅ 🔶 🧪 🗺️ markers -> styled, labelled badges.
+  - docs/hooks/status_badges.py
+
+plugins:
+  - search:
+      separator: '[\s​\-_,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+
+markdown_extensions:
+  # Python-Markdown
+  - abbr
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+      permalink_title: Link to this section
+      # GitHub-compatible anchors, so #fragments written for GitHub work here too.
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  # PyMdown Extensions
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.betterem:
+      smart_enable: all
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.keys
+  - pymdownx.magiclink
+  - pymdownx.snippets:
+      # Site-wide glossary: every page gets the abbreviation tooltips.
+      auto_append:
+        - docs/includes/abbreviations.md
+      check_paths: true
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+        # ```math blocks render here AND on GitHub. Prefer them for display math: inside
+        # $$...$$ GitHub strips backslash escapes (\, \{ \% ...) before rendering.
+        - name: math
+          class: arithmatex
+          format: !!python/object/apply:pymdownx.arithmatex.arithmatex_fenced_format
+            kwds:
+              mode: generic
+              tag: div
+  - pymdownx.tabbed:
+      alternate_style: true
+      combine_header_slug: true
+      slugify: !!python/object/apply:pymdownx.slugs.slugify
+        kwds:
+          case: lower
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.tilde:
+      # Strikethrough only: "~13.5 nm ... ~6.7 nm" must never become a subscript.
+      subscript: false
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  # MathJax for pymdownx.arithmatex (Material for MkDocs recipe), pinned to v3.2.2.
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3.2.2/es5/tex-mml-chtml.js
+  # Wide mermaid diagrams scroll instead of shrinking on narrow screens.
+  - javascripts/diagrams.js
+  # Playground calculators (self-activate only on pages that contain them).
+  - javascripts/huv-physics.js
+  - javascripts/playground.js
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/sonoransun/highuvlith
+      name: highuvlith on GitHub
+  status:
+    new: Recently added
+
+validation:
+  nav:
+    omitted_files: warn  # every page must be in the nav (all sections have landed)
+    not_found: warn
+    absolute_links: info
+  links:
+    not_found: warn
+    anchors: warn
+    absolute_links: info
+    unrecognized_links: info
+
+nav:
+  - Home: index.md
+  # Narrative sections: page order follows each section's index page (S1/S2/S3).
+  - History:
+      - history/index.md
+      - From stone to silicon: history/origins.md
+      - The projection era: history/projection-era.md
+      - Excimer lasers & deep UV: history/excimer-duv.md
+      - The 157 nm detour: history/157nm-detour.md
+      - Immersion & multipatterning: history/immersion-multipatterning.md
+      - The road to EUV: history/euv.md
+      - Parallel paths: history/parallel-paths.md
+  - Process Nodes:
+      - nodes/index.md
+      - 90 nm to 28 nm: nodes/90-to-28nm.md
+      - 22 nm to 10 nm: nodes/22-to-10nm.md
+      - 7 nm and 5 nm: nodes/7-and-5nm.md
+      - 3 nm and 2 nm: nodes/3nm-and-2nm.md
+      - The Ångström era: nodes/angstrom-era.md
+      - Lithography arithmetic: nodes/litho-math.md
+  - The Future:
+      - future/index.md
+      - High-NA and Hyper-NA EUV: future/high-na-and-hyper-na.md
+      - Beyond EUV (6.x nm and X-rays): future/beyond-euv.md
+      - Accelerator light sources: future/accelerator-light-sources.md
+      - The stochastic frontier: future/stochastic-frontier.md
+      - Alternatives to projection: future/alternative-patterning.md
+      - Quantum and exotic lithography: future/quantum-and-exotic.md
+  - Simulator:
+      - Getting started: getting-started.md
+      - Architecture: architecture.md
+      - Simulation pipeline: pipeline.md
+      - Optical systems: optics.md
+      - Vector imaging: vector-imaging.md
+      - Masks & metrics: masks-and-metrics.md
+      - Materials: materials.md
+      - Sources:
+          - sources/index.md
+          - DUV/UV heritage: sources/duv-heritage.md
+          - VUV excimer: sources/vuv-excimer.md
+          - Laser-produced plasma: sources/lpp.md
+          - Discharge-produced plasma: sources/dpp.md
+          - Synchrotron: sources/synchrotron.md
+          - XFEL: sources/xfel.md
+          - LPA-FEL: sources/lpa-fel.md
+          - High-harmonic generation: sources/hhg.md
+          - Soft X-ray laser: sources/soft-xray-laser.md
+          - Inverse Compton: sources/inverse-compton.md
+          - Betatron: sources/betatron.md
+          - SSMB: sources/ssmb.md
+          - Smith–Purcell: sources/smith-purcell.md
+          - X-ray tube: sources/xray-tube.md
+          - Entangled photons: sources/entangled-photon.md
+      - Processes:
+          - processes/index.md
+          - Thin film: processes/thin-film.md
+          - Resist models: processes/resist-models.md
+          - Volumetric exposure: processes/volumetric-exposure.md
+          - LIGA deep X-ray: processes/liga-deep-xray.md
+          - Grayscale: processes/grayscale.md
+          - Interference & two-photon: processes/interference-volumetric.md
+          - Talbot lithography: processes/talbot.md
+      - Research modules: research-modules.md
+  - Reference:
+      - Capability matrix: capability-matrix.md
+      - TOML configuration: configuration.md
+      - CLI: cli.md
+      - GUI: gui.md
+      - Python API: python-api.md
+  - Develop:
+      - Extending highuvlith: extending.md
+      - Roadmap: roadmap.md
+      - Contributing: https://github.com/sonoransun/highuvlith/blob/main/CONTRIBUTING.md
+  - Playground: playground/index.md

@@ -1,0 +1,10 @@
+# Documentation site toolchain (MkDocs + Material for MkDocs), pinned to the versions the
+# site was built and validated with (mkdocs build --strict, 2026-09-30).
+# Install into a separate venv:  pip install -r docs/requirements-docs.txt
+# Keep MkDocs on 1.x: MkDocs 2.0 removes the plugin and theme systems that Material for
+# MkDocs (and this site's hooks and overrides) are built on.
+mkdocs==1.6.1
+mkdocs-material==9.7.7
+pymdown-extensions==12.1
+Markdown==3.11
+Pygments==2.21.0

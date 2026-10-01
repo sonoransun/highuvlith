@@ -25,6 +25,23 @@ pub enum LithographyError {
     #[error("material not found: {0}")]
     MaterialNotFound(String),
 
+    /// A tabulated optical constant was requested outside the wavelength
+    /// range its data cover. Lookups never extrapolate silently; `hint` names
+    /// the alternative (another key or the data range of a fallback table).
+    #[error(
+        "{material}: wavelength {} nm is outside its data range {}-{} nm; {hint}",
+        fmt_nm(*.wavelength_nm),
+        fmt_nm(.range_nm.0),
+        fmt_nm(.range_nm.1)
+    )]
+    WavelengthOutOfRange {
+        material: String,
+        wavelength_nm: f64,
+        /// Accepted wavelength range `(min, max)` in nm.
+        range_nm: (f64, f64),
+        hint: String,
+    },
+
     #[error("TCC decomposition failed: {0}")]
     TccDecomposition(String),
 
@@ -42,6 +59,14 @@ pub enum LithographyError {
 
     #[error("internal error: {0}")]
     InternalError(String),
+}
+
+/// Compact wavelength formatting for messages: at most 4 decimals, trailing
+/// zeros dropped (`125`, `41.3281`, `0.0413`).
+fn fmt_nm(x: f64) -> String {
+    let s = format!("{x:.4}");
+    let s = s.trim_end_matches('0').trim_end_matches('.');
+    s.to_string()
 }
 
 pub type Result<T> = std::result::Result<T, LithographyError>;

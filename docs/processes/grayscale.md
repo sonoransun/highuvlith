@@ -6,7 +6,7 @@
 
 Binary lithography prints edges; grayscale lithography prints **surfaces**. By varying the local dose across the field — with a continuous-transmittance (HEBS-glass or pixelated sub-resolution) mask — a positive resist clears to a *depth* that follows the dose, sculpting blazed gratings, microlens arrays, and staircase phase elements in a single exposure [1, 2]. The transfer function from dose to removed depth is the resist's contrast (Hurter–Driffield) curve, which over its log-linear regime is fixed by just two numbers: the threshold dose $D_{th}$ below which nothing clears, and the clearing dose $D_{clear}$ at which the film clears to the substrate.
 
-[`grayscale.rs`](../../crates/highuvlith-core/src/grayscale.rs) provides that contrast-curve algebra (with its exact inverse), continuous-transmittance mask synthesis that feeds the real diffraction engine, target-relief generators, and a fast 2.5D height map. It is the first-order design tool; when standing waves and sidewall physics matter, the same masks drive the z-resolved exposure/development tiers instead.
+[`grayscale.rs`](../../crates/highuvlith-core/src/grayscale.rs) provides that contrast-curve algebra (with its exact inverse), continuous-transmittance mask synthesis that feeds the real diffraction engine, target-relief generators, and a fast 2.5D height map. It is the first-order design tool; when standing waves and sidewall physics matter, grayscale masks built from `GrayRect` features drive the z-resolved exposure, bake, and development tiers of [volumetric-exposure.md](./volumetric-exposure.md) instead.
 
 ## Physics & math
 
@@ -18,20 +18,34 @@ flowchart LR
     D --> E["Aerial engine<br/>compute_from_transmittance"]
     E --> F["Local dose<br/>D = dose * I(x,y)"]
     F --> G["2.5D height map<br/>h = T_r (1 - f(D))"]
-    F --> H["Volumetric path<br/>standing waves, PEB, FMM"]
+    C -.->|"GrayRect masks"| H["Volumetric path<br/>standing waves, Gaussian/CAR PEB,<br/>FMM or level-set development"]
 ```
 
 The log-linear contrast curve, its forward map, and its exact inverse:
 
-$$\gamma = \frac{1}{\log_{10}(D_{clear}/D_{th})}$$
+```math
+\gamma = \frac{1}{\log_{10}(D_{clear}/D_{th})}
+```
 
-$$f(D) = \mathrm{clamp}\!\big(\gamma \log_{10}(D/D_{th}),\ 0,\ 1\big), \qquad h(D) = T_r\,\big(1 - f(D)\big)$$
+```math
+f(D) = \mathrm{clamp}\!\big(\gamma \log_{10}(D/D_{th}),\ 0,\ 1\big), \qquad h(D) = T_r\,\big(1 - f(D)\big)
+```
 
-$$D(f) = D_{th}\, 10^{f/\gamma}$$
+```math
+D(f) = D_{th}\, 10^{f/\gamma}
+```
 
 with $T_r$ the film thickness and $f$ the removed-depth fraction. `ContrastCurve::dose_for_depth` is the **exact inverse** of `depth_nm` over the open interval $(D_{th}, D_{clear})$ (pinned by a round-trip test); at the clamp boundaries, $f = 0$ maps to $D_{th}$ and $f = 1$ to $D_{clear}$.
 
 Mask synthesis inverts the whole chain: for a target height $h^*(x,y)$ the required removed depth is $T_r - h^*$, the required dose follows from $D(f)$, and the transmittance is $T = D_{req}/D_{exp}$ for a chosen exposure dose $D_{exp}$. Intensity transmittance becomes field amplitude as $\sqrt{T}$ (zero phase), which is what the diffraction engine propagates.
+
+<figure markdown="span">
+
+![Grayscale lithography of a microlens array: the designed continuous-tone mask, the printed resist height map with domed lenses, and a cut comparing the printed profile with the target, which it follows except for the rounding of sharp transitions by the optics.](../assets/images/sim/grayscale-relief-light.png#gh-light-mode-only)
+![Grayscale lithography of a microlens array: the designed continuous-tone mask, the printed resist height map with domed lenses, and a cut comparing the printed profile with the target, which it follows except for the rounding of sharp transitions by the optics.](../assets/images/sim/grayscale-relief-dark.png#gh-dark-mode-only)
+
+<figcaption>Grayscale lithography: a 2 × 2 microlens array (300 nm sag in 500 nm resist) designed through the log-linear contrast curve (threshold 20, clearing 80 mJ/cm², 100 mJ/cm² exposure), imaged with F<sub>2</sub> 157.63 nm, NA 0.75, σ 0.7 and mapped back to remaining height. The optics band-limit the relief, rounding the cusps between lenses. Model: grayscale 🔶 (thin-film contrast-curve resist, no development dynamics).</figcaption>
+</figure>
 
 ## Process regime
 
@@ -60,9 +74,9 @@ Two tiers, explicitly separated:
 | Path | What it captures | What it ignores |
 |---|---|---|
 | 2.5D `height_map` | Closed-form dose→height per pixel; instant; exact for contrast-curve design | Standing waves, PEB diffusion, lateral development, sidewall angle — the contrast curve is depth-independent |
-| Volumetric (`volumetric.rs`) | Exact TMM `intensity_profile` standing waves, split-step Dill bleaching, 3D PEB, fast-marching development front | Vector in-film imaging; paraxial $z/n$ focus mapping (documented there) |
+| Volumetric (`volumetric.rs`) | Exact TMM `intensity_profile` standing waves, split-step Dill bleaching, exact anisotropic Gaussian or chemically amplified PEB, fast-marching or level-set development (lateral etching, sidewall angle, surface inhibition, developer ageing/loading) | Vector in-film imaging; paraxial $z/n$ focus mapping; takes a geometric `Mask` (e.g. `GrayRect` steps), not an arbitrary per-pixel `GrayscaleMap` (documented there) |
 
-Both start from the same grayscale-mask aerial image; choose the tier by whether you need first-order relief design or a physical topography with sidewalls.
+Both image the grayscale mask through the same diffraction engine; choose the tier by whether you need first-order relief design or a physical topography with sidewalls.
 
 ## Model coverage
 
@@ -74,11 +88,11 @@ Both start from the same grayscale-mask aerial image; choose the tier by whether
 | `GrayscaleMap.transmittance` | [0, 1] | `to_complex` → aerial engine; feasibility check | live |
 | `MaskFeature::GrayRect.transmittance` | [0, 1] | `Mask::rasterize` (amplitude $\sqrt{T}$) | live |
 | Grayscale phase (non-zero-phase gray features) | rad | — | planned |
-| Sub-pixel antialiased rasterization | — | — | planned (edges are pixel-quantized) |
+| Sub-pixel edges of gray features | — | `Mask::rasterize` (exact area coverage) and `Mask::spectrum` (closed form), shared with binary rectangles | live |
 
 ## Usage
 
-There is **no Python, CLI, or TOML surface for this module yet** (planned); it is Rust-API only.
+Rust:
 
 ```rust
 use highuvlith_core::grayscale::{microlens_array, ContrastCurve, GrayscaleMap, height_map};
@@ -100,7 +114,44 @@ let aerial = engine.compute_from_transmittance(&gray.to_complex(), 0.0);
 let relief = height_map(&aerial, 100.0, &curve, thickness_nm); // 2.5D
 ```
 
-For standing-wave-aware topography, feed the same aerial image into the volumetric exposure/development tiers instead of `height_map`.
+For standing-wave-aware topography, build the grayscale mask from `MaskFeature::GrayRect`
+steps (e.g. `staircase_mask`) and run it through `volumetric::expose_volumetric` and the
+bake/development tiers like any other `Mask`. An arbitrary per-pixel `GrayscaleMap` has no
+volumetric entry point today; from Python, a latent volume computed elsewhere can be
+wrapped with `VolumetricResult.from_array` and developed.
+
+Python (package top level; wrappers in [`python/highuvlith/api.py`](../../python/highuvlith/api.py)):
+
+<!-- verify-example -->
+```python
+import highuvlith as huv
+
+target = huv.microlens_array(128, 32, 80.0, 200.0)   # (n, pitch_px, sag_nm, thickness_nm)
+res = huv.simulate_grayscale(
+    target, 200.0, d_th=10.0, d_clear=100.0, exposure_dose_mj_cm2=150.0,
+    wavelength_nm=365.0, na=0.4, sigma=0.7, pixel_nm=100.0,
+)
+res.transmittance            # synthesized intensity-transmittance mask
+res.height_map.values        # printed 2.5D relief (imaged through the aerial engine)
+
+# Building blocks:
+huv.blazed_grating(128, 32, 120.0, 200.0)            # (n, period_px, depth_nm, thickness_nm)
+t = huv.grayscale_transmittance_for_target(target, 200.0, 10.0, 100.0, 150.0)
+source = huv.SourceConfig.hg_i_line(sigma=0.7)
+optics = huv.OpticsConfig(numerical_aperture=0.4)
+grid = huv.GridConfig(size=128, pixel_nm=100.0)      # must match the target's shape
+hm = huv.grayscale_height_map(source, optics, grid, t, 150.0, 10.0, 100.0, 200.0)
+```
+
+CLI — `highuvlith deep` with `[deep] mode = "grayscale"`
+([`examples/grayscale.toml`](../../examples/grayscale.toml)): keys `target`
+(`blazed` | `microlens` | `staircase`), `period_px`, `pitch_px`, `n_levels`, `depth_nm`,
+`sag_nm`, `thickness_nm`, `dose_mj_cm2`, `d_th`, `d_clear`. It synthesizes the
+transmittance for the target and re-prints it in the ideal 2.5D model (local dose =
+exposure dose × transmittance, **no diffraction**), reporting γ, the target and achieved
+height ranges, and the RMS error — a self-consistency check of the contrast-curve
+inversion. Imaging through the optics is available from Python (`simulate_grayscale`,
+`grayscale_height_map`) and Rust.
 
 ## Validation
 
@@ -115,7 +166,9 @@ For standing-wave-aware topography, feed the same aerial image into the volumetr
 - `test_from_target_height_errors_when_dose_insufficient` — the feasibility error fires, and a sufficient dose yields $T \in [0,1]$.
 - `test_to_complex_amplitude_is_sqrt_t`, `test_staircase_mask_builds_gray_rects`.
 
-In `aerial.rs`: `test_compute_from_transmittance_matches_compute` pins that the transmittance entry point is bit-identical to the standard mask path.
+In `aerial.rs`: `test_compute_uses_mask_spectrum` pins that `compute_from_transmittance` of the inverse transform of the exact mask spectrum reproduces `compute` (to 1e-12), and `test_compute_from_transmittance_close_to_raster` that the rasterized-transmittance path images the same geometry up to edge sampling (within 0.05).
+
+Python (`tests/python/test_volumetric.py`): `test_grayscale_blazed_round_trip` (printed relief correlates with the target; per-period slope correlation < −0.7), `test_grayscale_transmittance_helpers`. CLI (`commands/deep.rs`): `test_parse_grayscale_config`.
 
 ## References
 

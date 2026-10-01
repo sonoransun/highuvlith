@@ -71,8 +71,12 @@ impl SellmeierCoefficients {
     }
 }
 
-/// CaF2 Sellmeier coefficients valid from ~130nm to ~10um.
-/// Reference: Daimon & Masumura, Appl. Opt. 41, 5275 (2002).
+/// CaF2 Sellmeier coefficients: Malitson's fit (I. H. Malitson, Appl. Opt. 2,
+/// 1103 (1963); measured 0.23-9.7 um; resonances at 50.3 nm, 100.4 nm and
+/// 34.6 um). Earlier repo text attributed these to Daimon & Masumura (2002);
+/// the numbers are Malitson's (n = 1.43381 at 589.3 nm). Use in the VUV is an
+/// extrapolation of the fit - it gives 1.5570 at 157.63 nm against ~1.559
+/// measured. The materials database accepts 125-2000 nm.
 pub fn caf2_sellmeier() -> SellmeierCoefficients {
     SellmeierCoefficients {
         b: vec![0.5675888, 0.4710914, 3.8484723],
@@ -106,8 +110,10 @@ pub fn baf2_sellmeier() -> SellmeierCoefficients {
     }
 }
 
-/// Fused silica (SiO2) Sellmeier coefficients.
-/// Note: absorbs below ~165nm, only valid for DUV reference.
+/// Fused silica (SiO2) Sellmeier coefficients: Malitson's fit (I. H.
+/// Malitson, J. Opt. Soc. Am. 55, 1205 (1965); measured from 0.21 um).
+/// Note: absorbs below ~165nm, only valid for DUV reference (the materials
+/// database accepts 165-2000 nm).
 pub fn sio2_sellmeier() -> SellmeierCoefficients {
     SellmeierCoefficients {
         b: vec![0.6961663, 0.4079426, 0.8974794],

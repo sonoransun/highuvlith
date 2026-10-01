@@ -9,18 +9,46 @@
 #
 #     λ_eff = λ / N          (N = 2 here → 157.63 / 2 = 78.8 nm)
 #
-# so the minimum recordable half-pitch drops from the classical λ/2 to
+# so the minimum two-beam fringe PERIOD (grazing beams, sin θ → 1) drops from
+# the classical λ/2 to
 #
-#     λ / (2N) = 157.63 / 4 ≈ 39.4 nm
+#     λ / (2N) = 157.63 / 4 ≈ 39.4 nm   (half-pitch λ/(4N) ≈ 19.7 nm)
 #
-# an N-fold resolution gain WITHOUT shortening the physical wavelength. This
-# pipeline images CLASSICALLY at the physical wavelength (157.63 nm below); the
-# quantum sharpening is applied explicitly through the quantum module, and
-# `fidelity < 1` degrades the interference contrast toward the classical result.
+# an N-fold resolution gain WITHOUT shortening the physical wavelength.
+#
+# WHAT THE CLI COMPUTES: `highuvlith simulate` images this source CLASSICALLY
+# at the physical wavelength (157.63 nm below) with a nearly coherent fill
+# (sigma 0.05); it applies NO quantum step. `num_photons` and `fidelity` feed
+# the derived quantities and the core quantum module only
+# (quantum::n_photon_absorption_image = classical N-photon absorption I^N at
+# the CLASSICAL period; quantum::noon_ideal_image = the Boto ideal limit
+# F·I_{λ/N} + (1−F)·I^N; quantum::TwoBeamNPhoton = two-beam N00N fringes).
+#
+# WHAT THIS EXAMPLE SHOWS: the classical image an N-photon resist would
+# record, at a pitch the optics resolves. 120 nm lines on a 240 nm pitch
+# (k1 = 0.57) sit above the coherent cutoff λ/(NA(1+σ)) =
+# 157.63/(0.75·1.05) ≈ 200 nm, so the classical image is a clean two-beam
+# fringe. CLI output (debug or release build):
+#     Contrast 0.9831, printed CD 125.2 nm at I = 0.30, NILS 7.33
+# Python (`simulate_quantum_line_space(120, 240, sigma=0.05)`, no flare):
+# classical contrast 0.986 → I² (N = 2 absorption) 0.9999 — sharper, same
+# 240 nm period.
+#
+# Why not a sub-cutoff pitch: at 180 nm the classical image is flat (CLI
+# contrast 0.0014; Python 0.000) and I^N of a flat image is flat — classical
+# N-photon absorption cannot resolve what the optics does not transmit. Only
+# the IDEAL N00N limit (`model="noon"`, imaged at λ/N, cutoff ≈ 100 nm) gives
+# 0.98 there; that is the Boto idealization, not something any source or
+# resist has demonstrated.
 #
 # STATUS — ENTIRELY THEORETICAL: multi-photon-absorbing resists at useful rates
 # and bright high-N N00N sources do not exist; this is a physics demonstration,
-# not a manufacturable process.
+# not a manufacturable process — no entangled sub-Rayleigh pattern has ever been
+# recorded in a material (all demonstrations used coincidence detection).
+# `highuvlith simulate` prints the exposure time to clear 1 cm² by entangled
+# two-photon absorption at the pair rate below: ≥ 1e16 s (~3×10⁸ years) with the
+# cross-section at its loosest independent upper bound (1e-23 cm², the default
+# scenario), 1e10–1e14 s even with the DISPUTED early claims (1e-17–1e-21 cm²).
 #
 # Reference: Boto et al., "Quantum interferometric optical lithography:
 #            exploiting entanglement to beat the diffraction limit,"
@@ -32,8 +60,9 @@
 [source]
 type          = "entangled"
 wavelength_nm = 157.63    # PHYSICAL wavelength (F2 laser); λ_eff = λ/N
-num_photons   = 2         # N00N order N → λ_eff = λ/2, half-pitch λ/(2N)
-fidelity      = 1.0       # 1.0 = ideal entanglement; < 1 degrades toward classical
+num_photons   = 2         # N00N order N → λ_eff = λ/2, min fringe period λ/(2N)
+fidelity      = 1.0       # 1.0 = ideal entanglement (quantum module only; < 1 mixes in classical I^N)
+pair_rate_hz  = 1.0e6     # SPDC-class N-tuple rate → derived exposure-time estimates
 
 [optics]
 # Imaging is classical at 157.63 nm (> 110 nm), so a refractive CaF2 lens is
@@ -42,12 +71,12 @@ na             = 0.75
 flare_fraction = 0.02
 
 [mask]
-cd_nm    = 65.0
-pitch_nm = 180.0
+cd_nm    = 120.0   # k1 = 0.57: resolvable (classical cutoff ≈ 200 nm pitch)
+pitch_nm = 240.0
 
 [grid]
-size     = 256
-pixel_nm = 1.0
+size     = 256     # 1 nm requested; the CLI snaps to 0.9375 nm so the 240 nm
+pixel_nm = 1.0     #   field holds exactly 1 pitch (it prints a note)
 
 [process]
 dose_mj_cm2 = 30.0

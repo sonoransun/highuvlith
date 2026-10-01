@@ -3,6 +3,26 @@
 //! Zone plates are diffractive focusing elements — the primary optic for
 //! X-ray microscopy and lithography. Resolution is determined by the
 //! outermost zone width Δr_N.
+//!
+//! # Key equations
+//!
+//! ```text
+//!   NA(λ) = λ / (2 Δr_N)            f_cutoff = NA(λ)/λ = 1/(2 Δr_N)  (λ-independent)
+//!   f(λ) = r_N² / (N λ)             Δf/f = −Δλ/λ   (strong chromatic focal shift)
+//!   P(ρ) = √η · exp[i Φ_z(ρ)]  for ρ_stop ≤ ρ ≤ 1,  Φ_z = (2π/λ) z (1 − √(1 − NA(λ)²ρ²))
+//! ```
+//! with `η` the first-order diffraction efficiency (1/π² binary, 4/π² phase).
+//!
+//! # Model status
+//!
+//! Scalar first-order-only pupil: other diffraction orders enter only through
+//! the `flare_fraction` heuristic, zone placement errors are not modeled, and
+//! the efficiency is a constant. The focal shift for operating off the design
+//! wavelength is NOT put in the pupil — `z` is measured from best focus at
+//! the imaging wavelength; the in-band chromatic shift relative to the source
+//! center wavelength is supplied by `chromatic_defocus` and applied by the
+//! engine's polychromatic / multi-wavelength paths (so it is never counted
+//! twice).
 
 use num::Complex;
 use serde::{Deserialize, Serialize};
@@ -49,6 +69,10 @@ pub struct FresnelZonePlate {
     pub central_stop_fraction: f64,
     /// Reduction ratio (e.g., 1.0 for 1:1, typically 1.0 for zone plate lithography).
     pub reduction_ratio: f64,
+    /// Use the paraxial (quadratic) defocus phase instead of the exact
+    /// plane-wave form. Default `false`.
+    #[serde(default)]
+    pub paraxial_defocus: bool,
 }
 
 impl FresnelZonePlate {
@@ -89,6 +113,7 @@ impl FresnelZonePlate {
             efficiency: ZonePlateEfficiency::Phase,
             central_stop_fraction: 0.0,
             reduction_ratio: 1.0,
+            paraxial_defocus: false,
         })
     }
 
@@ -134,21 +159,18 @@ impl super::OpticalSystem for FresnelZonePlate {
         // Zone plate transmission includes efficiency factor
         let transmission = self.efficiency.first_order_efficiency().sqrt();
 
-        // Defocus phase (same as refractive optics)
-        let na = self.na();
-        let defocus_phase = std::f64::consts::PI * defocus_nm * rho * rho * na * na / wavelength_nm;
+        // Defocus phase. The outermost zone diffracts at sin(theta) =
+        // lambda / (2 dr_N), so the NA seen at this wavelength is
+        // lambda * f_cutoff (equal to `na()` at the design wavelength).
+        let na_lambda = wavelength_nm * self.cutoff_frequency(wavelength_nm);
+        let defocus_phase = super::defocus_phase(
+            defocus_nm,
+            na_lambda * rho,
+            wavelength_nm,
+            self.paraxial_defocus,
+        );
 
-        // Zone plate introduces additional chromatic phase error
-        // when operating off-design wavelength
-        let chromatic_phase = if (wavelength_nm - self.design_wavelength_nm).abs() > 1e-6 {
-            let delta_f = self.focal_length_nm() * (wavelength_nm - self.design_wavelength_nm)
-                / self.design_wavelength_nm;
-            std::f64::consts::PI * delta_f * rho * rho * na * na / wavelength_nm
-        } else {
-            0.0
-        };
-
-        Complex::from_polar(transmission, defocus_phase + chromatic_phase)
+        Complex::from_polar(transmission, defocus_phase)
     }
 
     fn na(&self) -> f64 {
@@ -169,8 +191,23 @@ impl super::OpticalSystem for FresnelZonePlate {
         }
     }
 
+    fn clone_box(&self) -> Box<dyn super::OpticalSystem> {
+        Box::new(self.clone())
+    }
+
     fn chromatic_defocus(&self, delta_wavelength_pm: f64) -> f64 {
         self.chromatic_defocus_per_pm() * delta_wavelength_pm
+    }
+
+    /// `1/(2 Δr_N)`: the outermost zone fixes the highest transmitted
+    /// spatial frequency independently of wavelength.
+    fn cutoff_frequency(&self, _wavelength_nm: f64) -> f64 {
+        1.0 / (2.0 * self.outermost_zone_width_nm)
+    }
+
+    /// `0.61 / f_cutoff = 1.22 Δr_N` (wavelength-independent).
+    fn rayleigh_resolution(&self, _wavelength_nm: f64) -> f64 {
+        0.61 * 2.0 * self.outermost_zone_width_nm
     }
 }
 
@@ -269,5 +306,27 @@ mod tests {
         let expected_f = zp.num_zones as f64 * 25.0 * 25.0 / 1.0;
         assert_relative_eq!(f, expected_f, epsilon = 1e-6);
         assert!(f > 0.0, "Focal length must be positive");
+    }
+
+    #[test]
+    fn test_cutoff_is_wavelength_independent() {
+        let zp = FresnelZonePlate::new(25.0, 1.0).unwrap();
+        assert_relative_eq!(zp.cutoff_frequency(1.0), 0.02, epsilon = 1e-15);
+        assert_relative_eq!(zp.cutoff_frequency(2.0), 0.02, epsilon = 1e-15);
+        // At the design wavelength the trait default (NA/λ) agrees.
+        assert_relative_eq!(zp.na() / 1.0, zp.cutoff_frequency(1.0), epsilon = 1e-15);
+        assert_relative_eq!(zp.rayleigh_resolution(3.0), 1.22 * 25.0, epsilon = 1e-12);
+    }
+
+    #[test]
+    fn test_pupil_defocus_uses_wavelength_na_and_no_chromatic_phase() {
+        let zp = FresnelZonePlate::new(25.0, 1.0).unwrap();
+        // In focus the pupil is real (no hidden off-design chromatic phase).
+        let p = zp.pupil_function(0.7, 0.0, 0.0, 1.1);
+        assert!(p.im.abs() < 1e-15 && p.re > 0.0);
+        // Defocused: sin(theta) = (λ/(2Δr))·ρ at the imaging wavelength.
+        let p = zp.pupil_function(0.7, 0.0, 500.0, 1.1);
+        let expected = crate::optics::defocus_phase(500.0, 1.1 / 50.0 * 0.7, 1.1, false);
+        assert_relative_eq!(p.arg(), expected, epsilon = 1e-12);
     }
 }

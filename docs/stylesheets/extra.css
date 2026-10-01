@@ -1,0 +1,658 @@
+/* highuvlith site styles, layered on Material for MkDocs.
+ *
+ * 1. Brand palette (deep-UV violet primary, EUV cyan accent) for both schemes
+ * 2. Header accent line and home page
+ * 3. Honesty badges (spans added by docs/hooks/status_badges.py)
+ * 4. Tables, figures, diagrams
+ * 5. Playground calculators (docs/javascripts/playground.js)
+ * 6. Print
+ *
+ * Text colours were checked against WCAG AA (4.5:1): links 7.5:1 on white and 7.4:1 on
+ * the dark background; accent 5.4:1 and 9.1:1; header text 11.9:1 and 14.9:1.
+ */
+
+/* 1. Brand palette ------------------------------------------------------------------ */
+
+:root {
+  --huv-violet-900: #26145f;
+  --huv-violet-800: #3a1f8f;
+  --huv-violet-600: #5b36c9;
+  --huv-violet-300: #b5a1ff;
+  --huv-cyan-700: #0e7490;
+  --huv-cyan-300: #22d3ee;
+  --huv-cyan-200: #5ee8ff;
+  --huv-spectrum: linear-gradient(90deg, #7c4dff 0%, #5b36c9 30%, #0e7490 75%, #22d3ee 100%);
+
+  /* Honesty grades (light scheme). */
+  --huv-implemented: #1b7f3b;
+  --huv-simplified: #b45309;
+  --huv-theoretical: #8e24aa;
+  --huv-planned: #1565c0;
+}
+
+[data-md-color-primary="custom"] {
+  --md-primary-fg-color: var(--huv-violet-800);
+  --md-primary-fg-color--light: var(--huv-violet-600);
+  --md-primary-fg-color--dark: var(--huv-violet-900);
+  --md-primary-bg-color: #ffffff;
+  --md-primary-bg-color--light: #ffffffb3;
+  --md-typeset-a-color: var(--huv-violet-600);
+}
+
+[data-md-color-accent="custom"] {
+  --md-accent-fg-color: var(--huv-cyan-700);
+  --md-accent-fg-color--transparent: #0e74901a;
+  --md-accent-bg-color: #ffffff;
+  --md-accent-bg-color--light: #ffffffb3;
+}
+
+[data-md-color-scheme="slate"] {
+  /* Tint Material's dark greys towards violet. */
+  --md-hue: 250;
+  --huv-implemented: #4ade80;
+  --huv-simplified: #fbbf24;
+  --huv-theoretical: #e879f9;
+  --huv-planned: #60a5fa;
+}
+
+[data-md-color-scheme="slate"][data-md-color-primary="custom"] {
+  --md-primary-fg-color: #2a1766;
+  --md-primary-fg-color--light: #4a2fa8;
+  --md-primary-fg-color--dark: #1b0f45;
+  --md-typeset-a-color: var(--huv-violet-300);
+}
+
+[data-md-color-scheme="slate"][data-md-color-accent="custom"] {
+  --md-accent-fg-color: var(--huv-cyan-300);
+  --md-accent-fg-color--transparent: #22d3ee1f;
+  --md-accent-bg-color: #0b1a22;
+  --md-accent-bg-color--light: #0b1a22b3;
+}
+
+/* 2. Header and home page ----------------------------------------------------------- */
+
+/* A thin violet-to-cyan line under the header: the site's one decorative flourish. */
+.md-header::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 2px;
+  background: var(--huv-spectrum);
+  opacity: 0.9;
+}
+
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg {
+  height: 1.6rem;
+  width: 1.6rem;
+}
+
+.md-typeset .huv-lead {
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--md-default-fg-color);
+}
+
+/* Links in a .huv-actions block render as buttons; the first one is the primary. */
+.md-typeset .huv-actions > p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  font-size: 0; /* hides the " · " separators that keep the plain-Markdown view readable */
+}
+
+.md-typeset .huv-actions a {
+  display: inline-block;
+  padding: 0.55em 1.2em;
+  border: 0.1rem solid var(--md-typeset-a-color);
+  border-radius: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--md-typeset-a-color);
+  transition: color 125ms, background-color 125ms, border-color 125ms;
+}
+
+.md-typeset .huv-actions a:first-child {
+  background-color: var(--md-primary-fg-color);
+  border-color: var(--md-primary-fg-color);
+  color: var(--md-primary-bg-color);
+}
+
+.md-typeset .huv-actions a:is(:hover, :focus-visible) {
+  background-color: var(--md-accent-fg-color);
+  border-color: var(--md-accent-fg-color);
+  color: var(--md-accent-bg-color);
+}
+
+/* Section cards on the home page: three across on wide screens, with a spectrum rule. */
+.md-typeset .grid.huv-sections {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+}
+
+/* A spectrum rule on top of each section card. */
+.md-typeset .huv-sections.grid.cards > ul > li,
+.md-typeset .huv-sections.grid.cards > ol > li {
+  border-top: 0.2rem solid transparent;
+  border-image: var(--huv-spectrum) 1;
+  border-image-width: 0.2rem 0 0 0;
+}
+
+.md-typeset .grid.cards > ul > li > p:first-child strong {
+  font-size: 0.85rem;
+}
+
+/* 3. Honesty badges ------------------------------------------------------------------ */
+
+.md-typeset .huv-badge {
+  display: inline-block;
+  padding: 0 0.12em;
+  border-radius: 0.25em;
+  line-height: 1.3;
+  cursor: help;
+  background-color: color-mix(in srgb, var(--huv-badge-color, transparent) 14%, transparent);
+}
+
+.md-typeset .huv-badge--implemented { --huv-badge-color: var(--huv-implemented); }
+.md-typeset .huv-badge--simplified { --huv-badge-color: var(--huv-simplified); }
+.md-typeset .huv-badge--theoretical { --huv-badge-color: var(--huv-theoretical); }
+.md-typeset .huv-badge--planned { --huv-badge-color: var(--huv-planned); }
+
+/* The page's **Status:** line becomes a callout coloured by its grade. */
+.md-typeset p.huv-status {
+  --huv-status-color: var(--md-default-fg-color--light);
+  margin: 0 0 1.2em;
+  padding: 0.6em 0.9em;
+  border-left: 0.25rem solid var(--huv-status-color);
+  border-radius: 0.2rem;
+  background-color: color-mix(in srgb, var(--huv-status-color) 8%, transparent);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+
+.md-typeset p.huv-status > strong:first-child {
+  color: var(--huv-status-color);
+  letter-spacing: 0.02em;
+}
+
+.md-typeset p.huv-status .huv-badge {
+  background-color: transparent;
+}
+
+.md-typeset p.huv-status--implemented { --huv-status-color: var(--huv-implemented); }
+.md-typeset p.huv-status--simplified { --huv-status-color: var(--huv-simplified); }
+.md-typeset p.huv-status--theoretical { --huv-status-color: var(--huv-theoretical); }
+.md-typeset p.huv-status--planned { --huv-status-color: var(--huv-planned); }
+
+/* 4. Tables, figures, diagrams ------------------------------------------------------- */
+
+.md-typeset table:not([class]) {
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+.md-typeset table:not([class]) th {
+  background-color: color-mix(in srgb, var(--md-primary-fg-color) 9%, transparent);
+  font-weight: 700;
+}
+
+.md-typeset table:not([class]) td {
+  vertical-align: top;
+}
+
+.md-typeset table:not([class]) tbody tr:nth-child(even) {
+  background-color: color-mix(in srgb, var(--md-default-fg-color) 3%, transparent);
+}
+
+.md-typeset table:not([class]) tbody tr:hover {
+  background-color: var(--md-accent-fg-color--transparent);
+  box-shadow: none;
+}
+
+.md-typeset td code,
+.md-typeset th code {
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+.md-typeset figure {
+  margin: 1.6em auto;
+}
+
+.md-typeset figure img,
+.md-typeset figure svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.md-typeset figcaption {
+  max-width: 42rem;
+  margin: 0.8em auto 0;
+  font-style: normal;
+  font-size: 0.68rem;
+  line-height: 1.5;
+  color: var(--md-default-fg-color--light);
+}
+
+/* Inline formulas wider than their text block scroll sideways instead of being cut off
+   (class set by docs/javascripts/mathjax.js after typesetting). */
+.md-typeset span.arithmatex.huv-math-scroll {
+  display: inline-block;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  vertical-align: middle;
+}
+
+/* For figures drawn for a white page: `![alt](fig.png){ .huv-paper }` keeps a white card
+   behind the image in the dark scheme too. */
+.md-typeset img.huv-paper {
+  padding: 0.5rem;
+  border-radius: 0.2rem;
+  background-color: #ffffff;
+}
+
+/* Mermaid renders into a closed shadow root, so docs/javascripts/diagrams.js wraps each
+   diagram in .huv-diagram and sets a minimum width on diagrams that would otherwise be
+   shrunk below a legible scale; the wrapper then scrolls sideways. */
+.md-typeset .huv-diagram {
+  margin: 1em 0;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  /* Scroll shadows: a soft edge appears on the side that has more diagram to show. */
+  background:
+    linear-gradient(to right, var(--md-default-bg-color) 30%, transparent) left / 2rem 100% no-repeat local,
+    linear-gradient(to left, var(--md-default-bg-color) 30%, transparent) right / 2rem 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, var(--md-default-fg-color--lightest), transparent) left / 0.7rem 100% no-repeat scroll,
+    radial-gradient(farthest-side at 100% 50%, var(--md-default-fg-color--lightest), transparent) right / 0.7rem 100% no-repeat scroll;
+}
+
+.md-typeset .huv-diagram > .mermaid {
+  margin: 0;
+}
+
+.md-typeset .huv-diagram:focus-visible {
+  outline: 0.1rem solid var(--md-accent-fg-color);
+  outline-offset: 0.2rem;
+}
+
+@media screen and (max-width: 44.984375em) {
+  .md-typeset .huv-diagram > .mermaid {
+    text-align: start;
+  }
+}
+
+/* 5. Playground calculators --------------------------------------------------------- */
+
+.md-typeset .huv-calc {
+  --huv-series-1: #2a78d6;
+  --huv-series-2: #eb6834;
+  --huv-grid: color-mix(in srgb, var(--md-default-fg-color) 12%, transparent);
+  --huv-axis: color-mix(in srgb, var(--md-default-fg-color) 35%, transparent);
+  margin: 1.2em 0 2em;
+  padding: 1rem 1rem 0.6rem;
+  border: 0.05rem solid var(--md-default-fg-color--lightest);
+  border-radius: 0.3rem;
+  background-color: var(--md-default-bg-color);
+}
+
+[data-md-color-scheme="slate"] .md-typeset .huv-calc {
+  --huv-series-1: #3987e5;
+  --huv-series-2: #d95926;
+}
+
+.md-typeset .huv-calc noscript,
+.md-typeset .huv-calc .huv-calc__loading {
+  display: block;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .huv-calc fieldset {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+.md-typeset .huv-calc legend {
+  padding: 0;
+  margin-bottom: 0.4rem;
+  font-weight: 700;
+}
+
+.md-typeset .huv-calc__controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.8rem 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.md-typeset .huv-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
+}
+
+.md-typeset .huv-field > label,
+.md-typeset .huv-field > .huv-field__label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .huv-field__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.md-typeset .huv-field input[type="range"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  accent-color: var(--md-accent-fg-color);
+}
+
+.md-typeset .huv-field input[type="number"],
+.md-typeset .huv-field select {
+  flex: 0 0 auto;
+  width: 6.2rem;
+  padding: 0.25rem 0.4rem;
+  border: 0.05rem solid var(--md-default-fg-color--lighter);
+  border-radius: 0.2rem;
+  background-color: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  font: inherit;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.md-typeset .huv-field select {
+  width: 100%;
+}
+
+.md-typeset .huv-field input:focus-visible,
+.md-typeset .huv-field select:focus-visible {
+  outline: 0.1rem solid var(--md-accent-fg-color);
+  outline-offset: 0.05rem;
+}
+
+.md-typeset .huv-field input[aria-invalid="true"] {
+  border-color: var(--huv-simplified);
+}
+
+.md-typeset .huv-field__hint {
+  font-size: 0.62rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .huv-check {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.68rem;
+}
+
+.md-typeset .huv-check input {
+  accent-color: var(--md-accent-fg-color);
+}
+
+/* Stat tiles: label on top, value below; proportional figures for the big numbers.
+   (ul.x:not([hidden]) outranks Material's `.md-typeset ul:not([hidden])` display rule.) */
+.md-typeset ul.huv-tiles:not([hidden]) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9.5rem, 1fr));
+  gap: 0.6rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.md-typeset ul.huv-tiles > li {
+  margin: 0;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.2rem;
+  background-color: color-mix(in srgb, var(--md-default-fg-color) 4%, transparent);
+}
+
+.md-typeset .huv-tile__label {
+  display: block;
+  font-size: 0.62rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .huv-tile__value {
+  display: block;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--md-default-fg-color);
+}
+
+.md-typeset .huv-tile__note {
+  display: block;
+  font-size: 0.6rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .huv-calc__message {
+  margin: 0 0 0.8rem;
+  padding: 0.4rem 0.7rem;
+  border-left: 0.2rem solid var(--huv-simplified);
+  background-color: color-mix(in srgb, var(--huv-simplified) 9%, transparent);
+  font-size: 0.68rem;
+}
+
+.md-typeset .huv-calc__message[hidden] {
+  display: none;
+}
+
+.md-typeset .huv-calc table.huv-calc__table {
+  display: table;
+  width: 100%;
+  margin: 0 0 0.8rem;
+  font-size: 0.66rem;
+  font-variant-numeric: tabular-nums;
+  border-collapse: collapse;
+}
+
+.md-typeset .huv-calc .huv-calc__table th,
+.md-typeset .huv-calc .huv-calc__table td {
+  padding: 0.35em 0.5em;
+  border-bottom: 0.05rem solid var(--md-default-fg-color--lightest);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.md-typeset .huv-calc .huv-calc__table thead th {
+  white-space: normal;
+  vertical-align: bottom;
+}
+
+.md-typeset .huv-calc .huv-calc__table th:first-child,
+.md-typeset .huv-calc .huv-calc__table td:first-child {
+  text-align: left;
+}
+
+.md-typeset .huv-calc .huv-calc__table thead th {
+  font-weight: 700;
+  color: var(--md-default-fg-color--light);
+  background: none;
+}
+
+.md-typeset .huv-calc .huv-calc__table tr[aria-current="true"] > * {
+  background-color: var(--md-accent-fg-color--transparent);
+  font-weight: 700;
+}
+
+.md-typeset .huv-calc__tablewrap {
+  overflow-x: auto;
+}
+
+.md-typeset .huv-plot {
+  position: relative;
+  margin: 0 0 0.6rem;
+}
+
+.md-typeset .huv-plot canvas {
+  display: block;
+  width: 100%;
+  height: 17rem;
+  touch-action: pan-y;
+  border-radius: 0.2rem;
+}
+
+.md-typeset .huv-plot canvas:focus-visible {
+  outline: 0.1rem solid var(--md-accent-fg-color);
+  outline-offset: 0.15rem;
+}
+
+.md-typeset ul.huv-legend:not([hidden]) {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 1.1rem;
+  margin: 0 0 0.4rem;
+  padding: 0;
+  list-style: none;
+  font-size: 0.64rem;
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset ul.huv-legend > li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+}
+
+.md-typeset .huv-legend__key {
+  display: inline-block;
+  width: 1.1rem;
+  height: 0;
+  border-top: 2px solid var(--huv-key-color, currentcolor);
+}
+
+.md-typeset .huv-legend__key--dashed {
+  border-top-style: dashed;
+}
+
+.md-typeset .huv-legend__key--mask {
+  height: 0.5rem;
+  border: 0;
+  border-radius: 0.1rem;
+  background-color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .huv-tooltip {
+  position: absolute;
+  z-index: 1;
+  min-width: 8rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 0.2rem;
+  background-color: var(--md-default-bg-color);
+  box-shadow: var(--md-shadow-z2);
+  font-size: 0.62rem;
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.md-typeset .huv-tooltip[hidden] {
+  display: none;
+}
+
+.md-typeset .huv-tooltip__x {
+  color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .huv-tooltip__row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.md-typeset .huv-tooltip__row strong {
+  font-variant-numeric: tabular-nums;
+  color: var(--md-default-fg-color);
+}
+
+/* The table view sits in a plain, neutral <details> rather than a blue admonition. */
+.md-typeset .huv-calc details {
+  margin: 0.4rem 0 0.8rem;
+  border-color: var(--md-default-fg-color--lightest);
+  box-shadow: none;
+}
+
+.md-typeset .huv-calc details > summary {
+  background-color: transparent;
+}
+
+.md-typeset .huv-calc details > summary::before {
+  background-color: var(--md-default-fg-color--light);
+}
+
+.md-typeset .huv-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* 6. Print -------------------------------------------------------------------------- */
+
+@media print {
+  .md-header::after {
+    display: none;
+  }
+
+  .md-typeset .huv-diagram {
+    overflow: visible;
+  }
+
+  .md-typeset .huv-diagram > .mermaid {
+    min-width: 0 !important;
+  }
+
+  .md-typeset p.huv-status {
+    border: 0.05rem solid var(--huv-status-color);
+    border-left-width: 0.25rem;
+  }
+
+  .md-typeset figure,
+  .md-typeset table,
+  .md-typeset pre,
+  .md-typeset .admonition,
+  .md-typeset details,
+  .md-typeset .huv-diagram {
+    break-inside: avoid;
+  }
+
+  .md-typeset h2,
+  .md-typeset h3 {
+    break-after: avoid;
+  }
+
+  /* Printed pages cannot be clicked: show where off-site links go (class added by
+     docs/hooks/repo_links.py at build time). */
+  .md-content .md-typeset a.huv-external::after {
+    content: " (" attr(href) ")";
+    font-size: 0.8em;
+    word-break: break-all;
+    color: var(--md-default-fg-color--light);
+  }
+
+  .md-typeset .huv-calc__controls,
+  .md-typeset .huv-tooltip {
+    display: none;
+  }
+
+  .md-typeset .huv-actions a {
+    border: 0;
+    padding: 0;
+    background: none;
+    color: inherit;
+  }
+}

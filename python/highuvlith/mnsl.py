@@ -88,14 +88,26 @@ class MnslSimResult:
         return self.result.total_emission_power
 
     @property
-    def peak_positions(self) -> list[tuple[float, float]]:
-        """Peak positions as list of (x, y) coordinates in nm."""
+    def peak_positions(self) -> list[list[float]]:
+        """Peak positions as a list of [x_nm, y_nm] pairs."""
         return self.result.peak_positions
 
     @property
     def num_peaks(self) -> int:
         """Number of emission peaks found."""
         return len(self.peak_positions)
+
+    @property
+    def status(self) -> str:
+        """Capability badge of the model behind this result ("🧪": the lattice
+        geometry and moiré period are exact, the emission map is a heuristic;
+        see docs/capability-matrix.md)."""
+        return self.result.status
+
+    @property
+    def notes(self) -> list[str]:
+        """The model's stated approximations."""
+        return list(self.result.notes)
 
 
 # Type aliases for convenience
@@ -267,9 +279,9 @@ def sweep_rotation_angle(
         raise ValueError(f"angle_steps must be >= 2, got {angle_steps}")
 
     angles = np.linspace(angle_min, angle_max, angle_steps)
-    peak_enhancements = []
-    moire_periods = []
-    total_powers = []
+    peak_enhancements_list: list[float] = []
+    moire_periods_list: list[float] = []
+    total_powers_list: list[float] = []
 
     for angle in angles:
         result = simulate_moire_emission(
@@ -280,13 +292,13 @@ def sweep_rotation_angle(
             grid_size=grid_size,
             pixel_nm=pixel_nm,
         )
-        peak_enhancements.append(result.peak_enhancement)
-        moire_periods.append(result.moire_period_nm)
-        total_powers.append(result.total_emission_power)
+        peak_enhancements_list.append(result.peak_enhancement)
+        moire_periods_list.append(result.moire_period_nm)
+        total_powers_list.append(result.total_emission_power)
 
-    peak_enhancements = np.array(peak_enhancements)
-    moire_periods = np.array(moire_periods)
-    total_powers = np.array(total_powers)
+    peak_enhancements = np.array(peak_enhancements_list)
+    moire_periods = np.array(moire_periods_list)
+    total_powers = np.array(total_powers_list)
 
     best_idx = np.argmax(peak_enhancements)
 
@@ -340,8 +352,8 @@ def sweep_separation(
         raise ValueError(f"separation_steps must be >= 2, got {separation_steps}")
 
     separations = np.linspace(separation_min, separation_max, separation_steps)
-    peak_enhancements = []
-    total_powers = []
+    peak_enhancements_list: list[float] = []
+    total_powers_list: list[float] = []
 
     for separation in separations:
         result = simulate_moire_emission(
@@ -352,11 +364,11 @@ def sweep_separation(
             grid_size=grid_size,
             pixel_nm=pixel_nm,
         )
-        peak_enhancements.append(result.peak_enhancement)
-        total_powers.append(result.total_emission_power)
+        peak_enhancements_list.append(result.peak_enhancement)
+        total_powers_list.append(result.total_emission_power)
 
-    peak_enhancements = np.array(peak_enhancements)
-    total_powers = np.array(total_powers)
+    peak_enhancements = np.array(peak_enhancements_list)
+    total_powers = np.array(total_powers_list)
 
     best_idx = np.argmax(peak_enhancements)
 

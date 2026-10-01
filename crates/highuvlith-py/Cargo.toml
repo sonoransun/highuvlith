@@ -1,7 +1,13 @@
 [package]
 name = "highuvlith-py"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
+description = "PyO3 bindings for the highuvlith lithography simulator (the highuvlith._native extension module)"
+license = "MIT"
+repository = "https://github.com/sonoransun/highuvlith"
+homepage = "https://sonoransun.github.io/highuvlith/"
+documentation = "https://sonoransun.github.io/highuvlith/"
+readme = "../../README.md"
 
 [lib]
 name = "_native"

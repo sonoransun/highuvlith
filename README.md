@@ -1,339 +1,470 @@
 # highuvlith
 
-High-performance lithography simulation framework spanning VUV through X-ray wavelengths.
+Physics-first lithography simulation from the mercury g-line (436 nm) and DUV
+excimer lasers through VUV (157 nm), EUV (13.5 nm) and beyond-EUV (6.7 nm) to
+soft and hard X-rays.
 
-[![CI](https://github.com/martinpeck/highuvlith/actions/workflows/ci.yml/badge.svg)](https://github.com/martinpeck/highuvlith/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/highuvlith)](https://pypi.org/project/highuvlith/)
+[![CI](https://github.com/sonoransun/highuvlith/actions/workflows/ci.yml/badge.svg)](https://github.com/sonoransun/highuvlith/actions/workflows/ci.yml)
+[![Docs](https://img.shields.io/badge/docs-sonoransun.github.io%2Fhighuvlith-blue)](https://sonoransun.github.io/highuvlith/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-highuvlith simulates the optical-lithography pipeline across four decades of wavelength — from VUV excimer lasers (157 / 126 nm) through EUV (13.5 nm) and beyond-EUV (6.7 nm) to soft and hard X-rays. It ships nine pluggable source families (VUV excimer, LPA-FEL, laser-produced plasma, synchrotron, HHG, XFEL, inverse Compton, SSMB, and entangled-photon NOON), three optical systems, and deep-layer process modules: LIGA deep-X-ray shadow printing at aspect ratios beyond 100:1, volumetric z-resolved exposure with 3D fast-marching development, grayscale surface relief, and multi-beam interference. The Rust physics engine delivers parallel, GIL-free computation through four frontends — a Python API, a CLI, an egui desktop GUI, and Jupyter notebooks. Every claim below is graded against [docs/capability-matrix.md](docs/capability-matrix.md), the honest ledger of what is implemented, simplified, theoretical, or planned; nothing here is described as running beyond what that matrix records.
+highuvlith is a Rust simulation engine with Python, command-line and desktop
+front ends. It images masks with exact partially coherent Hopkins optics
+(scalar or vector/polarized), through refractive dry and immersion lenses,
+Schwarzschild and EUV projection mirrors, or Fresnel zone plates, and carries
+the image into resist models, process-window analysis, stochastics, and
+mask optimization (OPC, ILT, SRAF). Fourteen light-source families sit behind
+one trait — from ArF, KrF and F₂ excimer lasers and tin laser-produced plasma
+to synchrotrons, free-electron lasers, X-ray tubes and speculative concepts —
+and deep-layer modules cover LIGA deep-X-ray lithography, z-resolved
+exposure with 3D development, grayscale relief, interference and Talbot
+lithography.
 
----
+**Honesty is the product.** Every capability is graded ✅ Implemented ·
+🔶 Simplified · 🧪 Theoretical · 🗺️ Planned in the
+[capability matrix](docs/capability-matrix.md), which lists the assumptions
+behind each row. Nothing in this README claims more than the matrix does.
 
-## Capabilities at a Glance
+## The documentation site
 
-```mermaid
-mindmap
-  root((highuvlith))
-    Wavelength Coverage
-      VUV 120-160 nm
-      EUV 13.5 nm
-      BEUV 6.7 nm
-      Soft X-ray 1-10 nm
-      Hard X-ray for LIGA
-    Source Families
-      VUV Excimer F2 Ar2
-      LPA-FEL 20-30 nm
-      LPP Sn Gd Tb
-      Synchrotron
-      HHG Comb
-      XFEL SASE Seeded
-      Inverse Compton
-      SSMB
-      Entangled NOON
-    Optical Systems
-      Refractive CaF2 Lenses
-      Fresnel Zone Plates
-      Schwarzschild Mirrors
-    Deep-Layer Processes
-      Volumetric 3D Development
-      LIGA Deep X-ray
-      Grayscale Relief
-      Interference Two-photon
-    Simulation Pipeline
-      Hopkins TCC SOCS Imaging
-      Polychromatic Aberration
-      Thin-Film Transfer Matrix
-      Dill Mack Resist Models
-      Process Window Analysis
-    Research Modules
-      Inverse Lithography ILT
-      Directed Self-Assembly DSA
-      Ptychography ePIE
-      Quantum N-photon States
-      MNSL Nanosphere Lattices
-    Access Methods
-      Python API
-      CLI Tool
-      Desktop GUI
-      Jupyter Notebooks
-```
+**[sonoransun.github.io/highuvlith](https://sonoransun.github.io/highuvlith/)**
+is the project's GitHub Pages site. Besides the simulator reference it tells
+the story the simulator sits in:
+
+| Section | What you will find |
+|---|---|
+| [History of lithography](https://sonoransun.github.io/highuvlith/history/) | From Senefelder's stone to the projection era, excimer lasers, the 157 nm detour, immersion and multipatterning, the road to EUV, and the parallel paths (X-ray, e-beam, nanoimprint) |
+| [Tour of process nodes](https://sonoransun.github.io/highuvlith/nodes/) | 90 nm to the Ångström era: pitches, transistor architectures, which layer needs which tool, and the arithmetic of k₁, depth of focus and photon counts |
+| [The future](https://sonoransun.github.io/highuvlith/future/) | High-NA and hyper-NA, beyond-EUV wavelengths, accelerator light sources, the stochastic frontier, alternative patterning, and quantum and exotic ideas — each labelled by how ready it is |
+| [Playground](https://sonoransun.github.io/highuvlith/playground/) | In-browser calculators for Rayleigh scaling, photon shot noise and a 1-D aerial image (teaching toys, not the Rust engine) |
+| [Simulator docs](https://sonoransun.github.io/highuvlith/getting-started/) | Getting started, the imaging pipeline, sources, processes, the Python/CLI/GUI references and the capability matrix |
+
+The same pages live in [`docs/`](docs/) and read on GitHub too.
+
+## Capabilities at a glance
+
+A condensed view of the [capability matrix](docs/capability-matrix.md).
+
+| Area | Capability | Status |
+|---|---|---|
+| Imaging | Exact partially coherent Hopkins imaging (factorized TCC/SOCS, (1 + σ)·NA/λ support, defocus inside the pupil, matches a direct Abbe sum to ≤ 1e-8) | ✅ |
+| Imaging | Vector (polarized) high-NA imaging: TE/TM per order, obliquity, immersion, film entrance | ✅ |
+| Imaging | Per-wavelength broadband imaging (`compute_multiwavelength`) · narrow-band shortcut (`compute_polychromatic`) | ✅ · 🔶 |
+| Imaging | Conventional, annular, dipole, quadrupole and Gaussian pupil fills, adaptively sampled | ✅ |
+| Optics | Refractive dry, 193 nm water immersion (NA 1.35), Schwarzschild, Fresnel zone plate | ✅ |
+| Optics | EUV projection NA 0.33 / High-NA 0.55 (isotropic, no anamorphic mask side) · opt-in multilayer pupil | 🔶 |
+| Masks & metrics | Exact thin-mask spectra, commensurate periodic grids, sub-pixel CD / NILS / MEEF | ✅ |
+| Masks & metrics | Mask model (Kirchhoff thin mask; alt-PSM treated as binary; no mask 3D) · dose-aware process window (constant-threshold resist) | 🔶 |
+| Sources | ArF/KrF/F₂ excimer and Hg lamp lines, Sn laser-produced plasma, synchrotron, XFEL | ✅ (parameters 🔶 where stated) |
+| Sources | HHG and soft-X-ray laser (✅ lines / 🔶 output estimates) · X-ray tube (✅ lines and edges / 🔶 continuum and absolute flux) · LPA-FEL, discharge plasma, throughput calculator | ✅/🔶 · 🔶/✅ · 🔶 |
+| Sources | Inverse Compton, betatron, SSMB, Smith–Purcell, entangled-photon NOON | 🧪 |
+| Resist | Anisotropic Gaussian bake, fast-marching 3D development · level-set development | ✅ · ✅/🔶 |
+| Resist | Depth-averaged 2D Dill/Mack path, chemically amplified bake, volumetric exposure, grayscale | 🔶 |
+| Deep layers | LIGA depth dose and absolute exposure time · Fresnel proximity diffraction | ✅ · ✅/🔶 |
+| Deep layers | Multi-beam interference / two-photon · Talbot, DTL, ATL and two-grating EUV interference | ✅/🔶 · 🔶 |
+| Optimization | True-adjoint ILT, fragment-based model OPC | ✅ |
+| Optimization | SRAF insertion, LELE/SADP/SAQP, directed self-assembly | 🔶 |
+| Stochastics | Photon shot noise and source dose jitter · LER/LWR Monte Carlo | ✅ · 🔶 |
+| Materials | CXRO/Henke optical constants, NIST X-ray attenuation, multilayer mirrors, thin-film transfer matrix | ✅ |
+| Research | Ptychography (ePIE) · quantum lithography (N-photon absorption and ideal N00N models), moiré nanosphere emission | 🔶 · 🧪 |
+| Planned | GPU backend, mask 3D/EMF (non-goal), Jones-pupil polarization, stochastic resist Monte Carlo, … — see the [roadmap](docs/roadmap.md) | 🗺️ |
 
 ## Architecture
 
-A Rust physics engine sits at the core, PyO3 bindings provide zero-copy NumPy interop, and four frontends sit on top. See [docs/architecture.md](docs/architecture.md) for the full module map, the Python-to-Rust data-flow sequence, and the layered validation model.
+All physics lives in one Rust crate; the Python package, the CLI and the GUI
+are thin adapters. See [docs/architecture.md](docs/architecture.md) for the
+module map, the imaging data flow and the validation layers.
 
 ```mermaid
 graph TB
-    subgraph Access["Access Layer"]
-        PY["Python API<br/><i>simulate_line_space, simulate_liga, sweep_focus</i>"]
-        CLI["CLI Tool<br/><i>highuvlith simulate / sweep / deep / materials</i>"]
-        GUI["Desktop GUI<br/><i>egui real-time sliders + heatmap</i>"]
-        JUP["Jupyter Notebooks<br/><i>ipywidgets, plotly</i>"]
+    subgraph Front["Front ends"]
+        PY["Python<br/><i>highuvlith.api, SimulationEngine</i>"]
+        CLI["CLI<br/><i>simulate · sweep · deep · optimize ·<br/>throughput · sources · materials</i>"]
+        GUI["Desktop GUI<br/><i>egui: all sources, process window,<br/>volume viewer</i>"]
+        NB["Jupyter notebooks<br/><i>six, run in CI</i>"]
     end
-
-    subgraph Bindings["PyO3 Bindings — Zero-Copy NumPy, GIL Release"]
-        PYO3["highuvlith-py<br/><i>SourceConfig, OpticsConfig, MaskConfig,<br/>SimulationEngine, BatchSimulator</i>"]
+    subgraph Bind["highuvlith-py (PyO3)"]
+        PYO3["Config classes, engines,<br/>GIL-free compute, zero-copy<br/>read-only NumPy results"]
     end
-
-    subgraph Core["Rust Physics Engine — highuvlith-core"]
+    subgraph Core["highuvlith-core (Rust)"]
         direction LR
-        subgraph Imaging["Optical Imaging"]
-            SRC["Source<br/><i>LithographySource + source_models</i>"]
-            OPT["Optics<br/><i>OpticalSystem trait</i>"]
-            MSK[Mask]
-            AER["Aerial Image<br/><i>Hopkins TCC/SOCS</i>"]
-            SRC --> OPT --> MSK --> AER
+        subgraph Img["Imaging"]
+            SRC["14 source families<br/><i>LithographySource</i>"]
+            OPT["Optics<br/><i>refractive / immersion / EUV /<br/>Schwarzschild / zone plate</i>"]
+            MSK["Exact mask spectrum"]
+            AER["Hopkins TCC/SOCS<br/><i>scalar or vector</i>"]
+            SRC --> AER
+            OPT --> AER
+            MSK --> AER
         end
-        subgraph Proc["Process Simulation"]
-            TF[Thin Film] --> RES[Resist]
-            RES --> MET[Metrics]
+        subgraph Proc["Process"]
+            TF["Thin film"] --> RES["Resist, bake,<br/>3D development"]
+            MET["Metrics, process window,<br/>stochastics"]
         end
-        subgraph Deep["Deep-Layer Processes"]
-            VOL["Volumetric<br/><i>3D fast-marching</i>"]
-            DXR["Deep X-ray<br/><i>LIGA shadow print</i>"]
-            GRY[Grayscale]
-            INT["Interference<br/><i>Two-photon</i>"]
+        subgraph Deep["Deep layers"]
+            LIGA["LIGA"]
+            INT["Interference / Talbot"]
+            GRAY["Grayscale"]
         end
-        subgraph Research["Research Modules"]
-            ILT[ILT]
-            DSA[DSA]
-            PTY[Ptychography]
-            QLI[Quantum]
-            MNSL[MNSL]
+        subgraph Opt["Optimization & research"]
+            OPC["OPC · ILT · SRAF"]
+            MP["Multiple patterning · DSA"]
+            RS["Ptychography · quantum · MNSL"]
         end
+        AER --> TF
+        AER --> MET
+        AER --> OPC
     end
-
-    PY --> PYO3
-    JUP --> PYO3
-    PYO3 --> Core
+    PY --> PYO3 --> Core
+    NB --> PYO3
     CLI --> Core
     GUI --> Core
 ```
 
-## Simulation Pipeline
-
-Every projection simulation follows one modular pipeline from illumination source to lithographic metrics. See [docs/pipeline.md](docs/pipeline.md).
-
-```mermaid
-graph LR
-    A["Source<br/><i>VUV F2/Ar2, LPA-FEL,<br/>LPP Sn/Gd, synchrotron,<br/>HHG, XFEL, ICS, SSMB, NOON</i>"] --> B["Optical System<br/><i>Refractive lens,<br/>zone plate,<br/>Schwarzschild</i>"]
-    B --> C["Mask Spectrum<br/><i>2D FFT of transmittance<br/>Binary / AttPSM / AltPSM</i>"]
-    C --> D["TCC Decomposition<br/><i>Eigendecompose into<br/>SOCS kernels</i>"]
-    D --> E["Aerial Image<br/><i>Sum of coherent<br/>kernel convolutions</i>"]
-    E --> F["Thin Film<br/><i>Transfer matrix,<br/>standing waves</i>"]
-    F --> G["Resist Exposure<br/><i>Dill ABC model,<br/>latent image</i>"]
-    G --> H["PEB + Development<br/><i>Mack model,<br/>resist profile</i>"]
-    H --> I["Metrics<br/><i>CD, NILS, contrast,<br/>DOF, EL</i>"]
-
-    style A fill:#e65100,stroke:#ff9800,color:#fff
-    style B fill:#4a148c,stroke:#9c27b0,color:#fff
-    style D fill:#1565c0,stroke:#42a5f5,color:#fff
-    style E fill:#1565c0,stroke:#42a5f5,color:#fff
-    style H fill:#2e7d32,stroke:#66bb6a,color:#fff
-    style I fill:#6a1b9a,stroke:#ab47bc,color:#fff
-```
-
-Thick-resist and 3D work branch off this pipeline. The **volumetric** path ([docs/processes/volumetric-exposure.md](docs/processes/volumetric-exposure.md)) replaces the depth-averaged resist stage with a z-resolved exposure and 3D fast-marching development. The **LIGA deep-X-ray** path ([docs/processes/liga-deep-xray.md](docs/processes/liga-deep-xray.md)) bypasses projection imaging entirely for near-geometric shadow printing. See [docs/processes/index.md](docs/processes/index.md) for the full set.
-
-## Illumination Sources
-
-Nine source families satisfy the `LithographySource` trait and feed the same Hopkins TCC/SOCS pipeline. Status badges follow the [capability matrix](docs/capability-matrix.md) taxonomy: ✅ Implemented · 🔶 Simplified · 🧪 Theoretical.
-
-| Family | λ (nm) | Class | Status | Docs |
-|--------|--------|-------|--------|------|
-| VUV excimer (F₂, Ar₂) | 157.63 / 126 | Refractive VUV | ✅ | [vuv-excimer](docs/sources/vuv-excimer.md) |
-| LPA-FEL | 20–30 | Compact free-electron laser | 🔶 | [lpa-fel](docs/sources/lpa-fel.md) |
-| LPP (Sn / Gd / Tb) | 13.5 / 6.7 / 6.5 | Laser-produced plasma | ✅ | [lpp](docs/sources/lpp.md) |
-| Synchrotron (bending / undulator) | derived | Storage-ring | ✅ | [synchrotron](docs/sources/synchrotron.md) |
-| HHG comb | 800 / q → 13.56 | Table-top EUV | ✅/🔶 | [hhg](docs/sources/hhg.md) |
-| XFEL (SASE / seeded) | ~13.5 | Free-electron laser | ✅ | [xfel](docs/sources/xfel.md) |
-| Inverse Compton | derived | Compact X-ray | 🧪 | [inverse-compton](docs/sources/inverse-compton.md) |
-| SSMB | 13.5 | Storage-ring microbunching | 🧪 | [ssmb](docs/sources/ssmb.md) |
-| Entangled NOON | physical λ | Quantum | 🧪 | [entangled-photon](docs/sources/entangled-photon.md) |
-
-Wavelengths marked *derived* are computed from machine parameters (undulator resonance, Compton kinematics) rather than set directly. See [docs/sources/index.md](docs/sources/index.md) for the full comparison, factory presets, and TOML tags.
-
-## Capability status
-
-A condensed view of the [full matrix](docs/capability-matrix.md). Badges: ✅ Implemented (computed, tested, validated) · 🔶 Simplified (runs with documented approximations) · 🧪 Theoretical (runnable but speculative) · 🗺️ Planned (roadmap only).
-
-| Capability | Status | Notes |
-|------------|--------|-------|
-| Hopkins TCC/SOCS aerial imaging | ✅ | Scalar diffraction; no vector high-NA polarization effects |
-| Polychromatic imaging | 🔶 | Per-sample focus shift, TCC at center λ — narrow-band only |
-| Refractive / zone-plate / Schwarzschild optics | ✅ | Chromatic defocus, annular pupil; multilayer reflectance as a scalar |
-| Thin-film transfer matrix | ✅ | 2×2 characteristic matrix, TE/TM/unpolarized |
-| Resist exposure + development (Dill / Mack) | 🔶 | Depth-averaged 2D; center-row etch (use volumetric for 3D) |
-| Volumetric z-resolved exposure + 3D development | 🔶 | Separable focus mapping; eikonal fast-marching gives sidewalls |
-| LIGA deep-X-ray depth dose | 🔶 | Shadow printing; Gaussian proximity blur; smoothed absorption edges |
-| Grayscale surface relief | 🔶 | Log-linear contrast curve; fast 2.5D path ignores standing waves |
-| Multi-beam interference / two-photon | ✅/🔶 | Exact vector field sum; scalar per-beam absorption |
-| VUV / LPP / synchrotron / XFEL sources | ✅ | Live spectral + power chains |
-| LPA-FEL / HHG sources | 🔶 | Simplified spectral bookkeeping with documented approximations |
-| Inverse Compton / SSMB / entangled NOON | 🧪 | Runnable but speculative research projections |
-| Process window, OPC, double patterning | ✅/🔶 | DP is an aerial-domain dose sum; OPC without SRAF insertion |
-| Shot noise + LER/LWR Monte Carlo | ✅ | Poisson counts + Gamma shot-to-shot dose jitter |
-| ILT / DSA | 🔶 | Proxy gradient / analytic morphology, not full adjoint or SCFT |
-| Ptychography ePIE / MNSL | ✅ | Genuine iterative reconstruction / Rayleigh scattering |
-| Quantum lithography (NOON λ/2N) | 🧪 | Theoretical N-photon sharpening with flux penalty |
-| Optics honesty guard | ✅ | Warns / auto-selects Schwarzschild below 50 nm |
-| GPU backend, Jupyter notebooks | 🗺️ | Planned; trait stub / helper functions only |
-
-## Access Methods
-
-- **Python API** — one-liners (`simulate_line_space`, `simulate_liga`, `sweep_focus`) plus `SimulationEngine` and `BatchSimulator` for full control and GIL-released sweeps. See [docs/python-api.md](docs/python-api.md).
-- **CLI** — `highuvlith simulate / sweep / deep / materials` over TOML configs. See [docs/cli.md](docs/cli.md).
-- **Desktop GUI** — egui app with real-time parameter sliders and a live aerial-image heatmap. See [docs/gui.md](docs/gui.md).
-- **Jupyter notebooks** — ipywidgets explorers and worked examples in [examples/notebooks/](examples/notebooks/).
-
 ## Installation
 
-```bash
-pip install highuvlith
-```
-
-Optional extras:
+highuvlith is **not published on PyPI yet**; build it from source. You need a
+stable Rust toolchain ([rustup.rs](https://rustup.rs)) and Python ≥ 3.10.
 
 ```bash
-pip install highuvlith[viz]         # matplotlib plots
-pip install highuvlith[interactive] # plotly + polars
-pip install highuvlith[notebook]    # Jupyter ipywidgets
-pip install highuvlith[all]         # everything
-```
-
-Build from source:
-
-```bash
-git clone https://github.com/martinpeck/highuvlith.git
+git clone https://github.com/sonoransun/highuvlith.git
 cd highuvlith
 python -m venv .venv && source .venv/bin/activate
 pip install maturin numpy
-maturin develop
+maturin develop --release        # builds the Rust extension into the venv
 ```
 
-## Quick Start
+Optional extras install from the checkout, e.g. `pip install ".[viz]"`
+(matplotlib) or `pip install ".[all]"`. The CLI and GUI are plain Cargo
+binaries: `cargo run --release -p highuvlith-cli -- --help` and
+`cargo run --release -p highuvlith-gui` — an interactive explorer for every
+source family, imaging, the process window and 3D volumes (z-slice and x–z
+views; screenshots in [docs/gui.md](docs/gui.md)).
 
-### Python — one-liner
+## Quick start
 
+Every snippet below was run against this repository; the printed numbers are
+what it produced.
+
+### Resolution comes from partial coherence
+
+<!-- verify-example -->
 ```python
 import highuvlith as huv
 
-result = huv.simulate_line_space(65.0, 180.0, na=0.75, with_resist=True)
-print(f"Contrast: {result.contrast:.3f}, NILS: {result.nils:.2f}")
+# 65 nm lines on a 180 nm pitch, F2 laser (157.63 nm), NA 0.75. The pitch is
+# below lambda/NA = 210 nm, so only off-axis (partially coherent) light resolves it.
+for sigma in (0.1, 0.7):
+    r = huv.simulate_line_space(65.0, 180.0, na=0.75, sigma=sigma)
+    nils = "n/a" if r.nils is None else f"{r.nils:.2f}"
+    print(f"sigma {sigma}: contrast {r.contrast:.3f}, NILS {nils}")
 ```
 
-### Python — full control
+```text
+sigma 0.1: contrast 0.000, NILS n/a
+sigma 0.7: contrast 0.454, NILS 0.65
+```
 
+The first diffraction orders of a 180 nm pitch fall outside the pupil for a
+nearly coherent source; with σ = 0.7 the off-axis source points steer one of
+them back in. The same case matches an independent Abbe reference (0.456).
+
+### Immersion: a pitch dry optics cannot print
+
+<!-- verify-example -->
 ```python
 import highuvlith as huv
 
-source = huv.SourceConfig.f2_laser(sigma=0.7)
-optics = huv.OpticsConfig(numerical_aperture=0.85)
-mask   = huv.MaskConfig.line_space(cd_nm=45.0, pitch_nm=120.0)
-grid   = huv.GridConfig(size=512, pixel_nm=1.0)
+# 45 nm lines on a 90 nm pitch with an ArF laser (193.4 nm): below the dry
+# NA 0.93 limit lambda/((1 + sigma) NA) = 109 nm, resolved by water immersion.
+source = huv.SourceConfig.arf_laser(sigma=0.9)
+mask = huv.MaskConfig.line_space(cd_nm=45.0, pitch_nm=90.0)
+grid = mask.commensurate_grid(256, 1.0)  # field = whole number of pitches
 
-engine = huv.SimulationEngine(source, optics, mask, grid=grid)
-aerial = engine.compute_aerial_image(focus_nm=0.0)
-print(f"Contrast: {aerial.image_contrast():.4f}")
-
-sweep = huv.sweep_focus(cd_nm=65.0, pitch_nm=180.0, na=0.75)
-print(f"Best focus: {sweep['best_focus_nm']:.0f} nm, peak {sweep['best_contrast']:.3f}")
+for optics in (huv.OpticsConfig(numerical_aperture=0.93), huv.OpticsConfig.immersion_193i()):
+    engine = huv.SimulationEngine(source, optics, mask, grid=grid)
+    images = engine.compute_through_focus([0.0, 50.0, 100.0])
+    contrast = [round(image.image_contrast(), 3) for image in images]
+    print(f"NA {optics.numerical_aperture:.2f}: contrast at 0/50/100 nm defocus {contrast}")
 ```
 
-### Python — 13.5 nm LPP through Schwarzschild optics
+```text
+NA 0.93: contrast at 0/50/100 nm defocus [0.0, 0.0, 0.0]
+NA 1.35: contrast at 0/50/100 nm defocus [0.201, 0.177, 0.118]
+```
 
+### EUV and High-NA
+
+<!-- verify-example -->
 ```python
 import highuvlith as huv
 
-# No lens material transmits at 13.5 nm, so Sn laser-produced plasma is imaged
-# through a two-mirror reflective objective — refractive optics would be unphysical.
+# 9 nm lines on an 18 nm pitch at 13.5 nm (Sn laser-produced plasma): below the
+# NA 0.33 limit, resolved at NA 0.55 (isotropic High-NA model, no anamorphic mask side).
 source = huv.SourceConfig.lpp_sn_13nm5(sigma=0.9)
-optics = huv.OpticsConfig.schwarzschild(numerical_aperture=0.33)  # Mo/Si multilayer
-mask   = huv.MaskConfig.line_space(cd_nm=22.0, pitch_nm=44.0)
-grid   = huv.GridConfig(size=256, pixel_nm=1.0)
-
-engine = huv.SimulationEngine(source, optics, mask, grid=grid, max_kernels=20)
-aerial = engine.compute_aerial_image(focus_nm=0.0)
-print(f"{source.kind} @ {source.wavelength_nm} nm through {optics.kind} optics")
-print(f"Contrast: {aerial.image_contrast():.4f}")
+mask = huv.MaskConfig.line_space(cd_nm=9.0, pitch_nm=18.0)
+grid = mask.commensurate_grid(128, 0.5)
+for optics in (huv.OpticsConfig.euv_nxe(), huv.OpticsConfig.euv_high_na()):
+    engine = huv.SimulationEngine(source, optics, mask, grid=grid)
+    print(f"{optics.kind} NA {optics.numerical_aperture}: contrast {engine.image_contrast(0.0):.3f}")
 ```
 
-The CLI and GUI reach the same reflective optics through `[optics] type = "schwarzschild"` and sub-50 nm auto-select; the optics honesty guard rejects refractive lenses in this regime.
+```text
+euv_projection NA 0.33: contrast 0.000
+euv_projection NA 0.55: contrast 0.447
+```
 
-### Python — deep X-ray LIGA teaser
+### Polarization at high NA
 
+<!-- verify-example -->
+```python
+import highuvlith as huv
+from highuvlith import api
+
+# Two-beam interference at NA 0.9: TE (y-polarized) keeps full contrast,
+# TM (x-polarized) falls to |1 - 2 NA^2|, unpolarized light to 1 - NA^2.
+for pol in ("y", "x", "unpolarized"):
+    print(pol, round(api.vector_two_beam_contrast(0.9, pol), 3))
+
+# The same physics in the imaging engine: vertical 64/128 nm lines at NA 0.9.
+source = huv.SourceConfig.f2_laser(sigma=0.9)
+optics = huv.OpticsConfig(numerical_aperture=0.9)
+mask = huv.MaskConfig.line_space(cd_nm=64.0, pitch_nm=128.0)
+grid = mask.commensurate_grid(64, 2.0)
+print("scalar", round(huv.SimulationEngine(source, optics, mask, grid=grid).image_contrast(0.0), 3))
+for pol in ("y", "x"):
+    engine = huv.SimulationEngine(source, optics, mask, grid=grid,
+                                  vector=api.VectorSettings(polarization=pol))
+    print(pol, round(engine.image_contrast(0.0), 3))
+```
+
+```text
+y 1.0
+x 0.62
+unpolarized 0.19
+scalar 0.414
+y 0.441
+x 0.088
+```
+
+### Source physics and throughput
+
+<!-- verify-example -->
 ```python
 import highuvlith as huv
 
-# 500 µm PMMA, 5 µm lines on a LIGA-class bending-magnet beamline -> 100:1 aspect
-liga = huv.simulate_liga(resist_thickness_um=500.0, cd_nm=5000.0, pitch_nm=10000.0)
-print(f"top:bottom dose ratio = {liga.dose_ratio:.1f}")
-print(f"exceeds damage ceiling: {liga.exceeds_damage_ceiling}")
+src = huv.SourceConfig.lpp_sn_13nm5()
+print(f"{src.average_power_w:.0f} W in band at intermediate focus")
+for name, value, unit, note in src.derived_quantities()[:3]:
+    print(f"  {name} = {value:.4g} {unit}")
+tp = src.wafer_throughput(dose_mj_cm2=30.0)  # illustrative EUV scanner defaults
+print(f"{tp['wafers_per_hour']:.0f} wafers/h, {tp['power_at_wafer_w']:.2f} W at the wafer")
 ```
 
-### CLI
+```text
+250 W in band at intermediate focus
+  photon_energy = 91.84 eV
+  in_band_emission_2pi = 1290 W
+  drive_laser_wavelength = 10.6 um
+154 wafers/h, 4.59 W at the wafer
+```
+
+The throughput model is 🔶: one optics-train transmission, lumped overheads and
+illustrative scanner parameters.
+
+### Deep X-ray lithography (LIGA)
+
+<!-- verify-example -->
+```python
+import highuvlith as huv
+
+# 500 um of PMMA behind a 20 um Au mask, bending-magnet beamline 15 m from the
+# source, 50 mm vertical scan: depth dose, beam hardening and exposure time.
+bm = huv.SourceConfig.synchrotron_liga_bending_magnet()
+liga = huv.simulate_liga(resist_thickness_um=500.0, source=bm, source_distance_m=15.0,
+                         vertical_scan_mm=50.0, cd_nm=3200.0, pitch_nm=6400.0,
+                         grid_size=128, pixel_nm=100.0)
+print(f"top/bottom dose {liga.dose_ratio:.1f}, exposure {liga.exposure_time_s:.0f} s")
+print(f"mean photon energy {liga.mean_energy_top_kev:.2f} keV (top) -> "
+      f"{liga.mean_energy_bottom_kev:.2f} keV (bottom)")
+
+# The same physics with a laboratory X-ray tube (W anode, 60 kV, 30 mA, 100 mm away)
+tube = huv.SourceConfig.xray_tube("W")
+flux = tube.spectral_flux_density(distance_mm=100.0)  # photons / s / mm^2 / keV
+lab = huv.simulate_liga(resist_thickness_um=100.0, flux_density=flux, cd_nm=3200.0,
+                        pitch_nm=6400.0, grid_size=128, pixel_nm=50.0)
+print(f"X-ray tube, 100 um PMMA: exposure {lab.exposure_time_s / 3600:.1f} h")
+```
+
+```text
+top/bottom dose 20.8, exposure 605 s
+mean photon energy 2.85 keV (top) -> 7.57 keV (bottom)
+X-ray tube, 100 um PMMA: exposure 39.5 h
+```
+
+The pixel is chosen to resolve the Fresnel scale √(λ·gap); coarser pixels
+trigger a warning. The tube's absolute flux rests on an empirical
+bremsstrahlung efficiency (🔶, about ±20 %).
+
+### Command line
 
 ```bash
-# Aerial image from the F2 VUV config, exported as PNG
-highuvlith simulate --config examples/sim.toml --output aerial.png
+cargo build --release -p highuvlith-cli
+B=target/release/highuvlith
 
-# EUV: 13.5 nm LPP through a Schwarzschild objective
-highuvlith simulate --config examples/sim_lpp_sn.toml --output euv_aerial.png
-
-# Deep X-ray LIGA: z-resolved dose through thick PMMA (mode set by [deep] mode)
-highuvlith deep --config examples/liga.toml
+$B simulate --config examples/sim.toml --output aerial.png      # F2, 65/180 nm, NA 0.75
+$B simulate --config examples/sim_lpp_sn.toml --output euv.png  # 13.5 nm Sn LPP
+$B deep --config examples/liga.toml --output liga.png           # LIGA with an Al filter
+$B deep --config examples/volumetric.toml --output profile.png  # bake + level-set develop
+$B deep --config examples/talbot.toml --output talbot.png       # achromatic Talbot
+$B optimize --config examples/optimize_opc.toml                 # fragment OPC
+$B throughput --config examples/sim_lpp_sn.toml                 # dose-limited wafers/hour
+$B sources                                                      # every preset, with badges
+$B materials --wavelength 13.5                                  # CXRO-derived constants
 ```
 
-The desktop GUI (`cargo run -p highuvlith-gui`) exposes the same engine with live sliders and source presets; see [docs/gui.md](docs/gui.md).
+`examples/sim.toml` prints the source's derived quantities and a contrast of
+0.4545; `liga.toml` reports a 996 s exposure and the developed sidewall. There
+is a `sim_*.toml` for every source family in [examples/](examples/), and the
+CLI test suite runs every one of them. Unknown or misspelled keys are rejected
+with a suggestion; the TOML schema is documented in [docs/configuration.md](docs/configuration.md).
 
 ## Performance
 
-Computation runs entirely in Rust with the Python GIL released; batch operations parallelize across cores via Rayon, and the `ComputeBackend` trait leaves room for a future wgpu GPU backend.
+Measured with `cargo bench -p highuvlith-core` (criterion, release build,
+20 SOCS kernels) on an Apple M3 Pro (11 cores) that was shared with other build
+jobs at the time — treat the numbers as ±20 %. VUV = F₂, σ 0.7, NA 0.75,
+2 nm pixels; EUV = 13.5 nm, σ 0.7, Schwarzschild NA 0.33, 1 nm pixels. Measured
+on 2026-09-30 when the exact engine was merged; later additions (clear-field
+normalization, vector and multilayer options) were not re-benchmarked.
 
-| Operation | Grid Size | Typical Time |
-|-----------|-----------|-------------|
-| Engine creation (TCC decomposition) | 128×128 | ~15 ms |
-| Single aerial image | 128×128 | ~5 ms |
-| Single aerial image | 256×256 | ~110 ms |
-| 21-point focus sweep | 128×128 | ~100 ms |
-| Process window (7×11) | 128×128 | ~400 ms |
+| Operation | Time |
+|---|---|
+| Engine creation (source sampling + TCC decomposition), VUV 128² / 256² | 0.26 ms / 1.4 ms |
+| Engine creation, EUV 128² / 256² | 2.9 ms / 21 ms |
+| One aerial image, VUV 128² / 256² / 512² | 0.56 ms / 2.7 ms / 21 ms |
+| One aerial image, EUV 256² | 3.0 ms |
+| 21-plane focus sweep with exact defocus (kernels rebuilt per plane), VUV / EUV 256² | 34 ms / 307 ms |
+| 21-plane sweep with the legacy kernel-phase defocus, VUV 256² | 28 ms |
+| Exact per-wavelength imaging of a 5-line comb, EUV 128² / 256² | 11 ms / 97 ms |
+
+Source: the WP-A1 benchmark log. Image computation parallelizes over kernels,
+focus planes and wavelengths with Rayon and is bit-reproducible regardless of
+thread count.
 
 ## Testing
 
-290+ Rust tests (unit, analytical validation, and proptest property-based) and 130+ Python integration tests — including a stub drift guard that keeps the `.pyi` type stubs in sync with the bindings — cover physics, error paths, and I/O. CI runs the matrix on Ubuntu, macOS, and Windows for Rust, and Ubuntu/macOS with Python 3.12/3.13, plus `rustdoc -D warnings` and a docs link check. See [docs/extending.md](docs/extending.md).
+<!-- TEST-COUNTS: final full test run on 2026-10-01. -->
+| Suite | Count (2026-10-01) |
+|---|---|
+| Rust core unit tests | 708 passed |
+| Rust core integration tests | 90 (analytical 8, imaging validation 18, source sampling 2, optics presets 13, vector pupil 26, vector imaging 8, MNSL 13, property-based 2) + 1 doctest |
+| CLI tests | 107 unit + 35 end-to-end (every `examples/*.toml` included) |
+| GUI tests | 63 |
+| Python tests | 360 passed |
+| Docs example tests | 99 site examples, 101 tests (`tests/docs/test_site_examples.py`, release build) |
+| Docs tooling | 42 MkDocs-hook tests, 18 playground-physics tests (Node), 31 math-linter tests |
+<!-- /TEST-COUNTS -->
 
-## Documentation
+Validation is layered: closed-form fixtures computed independently of the
+code, analytical limits (coherent three-beam images, two-beam TE/TM contrast,
+Fresnel knife edge, Talbot lengths), a direct Abbe sum that the SOCS engine
+must match to 1e-8, and regression tests for every corrected defect. CI runs
+formatting, clippy, the Rust suites on Ubuntu, macOS and Windows (plus feature
+subsets), rustdoc, cargo-audit, the Python suite on Python 3.12/3.13, ruff and
+mypy, the six notebooks, the site's Python examples, the docs checks (Status lines, GitHub-safe math, links) and
+a strict MkDocs build. [CONTRIBUTING.md](CONTRIBUTING.md) lists the commands.
 
-Start at the [documentation home](docs/index.md); the map below groups every page.
+## Documentation map
 
-**Core**
-- [pipeline.md](docs/pipeline.md) — the source-to-metrics projection pipeline
-- [optics.md](docs/optics.md) — refractive, zone-plate, and Schwarzschild optical systems
-- [materials.md](docs/materials.md) — optical constants, dispersion, diamond, X-ray attenuation
-- [architecture.md](docs/architecture.md) — module map, data flow, validation layering, project structure
-- [research-modules.md](docs/research-modules.md) — ILT, DSA, ptychography, quantum, stochastic, MNSL interactions
+**Site sections:** [history](docs/history/index.md) · [process nodes](docs/nodes/index.md) ·
+[the future](docs/future/index.md) · [playground](docs/playground/index.md) ·
+[getting started](docs/getting-started.md)
 
-**Sources**
-- [index.md](docs/sources/index.md) — comparison, factory presets, TOML tags
-- [vuv-excimer.md](docs/sources/vuv-excimer.md) · [lpa-fel.md](docs/sources/lpa-fel.md) · [lpp.md](docs/sources/lpp.md) · [synchrotron.md](docs/sources/synchrotron.md) · [hhg.md](docs/sources/hhg.md) · [xfel.md](docs/sources/xfel.md) · [inverse-compton.md](docs/sources/inverse-compton.md) · [ssmb.md](docs/sources/ssmb.md) · [entangled-photon.md](docs/sources/entangled-photon.md)
+**Simulator**
+- [capability-matrix.md](docs/capability-matrix.md) — status of every capability, with assumptions
+- [architecture.md](docs/architecture.md) — crates, module map, imaging data flow, validation layers
+- [pipeline.md](docs/pipeline.md) · [optics.md](docs/optics.md) · [vector-imaging.md](docs/vector-imaging.md) · [masks-and-metrics.md](docs/masks-and-metrics.md) · [materials.md](docs/materials.md)
+- [research-modules.md](docs/research-modules.md) — OPC, ILT, SRAF, multiple patterning, DSA, stochastics, ptychography, quantum, MNSL
 
-**Processes**
-- [index.md](docs/processes/index.md) — the process-module map
-- [resist-models.md](docs/processes/resist-models.md) · [thin-film.md](docs/processes/thin-film.md) · [volumetric-exposure.md](docs/processes/volumetric-exposure.md) · [liga-deep-xray.md](docs/processes/liga-deep-xray.md) · [grayscale.md](docs/processes/grayscale.md) · [interference-volumetric.md](docs/processes/interference-volumetric.md)
+**Sources** — [overview](docs/sources/index.md):
+[DUV/UV heritage](docs/sources/duv-heritage.md) · [VUV excimer](docs/sources/vuv-excimer.md) ·
+[laser-produced plasma](docs/sources/lpp.md) · [discharge plasma](docs/sources/dpp.md) ·
+[synchrotron](docs/sources/synchrotron.md) · [XFEL](docs/sources/xfel.md) ·
+[LPA-FEL](docs/sources/lpa-fel.md) · [HHG](docs/sources/hhg.md) ·
+[soft-X-ray laser](docs/sources/soft-xray-laser.md) · [X-ray tube](docs/sources/xray-tube.md) ·
+[inverse Compton](docs/sources/inverse-compton.md) · [betatron](docs/sources/betatron.md) ·
+[SSMB](docs/sources/ssmb.md) · [Smith–Purcell](docs/sources/smith-purcell.md) ·
+[entangled photons](docs/sources/entangled-photon.md)
 
-**Reference**
-- [capability-matrix.md](docs/capability-matrix.md) — the single source of truth for status badges
-- [configuration.md](docs/configuration.md) · [cli.md](docs/cli.md) · [gui.md](docs/gui.md) · [python-api.md](docs/python-api.md)
+**Processes** — [overview](docs/processes/index.md):
+[thin film](docs/processes/thin-film.md) · [resist models](docs/processes/resist-models.md) ·
+[volumetric exposure](docs/processes/volumetric-exposure.md) · [LIGA](docs/processes/liga-deep-xray.md) ·
+[grayscale](docs/processes/grayscale.md) · [interference](docs/processes/interference-volumetric.md) ·
+[Talbot](docs/processes/talbot.md)
 
-**Development**
-- [extending.md](docs/extending.md) — adding sources, optics, and process modules; testing
-- [roadmap.md](docs/roadmap.md) — what is planned and why
+**Reference** — [python-api.md](docs/python-api.md) · [cli.md](docs/cli.md) ·
+[configuration.md](docs/configuration.md) · [gui.md](docs/gui.md)
+
+**Development** — [extending.md](docs/extending.md) · [roadmap.md](docs/roadmap.md) ·
+[CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## Roadmap
 
-Near-term work targets the biggest honesty gaps: vector in-film imaging to replace scalar diffraction at high NA, and per-λ TCC construction so wide HHG combs image honestly instead of as spectral bookkeeping. Beyond that, level-set development will supersede the frozen-rate fast-marching front, and a wgpu GPU backend will fill in behind the existing `ComputeBackend` trait. See [docs/roadmap.md](docs/roadmap.md).
+The largest remaining gaps are depth-resolved vector imaging inside the resist
+stack, a Jones-pupil lens model, the anamorphic High-NA mask side, a stochastic
+resist Monte Carlo, resist models inside OPC/ILT, and a GPU backend; rigorous
+mask 3D (EMF) simulation is an explicit non-goal. See
+[docs/roadmap.md](docs/roadmap.md).
+
+## Contributing
+
+Build, test and documentation conventions — including the rule that a
+capability change updates the module header, the capability matrix and the
+page's Status line in the same PR — are in [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Gallery
+
+Every image below is computed by the simulator itself by
+[`docs/figures/sim/make_all.py`](docs/figures/README.md) (light/dark variants; captions with
+parameters and model status are on the linked pages). More figures are on the
+technical pages of the [documentation site](https://sonoransun.github.io/highuvlith/).
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/images/sim/imaging-illumination-shapes-dark.png">
+  <img alt="Three pupil fills (a filled disk, a ring and two poles on the x axis), the aerial-image cross-sections they give for 65 nm lines on a 130 nm pitch, below the coherent limit lambda/NA of 210 nm, with the dipole giving the deepest modulation, and contrast versus pitch for the three fills." src="docs/assets/images/sim/imaging-illumination-shapes-light.png">
+</picture>
+
+*Off-axis illumination below λ/NA: conventional, annular and two-pole dipole fills at k₁ ≈ 0.31 (scalar Hopkins/SOCS ✅).* — [details](docs/pipeline.md)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/images/sim/sources-landscape-dark.png">
+  <img alt="Log-log chart of average source power versus wavelength combining 49 published values and the simulator's source presets, with the 250 W to 1 kW EUV requirement band; a second panel compares families at 13.5 nm, where only tin LPP sources have demonstrated HVM power and accelerator sources are design projections." src="docs/assets/images/sim/sources-landscape-light.png">
+</picture>
+
+*Fourteen source families: published average powers (cited CSV) next to what the simulator's presets derive.* — [details](docs/sources/index.md)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/images/sim/liga-fresnel-edge-dark.png">
+  <img alt="Left: dose across an absorber edge at 8 keV, where Fresnel diffraction gives the textbook 25 percent value at the edge and ringing up to 1.37 on the open side, unlike the smooth legacy Gaussian blur. Right: dose profiles across the edge at five depths for the polychromatic beam, with the developed edge moving by about 300 nm over 500 micrometres." src="docs/assets/images/sim/liga-fresnel-edge-light.png">
+</picture>
+
+*LIGA proximity diffraction: Fresnel knife-edge ringing vs the legacy Gaussian blur, and the edge through 500 µm of PMMA.* — [details](docs/processes/liga-deep-xray.md)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/images/sim/talbot-carpet-dark.png">
+  <img alt="A Talbot carpet: the intensity behind a 100 nm grating lit at 13.5 nm repeats itself at the Talbot length and shows shifted and frequency-doubled images in between; beside it, the displacement Talbot image averaged over the gap has half the grating period." src="docs/assets/images/sim/talbot-carpet-light.png">
+</picture>
+
+*Talbot carpet of a 100 nm grating at 13.5 nm and the half-period DTL image (Talbot/DTL 🔶).* — [details](docs/processes/talbot.md)
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/images/sim/optim-ilt-contacts-dark.png">
+  <img alt="Inverse lithography for a two-by-two contact array: the target, the continuous mask after 0, 10, 20 and 35 iterations growing serifs and assist-like rings, the printed image of the final binary mask with its contour on the target, and cost histories where the exact adjoint keeps descending while the legacy proxy stalls." src="docs/assets/images/sim/optim-ilt-contacts-light.png">
+</picture>
+
+*Inverse lithography of a contact array with the exact adjoint gradient (ILT ✅).* — [details](docs/research-modules.md)
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
+MIT — see [LICENSE](LICENSE).

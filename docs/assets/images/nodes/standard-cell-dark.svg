@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 445" width="860" height="445" role="img" aria-labelledby="t d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<title id="t">Standard-cell anatomy: CPP, MMP and track height</title>
+<desc id="d">Top view of a schematic logic standard cell. Vertical gate lines repeat at the contacted poly pitch (CPP); horizontal routing tracks repeat at the minimum metal pitch (MMP). Power rails run along the top and bottom edges. The cell height equals the number of tracks times the metal pitch; the cell width is a whole number of CPPs.</desc>
+<defs><marker id="arr-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9a988f"/></marker><marker id="arr-ink2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c3c2b7"/></marker><marker id="arr-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ffffff"/></marker><marker id="arr-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e66767"/></marker><marker id="arr-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3987e5"/></marker><marker id="arr-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d95926"/></marker><marker id="arr-aqua" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#199e70"/></marker><marker id="arr-violet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9085e9"/></marker><marker id="arr-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0ca30c"/></marker></defs>
+<rect x="170.0" y="60.0" width="384.0" height="264.0" rx="0" fill="none" stroke="#9a988f" stroke-width="1.4" stroke-dasharray="6 4"/>
+<rect x="188.0" y="130.0" width="348.0" height="9.0" rx="0" fill="#264061" stroke="#3987e5" stroke-width="0.8"/>
+<rect x="188.0" y="152.0" width="348.0" height="9.0" rx="0" fill="#264061" stroke="#3987e5" stroke-width="0.8"/>
+<rect x="188.0" y="220.0" width="348.0" height="9.0" rx="0" fill="#264061" stroke="#3987e5" stroke-width="0.8"/>
+<rect x="188.0" y="242.0" width="348.0" height="9.0" rx="0" fill="#264061" stroke="#3987e5" stroke-width="0.8"/>
+<text x="568.0" y="150.0" font-size="12" text-anchor="start" fill="#c3c2b7" font-weight="400">pFET fins</text>
+<text x="568.0" y="244.0" font-size="12" text-anchor="start" fill="#c3c2b7" font-weight="400">nFET fins</text>
+<rect x="162.0" y="76.0" width="16.0" height="232.0" rx="0" fill="#723a28" stroke="#d95926" stroke-width="1.0" stroke-dasharray="4 3" opacity="0.55"/>
+<rect x="258.0" y="76.0" width="16.0" height="232.0" rx="0" fill="#723a28" stroke="#d95926" stroke-width="1.0"/>
+<rect x="354.0" y="76.0" width="16.0" height="232.0" rx="0" fill="#723a28" stroke="#d95926" stroke-width="1.0"/>
+<rect x="450.0" y="76.0" width="16.0" height="232.0" rx="0" fill="#723a28" stroke="#d95926" stroke-width="1.0"/>
+<rect x="546.0" y="76.0" width="16.0" height="232.0" rx="0" fill="#723a28" stroke="#d95926" stroke-width="1.0" stroke-dasharray="4 3" opacity="0.55"/>
+<line x1="150.0" y1="104.0" x2="560.0" y2="104.0" stroke="#34363d" stroke-width="1.0" stroke-linecap="round"/>
+<line x1="150.0" y1="148.0" x2="560.0" y2="148.0" stroke="#34363d" stroke-width="1.0" stroke-linecap="round"/>
+<line x1="150.0" y1="192.0" x2="560.0" y2="192.0" stroke="#34363d" stroke-width="1.0" stroke-linecap="round"/>
+<line x1="150.0" y1="236.0" x2="560.0" y2="236.0" stroke="#34363d" stroke-width="1.0" stroke-linecap="round"/>
+<line x1="150.0" y1="280.0" x2="560.0" y2="280.0" stroke="#34363d" stroke-width="1.0" stroke-linecap="round"/>
+<rect x="198.8" y="95.0" width="220.8" height="18.0" rx="3" fill="#745314" stroke="#c98500" stroke-width="1.0" opacity="0.9"/>
+<rect x="285.2" y="139.0" width="211.2" height="18.0" rx="3" fill="#745314" stroke="#c98500" stroke-width="1.0" opacity="0.9"/>
+<rect x="218.0" y="183.0" width="105.6" height="18.0" rx="3" fill="#745314" stroke="#c98500" stroke-width="1.0" opacity="0.9"/>
+<rect x="400.4" y="183.0" width="124.8" height="18.0" rx="3" fill="#745314" stroke="#c98500" stroke-width="1.0" opacity="0.9"/>
+<rect x="246.8" y="227.0" width="220.8" height="18.0" rx="3" fill="#745314" stroke="#c98500" stroke-width="1.0" opacity="0.9"/>
+<rect x="323.6" y="271.0" width="192.0" height="18.0" rx="3" fill="#745314" stroke="#c98500" stroke-width="1.0" opacity="0.9"/>
+<rect x="150.0" y="48.0" width="424.0" height="24.0" rx="3" fill="#784045" stroke="#e66767" stroke-width="1.2"/>
+<rect x="150.0" y="312.0" width="424.0" height="24.0" rx="3" fill="#784045" stroke="#e66767" stroke-width="1.2"/>
+<text x="584.0" y="65.0" font-size="12" text-anchor="start" fill="#c3c2b7" font-weight="400">VDD rail</text>
+<text x="584.0" y="329.0" font-size="12" text-anchor="start" fill="#c3c2b7" font-weight="400">VSS rail</text>
+<line x1="266.0" y1="34.0" x2="362.0" y2="34.0" stroke="#c3c2b7" stroke-width="1.1" stroke-linecap="round" marker-end="url(#arr-ink2)" marker-start="url(#arr-ink2)"/>
+<line x1="266.0" y1="28.0" x2="266.0" y2="40.0" stroke="#c3c2b7" stroke-width="1.0" stroke-linecap="round"/>
+<line x1="362.0" y1="28.0" x2="362.0" y2="40.0" stroke="#c3c2b7" stroke-width="1.0" stroke-linecap="round"/>
+<text x="314.0" y="26.0" font-size="13" text-anchor="middle" fill="#c3c2b7" font-weight="400">CPP (gate pitch)</text>
+<line x1="664.0" y1="148.0" x2="664.0" y2="192.0" stroke="#c3c2b7" stroke-width="1.1" stroke-linecap="round" marker-end="url(#arr-ink2)" marker-start="url(#arr-ink2)"/>
+<line x1="658.0" y1="148.0" x2="670.0" y2="148.0" stroke="#c3c2b7" stroke-width="1.0" stroke-linecap="round"/>
+<line x1="658.0" y1="192.0" x2="670.0" y2="192.0" stroke="#c3c2b7" stroke-width="1.0" stroke-linecap="round"/>
+<text x="674.0" y="174.3" font-size="13" text-anchor="start" fill="#c3c2b7" font-weight="400">MMP (metal pitch)</text>
+<line x1="126.0" y1="60.0" x2="126.0" y2="324.0" stroke="#c3c2b7" stroke-width="1.1" stroke-linecap="round" marker-end="url(#arr-ink2)" marker-start="url(#arr-ink2)"/>
+<line x1="120.0" y1="60.0" x2="132.0" y2="60.0" stroke="#c3c2b7" stroke-width="1.0" stroke-linecap="round"/>
+<line x1="120.0" y1="324.0" x2="132.0" y2="324.0" stroke="#c3c2b7" stroke-width="1.0" stroke-linecap="round"/>
+<text x="116.0" y="196.3" font-size="13" text-anchor="end" fill="#c3c2b7" font-weight="400">cell height</text>
+<text x="116.0" y="214.0" font-size="12" text-anchor="end" fill="#c3c2b7" font-weight="400">= 6 tracks × MMP</text>
+<line x1="170.0" y1="362.0" x2="554.0" y2="362.0" stroke="#c3c2b7" stroke-width="1.1" stroke-linecap="round" marker-end="url(#arr-ink2)" marker-start="url(#arr-ink2)"/>
+<line x1="170.0" y1="356.0" x2="170.0" y2="368.0" stroke="#c3c2b7" stroke-width="1.0" stroke-linecap="round"/>
+<line x1="554.0" y1="356.0" x2="554.0" y2="368.0" stroke="#c3c2b7" stroke-width="1.0" stroke-linecap="round"/>
+<text x="362.0" y="379.0" font-size="13" text-anchor="middle" fill="#c3c2b7" font-weight="400">cell width = 4 × CPP</text>
+<rect x="120.0" y="421.0" width="16.0" height="12.0" rx="2" fill="#723a28" stroke="#d95926" stroke-width="1.2"/>
+<text x="142.0" y="432.0" font-size="13" text-anchor="start" fill="#c3c2b7" font-weight="400">gate (poly/metal)</text>
+<rect x="290.4" y="421.0" width="16.0" height="12.0" rx="2" fill="#264061" stroke="#3987e5" stroke-width="1.2"/>
+<text x="312.4" y="432.0" font-size="13" text-anchor="start" fill="#c3c2b7" font-weight="400">fins (active)</text>
+<rect x="432.0" y="421.0" width="16.0" height="12.0" rx="2" fill="#745314" stroke="#c98500" stroke-width="1.2"/>
+<text x="454.0" y="432.0" font-size="13" text-anchor="start" fill="#c3c2b7" font-weight="400">M0/M1 wires</text>
+<rect x="559.2" y="421.0" width="16.0" height="12.0" rx="2" fill="#784045" stroke="#e66767" stroke-width="1.2"/>
+<text x="581.2" y="432.0" font-size="13" text-anchor="start" fill="#c3c2b7" font-weight="400">power rails</text>
+</svg>

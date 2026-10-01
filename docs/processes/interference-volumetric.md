@@ -6,7 +6,7 @@
 
 Interference (holographic) lithography superposes a handful of mutually coherent plane waves so that their stationary intensity lattice exposes an entire periodic structure in a **single shot** — no mask, no scanning: two beams write a 1D grating, three beams a 2D hexagonal lattice, and a central beam plus a three-beam umbrella an FCC-like 3D photonic crystal, the geometry of the landmark Campbell et al. experiment [1]. Two-photon direct writing is the complementary serial technique: a femtosecond focus scanned through the resist polymerizes a sub-diffraction voxel wherever the $I^2$ absorption rate crosses threshold [2, 3].
 
-Both produce inherently **volumetric** latent images, so [`interference.rs`](../../crates/highuvlith-core/src/interference.rs) evaluates fields on a `Grid3D` and emits normalized photo-active-compound (PAC) volumes that plug directly into the z-resolved development tiers in [`volumetric.rs`](../../crates/highuvlith-core/src/volumetric.rs) — per-column threshold depth maps or the 3D fast-marching etch front. Like [LIGA](./liga-deep-xray.md), this path bypasses the projection pipeline: there is no mask, pupil, or TCC.
+Both produce inherently **volumetric** latent images, so [`interference.rs`](../../crates/highuvlith-core/src/interference.rs) evaluates fields on a `Grid3D` and emits normalized photo-active-compound (PAC) volumes that plug directly into the z-resolved bake and development tiers in [`volumetric.rs`](../../crates/highuvlith-core/src/volumetric.rs) — optional Gaussian or chemically amplified post-exposure bake, then per-column threshold depth maps, the 3D fast-marching etch front, or the level-set moving boundary. The mask-based cousin of two-beam interference — two transmission gratings whose ±m orders interfere (EUV interference lithography) — is on [talbot.md](./talbot.md) and converts into the same `InterferenceSetup`. Like [LIGA](./liga-deep-xray.md), this path bypasses the projection pipeline: there is no mask, pupil, or TCC.
 
 ## Physics & math
 
@@ -19,31 +19,47 @@ flowchart LR
     A2["fs laser + objective"] --> B2["GaussianFocus scanned<br/>along a path"]
     B2 --> C2["Accumulate I^2 per voxel<br/>write_voxels"]
     C2 --> E2["voxels_to_pac<br/>m = exp(-c2 E)"]
-    E --> F["Volumetric development<br/>threshold / fast marching"]
+    E --> F["Volumetric bake + development<br/>depth map / fast marching / level set"]
     E2 --> F
 ```
 
-Each beam is an ideal infinite plane wave with real unit polarization $\hat\varepsilon_i \perp \hat{\mathbf{k}}_i$. The field is summed per Cartesian component $c \in \{x,y,z\}$ — so polarization-mismatch contrast loss between non-coplanar beams *is* captured:
+Each beam is an ideal infinite plane wave with real unit polarization $\hat\varepsilon_i \perp \hat{\mathbf{k}}_i$. The field is summed per Cartesian component $c \in \lbrace x,y,z\rbrace$ — so polarization-mismatch contrast loss between non-coplanar beams *is* captured:
 
-$$E_c(\mathbf{r}) = \sum_i A_i\, a_i(z)\, \hat\varepsilon_{i,c}\, \exp\!\Big(i\big(\tfrac{2\pi n}{\lambda_{vac}}\, \hat{\mathbf{k}}_i \cdot \mathbf{r} + \phi_i\big)\Big), \qquad I(\mathbf{r}) = \sum_c |E_c(\mathbf{r})|^2,$$
+```math
+E_c(\mathbf{r}) = \sum_i A_i\, a_i(z)\, \hat\varepsilon_{i,c}\, \exp\!\Big(i\big(\tfrac{2\pi n}{\lambda_{vac}}\, \hat{\mathbf{k}}_i \cdot \mathbf{r} + \phi_i\big)\Big), \qquad I(\mathbf{r}) = \sum_c |E_c(\mathbf{r})|^2,
+```
 
 with per-beam amplitude decay along each beam's own slanted path, $a_i(z) = e^{-\alpha z / (2\hat k_{z,i})}$ (intensity $e^{-\alpha z/\hat k_{z,i}}$; skipped for $\hat k_{z,i} \le 0$; z runs downward into the resist).
 
 **Two-beam period is refraction-invariant.** The presets take the *air-side* half-angle $\theta_{air}$ and refract it into the resist via Snell's law, $n \sin\theta_{med} = \sin\theta_{air}$. The fringe period is set by the transverse wavevector inside the medium:
 
-$$\Lambda = \frac{\lambda_{vac}/n}{2\sin\theta_{med}} = \frac{\lambda_{vac}}{2\,n\sin\theta_{med}} = \frac{\lambda_{vac}}{2\sin\theta_{air}},$$
+```math
+\Lambda = \frac{\lambda_{vac}/n}{2\sin\theta_{med}} = \frac{\lambda_{vac}}{2\,n\sin\theta_{med}} = \frac{\lambda_{vac}}{2\sin\theta_{air}},
+```
 
 i.e. refraction bends the beams toward normal exactly as much as the in-medium wavelength shrinks, so the resist index drops out — the printed pitch depends only on the air-side geometry. (The *depth* structure of 3D lattices does depend on $n$.)
 
 Exposure kinetics map intensity to normalized PAC ($m = 1$ unexposed, $m \to 0$ consumed):
 
-$$m = e^{-C\,D\,I} \ \text{(one-photon)}, \qquad m = e^{-C\,D\,I^2} \ \text{(two-photon)},$$
+```math
+m = e^{-C\,D\,I} \ \text{(one-photon)}, \qquad m = e^{-C\,D\,I^2} \ \text{(two-photon)},
+```
 
 the quadratic dependence being what confines two-photon polymerization below the diffraction limit. The serial writer models the focus as a Gaussian beam,
 
-$$z_R = \frac{\pi w_0^2\, n}{\lambda_{vac}}, \qquad w(z) = w_0\sqrt{1 + (z/z_R)^2}, \qquad I(r,z) = \Big(\frac{w_0}{w(z)}\Big)^2 e^{-2r^2/w(z)^2},$$
+```math
+z_R = \frac{\pi w_0^2\, n}{\lambda_{vac}}, \qquad w(z) = w_0\sqrt{1 + (z/z_R)^2}, \qquad I(r,z) = \Big(\frac{w_0}{w(z)}\Big)^2 e^{-2r^2/w(z)^2},
+```
 
 accumulating $\propto I^2$ into every voxel for each point of the scan path.
+
+<figure markdown="span">
+
+![Three exposure maps from multi-beam interference: parallel lines from two beams, a hexagonal dot lattice from three beams, and a vertical slice through the three-dimensional lattice written by four beams.](../assets/images/sim/interference-lattice-light.png#gh-light-mode-only)
+![Three exposure maps from multi-beam interference: parallel lines from two beams, a hexagonal dot lattice from three beams, and a vertical slice through the three-dimensional lattice written by four beams.](../assets/images/sim/interference-lattice-dark.png#gh-dark-mode-only)
+
+<figcaption>Multi-beam interference (holographic) lithography: coherent 200 nm plane waves recorded in a resist of index 1.6 as a Dill latent image (exposed fraction shown). Two beams write lines and three a hexagonal lattice (30° air-side half-angle, top slice); four beams in an umbrella (60°) write a 3D lattice, here cut in x–z. Model: multi-beam interference ✅/🔶 (analytic vector-sum field; per-beam scalar absorption; single-exposure Dill kinetics).</figcaption>
+</figure>
 
 ## Process regime
 
@@ -70,7 +86,9 @@ All in [`crates/highuvlith-core/src/interference.rs`](../../crates/highuvlith-co
 - **`GaussianFocus` / `write_voxels` / `voxels_to_pac`** — scanned two-photon voxel writer: per path point, every voxel accumulates `exposure_per_point * I(r, Δz)²`; then $m = e^{-c_2 E}$.
 - **`iso_surface_fill_fraction(pac, threshold)`** — fraction of voxels with $m <$ threshold: the developed/written fill fraction of the lattice, the knob photonic-crystal design cares about.
 
-The resulting PAC `Grid3D` feeds the volumetric development tiers (`develop_depth_map`, `develop_fast_marching`, optional `peb_diffuse_3d`) in [`volumetric.rs`](../../crates/highuvlith-core/src/volumetric.rs).
+The resulting PAC `Grid3D` feeds the volumetric tiers in [`volumetric.rs`](../../crates/highuvlith-core/src/volumetric.rs): an optional bake (`apply_peb` with `PebModel::Gaussian` or `PebModel::ChemicallyAmplified`, or `peb_diffuse_3d_anisotropic`), then `develop_depth_map`, `develop_fast_marching` / `develop_fast_marching_with`, or `develop_level_set` (see [volumetric-exposure.md](./volumetric-exposure.md)). The lattice is not periodic over an arbitrary grid span, so develop with `lateral_boundary: Reflecting` (the `develop_fast_marching` default) unless the grid covers a whole number of lattice periods.
+
+**Two-grating EUV interference.** [`talbot::TwoGratingInterference::to_interference_setup`](../../crates/highuvlith-core/src/talbot.rs) returns an `InterferenceSetup` of two TE beams at $\pm\theta_{med}$ with $\sin\theta = m\lambda/p$ and amplitudes from the gratings' m-th-order efficiencies, so the fringe period $p/(2m)$ of transmission-grating EUV-IL is evaluated with this module's `intensity` and `expose` ([talbot.md](./talbot.md#two-grating-euv-interference)).
 
 Stated approximations: ideal infinite plane waves (no beam envelope or pointing/phase jitter); **no Fresnel transmission coefficients** at the air/resist interface and **no substrate reflection** (the real back-reflected wave adds an extra standing-wave term); absorption is a scalar per-beam decay rather than a self-consistent absorbing-medium solution; the Gaussian focus is scalar/paraxial (no high-NA vector focusing, so the simulated voxel lacks the polarization-dependent asymmetry of real 1.4-NA writing); and exposure is dose-integrated with no polymerization threshold dynamics, diffusion, or oxygen inhibition.
 
@@ -91,7 +109,36 @@ Stated approximations: ideal infinite plane waves (no beam envelope or pointing/
 
 ## Usage
 
-There is **no Python, CLI, or TOML surface for this module yet** (planned); it is Rust-API only.
+Python — the three presets (`highuvlith.simulate_interference`, wrapper in
+[`python/highuvlith/api.py`](../../python/highuvlith/api.py)); the returned
+`VolumetricResult` feeds the bake and development functions of
+[volumetric-exposure.md](./volumetric-exposure.md#usage):
+
+<!-- verify-example -->
+```python
+import highuvlith as huv
+
+pac = huv.simulate_interference(
+    "four_beam_umbrella", wavelength_nm=355.0, n_medium=1.67, half_angle_deg=40.0,
+    nx=64, ny=64, nz=32, x_span_nm=2000.0, y_span_nm=2000.0, z_span_nm=2000.0,
+    dose_scale=1.0, dill_c=0.5, two_photon=False,
+)
+fill = (pac.values < 0.5).mean()               # written fraction at threshold 0.5
+times = huv.develop_fast_marching(pac, huv.ResistConfig(model="threshold"),
+                                  pixel_xy_nm=2000.0 / 64, pixel_z_nm=2000.0 / 32)
+```
+
+CLI — `highuvlith deep` with `[deep] mode = "interference"`
+([`examples/interference.toml`](../../examples/interference.toml)): keys `preset`
+(`two_beam` | `three_beam_hex` | `four_beam_umbrella`), `half_angle_deg`, `n_medium`,
+`two_photon`, `nz`, `z_span_nm`, `dose_scale`, `dill_c`, `fill_threshold`; the wavelength
+comes from `[source]` and the lateral grid from `[grid]`. It reports the fringe period
+$\lambda/(2\sin\theta_{air})$ (the pairwise reference scale for the hex/umbrella presets),
+the PAC range, and the fill fraction; `--output foo.png` writes the mid-depth PAC slice.
+
+Rust — the full API, including the two-photon voxel writer (`GaussianFocus`,
+`write_voxels`, `voxels_to_pac`) and custom `PlaneWave` sets, which have no Python or CLI
+surface:
 
 ```rust
 use highuvlith_core::interference::{
@@ -111,7 +158,7 @@ setup.intensity(&mut grid);
 
 let pac = expose(&grid, 1.0, 0.5, ExposureKinetics::OnePhoton);
 let fill = iso_surface_fill_fraction(&pac, 0.5);
-// `pac` feeds volumetric::develop_fast_marching for the 3D etch front.
+// `pac` feeds volumetric::develop_fast_marching / develop_level_set for the 3D etch front.
 ```
 
 ```rust
@@ -137,6 +184,8 @@ let pac = voxels_to_pac(&grid, 5.0);
 - `test_write_voxels_peak_at_focus_and_fill_fraction` — exposure peaks at the focus voxel; fill fraction is small and positive.
 - `test_expose_two_photon_sharper_than_one_photon` — $m$ values match the closed forms $e^{-CDI}$ / $e^{-CDI^2}$.
 - Constructor guards: `test_planewave_zero_k_rejected`, `test_planewave_non_orthogonal_polarization_rejected`, `test_planewave_non_unit_polarization_rejected`, `test_planewave_normalizes_non_unit_k`, `test_invalid_preset_parameters`.
+
+Python (`tests/python/test_volumetric.py`): `test_interference_two_beam_period` (FFT-measured period 200 nm), `test_interference_two_photon_less_consumed`. CLI (`commands/deep.rs`): `test_parse_interference_config`.
 
 ## References
 

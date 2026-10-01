@@ -1,0 +1,58 @@
+# =============================================================================
+# ERL-driven FEL — kW-class EUV lithography design point at 13.5 nm  [PROJECTION]
+# =============================================================================
+#
+# An energy-recovery linac (ERL) recirculates a high-average-current beam through
+# a SASE FEL and recovers its energy, so the FEL can run CW at ~100 MHz. The
+# preset sits in the class of KEK's ERL EUV-FEL design (800 MeV, 60 pC,
+# 9.75 mA → 9–13.7 kW at 13.5 nm; Nakamura et al., ERL2015,
+# doi:10.18429/JACoW-ERL2015-MOPCTH010 — its test machine cERL has run ~1 mA and
+# lased at 20 µm); its remaining parameters are ILLUSTRATIVE:
+#
+#     800 MeV, 60 pC bunches at 162.5 MHz (≈ 10 mA, 7.8 MW beam power to recover)
+#     300 A peak (200 fs), ε_n = 0.6 µm, σ_δ = 5e-4, β = 5 m, λ_u = 28 mm, 30 m
+#
+# DERIVED (1D FEL theory + Ming Xie 3D fit):
+#     K = 1.65, ρ = 1.78e-3, L_g = 0.72 m (1D) → 1.05 m (3D),
+#     P_sat ≈ 1.6 ρ (L_1D/L_3D)² P_beam ≈ 0.32 GW → 65 µJ per 200 fs pulse
+#     average power ≈ 65 µJ × 162.5 MHz ≈ 10.5 kW  (≈ 42× a 250 W LPP source)
+#
+# STATUS — PROJECTION (🧪): no such machine exists. The model shows what the
+# physics allows for these beam parameters; it does not model energy-recovery
+# stability, beam loss, or the 7.8 MW of beam power that must be recovered.
+#
+# Run with:  highuvlith simulate --config examples/sim_xfel_erl.toml
+# -----------------------------------------------------------------------------
+
+[source]
+type          = "xfel"
+xfel_preset   = "erl"
+wavelength_nm = 13.5
+# Machine overrides re-derive ρ, the saturation estimate and (unless
+# pulse_energy_uj is also given) the pulse energy, hence the average power —
+# e.g. peak_current_a = 600 gives 195 µJ / 31.7 kW instead of 65 µJ / 10.5 kW:
+# peak_current_a = 600.0
+# electron_energy_spread_rel = 1.0e-3
+
+[optics]
+# EUV has no transparent lens material, so the optics are mirrors: the
+# NXE-class projection pupil (NA 0.33, unobscured). Do not pair this nearly
+# coherent laser-like fill (sigma ~0.05) with a centrally obscured
+# Schwarzschild (type = "schwarzschild", obscuration 0.25-0.3 of the NA): the
+# obscuration blocks the zero diffraction order and the image becomes DARK
+# FIELD (frequency-doubled fringes; the CLI warns). A Schwarzschild needs a
+# pupil fill larger than its obscuration.
+type = "euv_projection"
+na   = 0.33
+
+[mask]
+cd_nm    = 30.0
+pitch_nm = 60.0
+
+[grid]
+size     = 128     # 2 nm requested; the CLI snaps to 1.875 nm so the 240 nm
+pixel_nm = 2.0     #   field holds exactly 4 pitches (it prints a note)
+
+[process]
+dose_mj_cm2 = 30.0
+focus_nm    = 0.0

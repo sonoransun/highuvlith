@@ -8,11 +8,11 @@
 # absorption edge at ~188 eV (6.59 nm): below the edge B4C is relatively
 # transparent and the La/B4C stack reflects (~0.6% band, ~40 pm here); above the
 # edge boron absorbs strongly and reflectivity collapses — so 6.7 nm is chosen
-# to stay on the transparent side of the edge. Demonstrated CE (~0.7%) is far
-# below tin's, which is the central BEUV source-power challenge.
+# to stay on the transparent side of the edge. Demonstrated CE (0.54–0.8 % in
+# the 0.6 % band) is far below tin's — the central BEUV source-power challenge.
 #
-# Reference: Otsuka et al., "Rare-earth plasma extreme ultraviolet sources at
-#            6.5–6.7 nm," Appl. Phys. Lett. 97, 111503 (2010).
+# Reference: Higashiguchi et al., Appl. Phys. Lett. 99, 191502 (2011) — 0.54 %
+#            conversion efficiency in the 0.6 % band (1.8 % in a 2 % band).
 #
 # Run with:  highuvlith simulate --config examples/sim_lpp_gd.toml
 # -----------------------------------------------------------------------------
@@ -20,10 +20,17 @@
 [source]
 type = "lpp"
 fuel = "gd"                    # gadolinium → 6.7 nm (La/B4C band, below B K-edge)
-# Family preset: 10 kW drive, 0.7% CE, 5% transport, 40 pm band, 10 kHz.
+# Family preset: 10 kW 1 µm solid-state drive (assumed), 0.7 % CE (inside the
+# 0.54–0.8 % reported in the La/B 0.6 % band), Sn-calibrated 2π→IF (optimistic
+# for La/B collectors), 40 pm band, 10 kHz → ~13.6 W at IF — a PROJECTION: no
+# watt-level in-band 6.x nm source has been demonstrated. Gd emission peaks near
+# 6.775 nm while La/B mirrors peak at 6.63–6.65 nm, so 6.7 nm sits slightly off
+# the mirror peak.
 
 [optics]
-# 6.7 nm → reflective Schwarzschild (La/B4C multilayer BEUV preset).
+# 6.7 nm → reflective Schwarzschild (picked by wavelength: the "beuv" preset,
+# obscuration 0.3 of the NA, constant La/B4C-class reflectance 0.50 per
+# mirror). With the σ 0.7 plasma fill: contrast 0.689, printed CD 14.8 nm.
 type = "schwarzschild"
 na   = 0.3
 
@@ -32,8 +39,8 @@ cd_nm    = 15.0    # ~2× finer than 13.5 nm at matched NA (half the wavelength)
 pitch_nm = 30.0
 
 [grid]
-size     = 128     # 128 nm field at 1 nm pixels ≈ 4 pitches
-pixel_nm = 1.0
+size     = 128     # 1 nm requested; the CLI snaps to 0.9375 nm so the 120 nm
+pixel_nm = 1.0     #   field holds exactly 4 pitches (it prints a note)
 
 [process]
 dose_mj_cm2 = 30.0

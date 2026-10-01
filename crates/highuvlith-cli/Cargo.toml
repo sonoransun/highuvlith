@@ -1,7 +1,13 @@
 [package]
 name = "highuvlith-cli"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
+description = "Command-line interface for the highuvlith lithography simulator (TOML-driven simulate, sweep, deep, optimize, throughput, sources and materials commands)"
+license = "MIT"
+repository = "https://github.com/sonoransun/highuvlith"
+homepage = "https://sonoransun.github.io/highuvlith/"
+documentation = "https://sonoransun.github.io/highuvlith/"
+readme = "../../README.md"
 
 [[bin]]
 name = "highuvlith"

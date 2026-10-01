@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 420" width="900" height="420" role="img" aria-labelledby="t d" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif">
+<title id="t">Why single-exposure k1 cannot go below 0.25</title>
+<desc id="d">Three pupil diagrams in normalized coordinates (pupil radius = NA). A line grating of pitch p splits light into diffraction orders spaced lambda over p apart. An image forms only if the zeroth order and at least one first order pass the pupil together. Left: on-axis illumination, orders fall outside and nothing is imaged. Middle: tilted (dipole) illumination puts the zeroth and minus-first orders symmetrically inside the pupil. Right: the limit, where the two orders sit at opposite pupil edges, spaced 2 NA, giving p = lambda over 2 NA, that is k1 = 0.25.</desc>
+<defs><marker id="arr-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9a988f"/></marker><marker id="arr-ink2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c3c2b7"/></marker><marker id="arr-ink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#ffffff"/></marker><marker id="arr-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#e66767"/></marker><marker id="arr-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#3987e5"/></marker><marker id="arr-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#d95926"/></marker><marker id="arr-aqua" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#199e70"/></marker><marker id="arr-violet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#9085e9"/></marker><marker id="arr-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0ca30c"/></marker></defs>
+<text x="150.0" y="36.0" font-size="15" text-anchor="middle" fill="#ffffff" font-weight="600">On-axis source</text>
+<path d="M58,190 a92,92 0 1,0 184,0 a92,92 0 1,0 -184,0" fill="#212b3c" stroke="#3987e5" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="38.0" y1="190.0" x2="262.0" y2="190.0" stroke="#34363d" stroke-width="1.0" stroke-linecap="round"/>
+<path d="M143.0,190 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" fill="#d95926" stroke="#d95926" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="150.0" y="170.0" font-size="12" text-anchor="middle" fill="#c3c2b7" font-weight="400">0</text>
+<path d="M267.2,190 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" fill="none" stroke="#9a988f" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="274.2" y="170.0" font-size="12" text-anchor="middle" fill="#c3c2b7" font-weight="400">+1</text>
+<path d="M18.799999999999997,190 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" fill="none" stroke="#9a988f" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="25.8" y="170.0" font-size="12" text-anchor="middle" fill="#c3c2b7" font-weight="400">−1</text>
+<text x="150.0" y="318.0" font-size="13" text-anchor="middle" fill="#c3c2b7" font-weight="400">orders outside → no image</text>
+<text x="450.0" y="36.0" font-size="15" text-anchor="middle" fill="#ffffff" font-weight="600">Dipole (off-axis) source</text>
+<path d="M358,190 a92,92 0 1,0 184,0 a92,92 0 1,0 -184,0" fill="#212b3c" stroke="#3987e5" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="338.0" y1="190.0" x2="562.0" y2="190.0" stroke="#34363d" stroke-width="1.0" stroke-linecap="round"/>
+<path d="M505.55999999999995,190 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" fill="#d95926" stroke="#d95926" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="512.6" y="170.0" font-size="12" text-anchor="middle" fill="#c3c2b7" font-weight="400">0</text>
+<path d="M380.44,190 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" fill="#d95926" stroke="#d95926" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="387.4" y="170.0" font-size="12" text-anchor="middle" fill="#c3c2b7" font-weight="400">−1</text>
+<text x="572.0" y="218.0" font-size="12" text-anchor="middle" fill="#9a988f" font-weight="400">+1 →</text>
+<text x="450.0" y="318.0" font-size="13" text-anchor="middle" fill="#c3c2b7" font-weight="400">0 and −1 inside → two-beam image</text>
+<text x="450.0" y="336.0" font-size="11" text-anchor="middle" fill="#9a988f" font-weight="400">(one pole shown; its mirror pole works the same way)</text>
+<text x="750.0" y="36.0" font-size="15" text-anchor="middle" fill="#ffffff" font-weight="600">The limit: k₁ = 0.25</text>
+<path d="M658,190 a92,92 0 1,0 184,0 a92,92 0 1,0 -184,0" fill="#212b3c" stroke="#3987e5" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+<line x1="638.0" y1="190.0" x2="862.0" y2="190.0" stroke="#34363d" stroke-width="1.0" stroke-linecap="round"/>
+<path d="M835.0,190 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" fill="#d95926" stroke="#d95926" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="854.0" y="176.0" font-size="12" text-anchor="start" fill="#c3c2b7" font-weight="400">0</text>
+<path d="M651.0,190 a7,7 0 1,0 14,0 a7,7 0 1,0 -14,0" fill="#d95926" stroke="#d95926" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="646.0" y="176.0" font-size="12" text-anchor="end" fill="#c3c2b7" font-weight="400">−1</text>
+<text x="872.0" y="218.0" font-size="12" text-anchor="middle" fill="#9a988f" font-weight="400">+1 →</text>
+<text x="750.0" y="318.0" font-size="13" text-anchor="middle" fill="#c3c2b7" font-weight="400">orders at the rim, spacing 2·NA</text>
+<line x1="658.0" y1="342.0" x2="842.0" y2="342.0" stroke="#c3c2b7" stroke-width="1.1" stroke-linecap="round" marker-end="url(#arr-ink2)" marker-start="url(#arr-ink2)"/>
+<line x1="658.0" y1="336.0" x2="658.0" y2="348.0" stroke="#c3c2b7" stroke-width="1.0" stroke-linecap="round"/>
+<line x1="842.0" y1="336.0" x2="842.0" y2="348.0" stroke="#c3c2b7" stroke-width="1.0" stroke-linecap="round"/>
+<text x="750.0" y="334.0" font-size="13" text-anchor="middle" fill="#c3c2b7" font-weight="400">λ/p = 2·NA  ⇒  p = λ/(2·NA)</text>
+<rect x="290.0" y="397.0" width="16.0" height="12.0" rx="2" fill="#854027" stroke="#d95926" stroke-width="1.2"/>
+<text x="312.0" y="408.0" font-size="13" text-anchor="start" fill="#c3c2b7" font-weight="400">order inside the pupil</text>
+<rect x="496.4" y="397.0" width="16.0" height="12.0" rx="2" fill="none" stroke="#8a8880" stroke-width="1.2" stroke-dasharray="3 2"/>
+<text x="518.4" y="408.0" font-size="13" text-anchor="start" fill="#c3c2b7" font-weight="400">blocked order</text>
+</svg>

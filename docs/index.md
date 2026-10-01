@@ -1,73 +1,235 @@
-# highuvlith Documentation
+---
+hide:
+  - navigation
+---
 
-**Status:** ✅ Implemented — this page is the documentation home; every linked page carries its own status badge per the taxonomy defined in the [capability matrix](./capability-matrix.md).
+# highuvlith
 
-highuvlith simulates optical lithography from VUV (120–160 nm) through EUV (13.5 nm) to soft and hard X-ray, with a Rust physics core behind Python, CLI, GUI, and Jupyter frontends. The documentation follows one rule everywhere: **honesty is the product** — pages state what the code computes, what it approximates, and what it merely stores or plans, with the capability matrix as the single source of truth.
+<p class="huv-lead"><strong>A lithography simulator that tells you exactly what it computes</strong>
+&mdash; from vacuum-ultraviolet excimer lasers through EUV (13.5&nbsp;nm) and beyond-EUV
+(6.7&nbsp;nm) to soft and hard X-rays &mdash; and a guided tour of how chips have been
+printed, how today's process nodes are made, and where the physics could go next.</p>
 
-## Getting started
+highuvlith is a Rust physics engine with Python, CLI, desktop GUI and notebook frontends.
+It computes exact scalar Hopkins (TCC/SOCS) images ✅ and a vector TE/TM mode for high NA ✅,
+through dry and water-immersion (193i, NA 1.35) projection lenses ✅ and EUV projection optics
+at NA 0.33 and 0.55 🔶, for fourteen light-source families graded one by one from ✅ to 🧪.
+Downstream it models thin films, resist exposure, baking and 3-D development, deep-layer
+processes such as LIGA and Talbot lithography, and mask optimization. **Honesty is the
+product:** every capability is graded ✅ Implemented · 🔶 Simplified · 🧪 Theoretical ·
+🗺️ Planned in the [capability matrix](capability-matrix.md), and no page describes more than
+the code does.
 
-- [README](../README.md) — installation (`pip install highuvlith` or `maturin develop`), quick-start snippets for Python/CLI/GUI, and the project overview.
+<div class="huv-actions" markdown>
 
-## Core
+[Get started](getting-started.md) · [What does it compute?](capability-matrix.md) · [Open the playground](playground/index.md)
 
-- [Architecture](./architecture.md) — workspace crates, layering, data flow, project tree, and the three extension traits.
-- [Simulation pipeline](./pipeline.md) — Source → Optics → Mask → Hopkins TCC/SOCS aerial image → thin film → resist → metrics, stage by stage with the scalar-diffraction caveats.
-- [Optical systems](./optics.md) — the `OpticalSystem` trait and its three implementations: refractive CaF₂, Fresnel zone plate, Schwarzschild objective.
-- [Materials database](./materials.md) — Sellmeier fits, VUV tabulated n,k, X-ray attenuation, and the honesty warning on the approximate EUV/BEUV entries.
+</div>
 
-## Sources
+## Explore lithography
 
-All nine families implement one trait and run through the identical imaging path; the [sources index](./sources/index.md) documents the trait contract, the `SourceKind` dispatch, and a comparison table.
+<div class="grid cards huv-sections" markdown>
 
-- [VUV excimer](./sources/vuv-excimer.md) — F₂ 157.63 nm and Ar₂ 126 nm gas-discharge lasers; the mature baseline. ✅
-- [LPA-FEL](./sources/lpa-fel.md) — laser-plasma-accelerator FEL, 20–30 nm (BELLA-class), fs pulses, high coherence. 🔶
-- [LPP](./sources/lpp.md) — laser-produced plasma: Sn 13.5 nm EUV and Gd/Tb 6.7/6.5 nm beyond-EUV. ✅
-- [Synchrotron](./sources/synchrotron.md) — bending magnet (LIGA white beam) and undulator beamlines; wavelength **derived** from machine parameters. ✅
-- [HHG](./sources/hhg.md) — table-top high-harmonic generation; monochromatized single harmonic (default) or full-comb spectral bookkeeping (not honest imaging). ✅/🔶
-- [XFEL](./sources/xfel.md) — SASE and self-seeded free-electron lasers; wavelength is a gap-tunable set-point. ✅
-- [Inverse Compton scattering](./sources/inverse-compton.md) — compact ICS; electron energy derived from Compton kinematics. 🧪
-- [SSMB](./sources/ssmb.md) — steady-state microbunching storage ring, projected kW-class 13.5 nm. 🧪
-- [Entangled-photon](./sources/entangled-photon.md) — NOON-state source bridging the quantum research module. 🧪
+-   **📜 History**
 
-## Processes
+    ---
 
-The [processes index](./processes/index.md) maps each page onto the post-optics pipeline.
+    From a Munich printing stone in the 1790s to High-NA EUV scanners: contact printing,
+    projection steppers, excimer lasers, the 157 nm detour, immersion, multiple patterning
+    and the long road to EUV, told with sourced tool data.
 
-- [Thin-film transfer matrix](./processes/thin-film.md) — 2×2 TMM: reflectance, Brewster angle, and the exact `intensity_profile()` standing-wave field.
-- [Resist models](./processes/resist-models.md) — Dill ABC exposure, PEB acid diffusion, Mack development (the fast depth-averaged 2D path).
-- [Volumetric exposure & 3D development](./processes/volumetric-exposure.md) — z-resolved separable exposure, split-step Dill bleaching, fast-marching development front.
-- [LIGA deep X-ray](./processes/liga-deep-xray.md) — 1:1 proximity shadow printing (no pupil, no TCC): polychromatic depth dose, spectral hardening, Fresnel-zone proximity blur.
-- [Grayscale lithography](./processes/grayscale.md) — contrast-curve 2.5D height maps, blazed gratings, microlens arrays, inverse mask synthesis.
-- [Interference & two-photon](./processes/interference-volumetric.md) — multi-beam plane-wave lattices and two-photon voxel writing feeding the volumetric tiers.
+    [Read the history →](history/index.md) · [The road to EUV →](history/euv.md)
 
-## Research modules
+-   **🔬 Process nodes**
 
-- [Research modules](./research-modules.md) — one page for all eight: ILT (proxy gradient), DSA (analytic), ptychography (genuine ePIE), quantum (theoretical), MNSL, stochastic LER/LWR (incl. Gamma dose jitter), double patterning, OPC (no SRAF).
+    ---
 
-## Reference
+    From the 90 nm generation to the Ångström era: what changed in the transistor (planar,
+    FinFET, nanosheet, CFET), which layers became hard to print, how they were printed
+    anyway, and why node names are marketing labels.
 
-- [Capability matrix](./capability-matrix.md) — the authoritative ✅ / 🔶 / 🧪 / 🗺️ ledger; every capability-changing PR updates it.
-- [TOML configuration](./configuration.md) — every `[source]` / `[optics]` / `[mask]` / `[grid]` / `[process]` field, defaults, and validation rules.
-- [CLI](./cli.md) — `highuvlith simulate / sweep / materials` usage and output formats.
-- [GUI](./gui.md) — the egui desktop app: sliders, presets, and what it does (and does not) visualize.
-- [Python API](./python-api.md) — config classes, `SimulationEngine` / `BatchSimulator`, result objects, and viz helpers.
+    [Tour the nodes →](nodes/index.md) · [Lithography arithmetic →](nodes/litho-math.md)
 
-> Note: the four reference pages above (configuration, CLI, GUI, Python API) are being written in the current documentation phase — the paths are fixed, so links remain valid as the pages land.
+-   **🔭 The future**
 
-## Development
+    ---
 
-- [Extending highuvlith](./extending.md) — exact recipes (files, steps, tests) for adding a source family, an optical system, or a process module.
-- [Roadmap](./roadmap.md) — everything 🗺️ planned, with rationale: vector in-film imaging, per-λ TCC for honest HHG combs, Fresnel–Kirchhoff LIGA diffraction, level-set development, GPU backend, true adjoint ILT, SRAF, and more.
-- [CLAUDE.md](../CLAUDE.md) — build commands, test commands, and contributor conventions.
+    High-NA and Hyper-NA EUV, beyond-EUV wavelengths, accelerator light sources, the
+    stochastic frontier, alternatives to projection and quantum schemes, each rated for
+    readiness and for what the simulator can and cannot say about it.
+
+    [Look ahead →](future/index.md) · [High-NA and Hyper-NA →](future/high-na-and-hyper-na.md)
+
+</div>
+
+## Use the simulator
+
+<div class="grid cards" markdown>
+
+-   **🚀 Getting started**
+
+    ---
+
+    Build the Python package from source, run a first aerial image, and find the CLI and
+    GUI.
+
+    [Getting started →](getting-started.md)
+
+-   **🧭 Simulation pipeline**
+
+    ---
+
+    Source → optics → mask → Hopkins imaging → thin film → resist → metrics, stage by
+    stage with every approximation stated, plus exact mask spectra and the CD, NILS and
+    process-window metrics.
+
+    [Pipeline →](pipeline.md) · [Masks & metrics →](masks-and-metrics.md) · [Architecture →](architecture.md)
+
+-   **💡 Light sources**
+
+    ---
+
+    Fourteen families: Hg-lamp, KrF, ArF and F₂ lines, laser- and discharge-produced
+    plasma (including a 500 W NXE:3800E-class tin preset), synchrotrons, free-electron
+    lasers, X-ray tubes and speculative sources such as SSMB, all behind one source trait.
+
+    [Sources →](sources/index.md) · [DUV/UV heritage →](sources/duv-heritage.md)
+
+-   **🔍 Optics and materials**
+
+    ---
+
+    Dry and immersion lenses ✅, EUV projection optics 🔶 with an opt-in multilayer pupil 🔶,
+    zone plates and Schwarzschild mirrors ✅, vector imaging ✅, and CXRO/NIST optical
+    constants ✅.
+
+    [Optics →](optics.md) · [Vector imaging →](vector-imaging.md) · [Materials →](materials.md)
+
+-   **🧱 Processes**
+
+    ---
+
+    Thin films ✅, chemically amplified bakes 🔶, 3-D development by fast marching ✅ or level
+    set ✅/🔶, LIGA deep X-ray with absolute exposure times ✅, grayscale lithography 🔶,
+    multi-beam interference ✅/🔶 and Talbot lithography 🔶.
+
+    [Processes →](processes/index.md) · [Talbot lithography →](processes/talbot.md)
+
+-   **🧩 Optimization and research**
+
+    ---
+
+    Exact-adjoint ILT ✅, fragment OPC ✅, SRAF insertion 🔶, LELE/SADP/SAQP multiple
+    patterning 🔶, DSA 🔶, photon shot noise and dose jitter ✅, and the research modules.
+
+    [Research modules →](research-modules.md)
+
+-   **📚 Reference**
+
+    ---
+
+    Every TOML field, CLI command, GUI control and Python class.
+
+    [Configuration →](configuration.md) · [CLI →](cli.md) · [Python API →](python-api.md)
+
+-   **🎛️ Playground**
+
+    ---
+
+    Resolution, photon shot-noise and aerial-image calculators that run in the browser,
+    with every formula written out: teaching toys 🔶, not the engine.
+
+    [Open the playground →](playground/index.md)
+
+</div>
+
+## How lithography resolution scales
+
+The smallest half-pitch a projection scanner can print, and the focus range it can hold,
+follow the Rayleigh scaling laws
+
+```math
+R = k_1 \frac{\lambda}{\mathrm{NA}}, \qquad \mathrm{DOF} = k_2 \frac{\lambda}{\mathrm{NA}^2}
+```
+
+where λ is the exposure wavelength, NA the numerical aperture of the projection lens,
+and k₁, k₂ process factors. There are three levers: a shorter wavelength, a larger NA,
+and a smaller k₁, which resolution-enhancement techniques push down towards its
+single-exposure floor of k₁ = 0.25 for dense lines. Each lever has its price &mdash; the
+depth of focus shrinks with NA², which is one reason every new generation is harder than
+the last.
+
+| Scanner class (example) | λ (nm) | NA | λ / NA (nm) | Quoted resolution (nm) | Implied k₁ |
+|---|---:|---:|---:|---:|---:|
+| KrF dry (ASML NXT:870) | 248 | 0.80 | 310 | 110 | 0.35 |
+| ArF dry (ASML NXT:1470) | 193 | 0.93 | 208 | 57 | 0.27 |
+| ArF immersion (ASML NXT:2000i) | 193 | 1.35 | 143 | 38 | 0.27 |
+| EUV (ASML NXE) | 13.5 | 0.33 | 41 | 13 | 0.32 |
+| High-NA EUV (ASML EXE) | 13.5 | 0.55 | 25 | 8 | 0.33 |
+
+NA and resolution are the manufacturer's published figures ([references](#references)); the
+implied k₁ = R · NA / λ treats the quoted resolution as a half-pitch. Recompute any row, or
+try your own numbers, in the [playground](playground/index.md).
+
+The simulator's optics presets show the same two NA steps. Its water-immersion lens (NA 1.35,
+n = 1.437) images a 90 nm pitch at 193 nm with annular illumination at contrast 0.368, where a
+dry NA 0.93 lens gives none ✅. Its EUV projection optics resolve an 18 nm pitch at NA 0.55
+(contrast 0.495) but not at NA 0.33 🔶. Both results are recorded in the
+[capability matrix](capability-matrix.md); the lens models are described under
+[optical systems](optics.md).
+
+## How to read the badges
+
+| Badge | Meaning |
+|---|---|
+| ✅ Implemented | Computed by code, covered by tests, physics validated against analytical results |
+| 🔶 Simplified | Runs end-to-end but with documented approximations or reduced dimensionality; the assumption is stated inline wherever the capability is described |
+| 🧪 Theoretical | Parameterized and runnable, but models speculative physics; outputs are research projections, not validated engineering |
+| 🗺️ Planned | Not in code; roadmap only. Never described in prose as if it runs |
+
+A split badge such as ✅/🔶 means the named parts are exact and tested while the rest rests on
+the stated approximation.
+
+Every technical page opens with a **Status:** line carrying one of these grades; the
+[capability matrix](capability-matrix.md) is the single source of truth for all of them.
 
 ## Orientation map
 
 ```mermaid
 graph LR
-    START((Reader)) --> GS["Getting started<br/><i>README</i>"]
-    START --> WHAT["What does it compute?<br/><i>capability-matrix</i>"]
-    GS --> RUN["Run something<br/><i>configuration / cli / python-api</i>"]
-    WHAT --> PHYS["Understand the physics<br/><i>pipeline / optics / materials<br/>sources/* / processes/*</i>"]
-    PHYS --> EXT["Change the code<br/><i>architecture / extending / roadmap</i>"]
+    READER((Reader)) --> LEARN["Learn the field<br/><i>history / process nodes / the future</i>"]
+    READER --> PLAY["Try the scaling laws<br/><i>playground</i>"]
+    READER --> GS["Getting started<br/><i>install, first image</i>"]
+    READER --> WHAT["What does it compute?<br/><i>capability matrix</i>"]
+    LEARN --> PHYS
+    PLAY --> PHYS
+    GS --> RUN["Run something<br/><i>python-api / cli / configuration</i>"]
+    WHAT --> PHYS["Understand the physics<br/><i>pipeline / optics / materials<br/>sources / processes</i>"]
     RUN --> PHYS
+    PHYS --> EXT["Change the code<br/><i>architecture / extending / roadmap</i>"]
 ```
+
+## About this site
+
+This site is built with [MkDocs](https://www.mkdocs.org/) and
+[Material for MkDocs](https://squidfunk.github.io/mkdocs-material/) from the `docs/`
+folder of the [repository](https://github.com/sonoransun/highuvlith); every page also reads
+as plain Markdown on GitHub. To preview it locally:
+
+```bash
+python -m venv .venv-docs
+.venv-docs/bin/pip install -r docs/requirements-docs.txt
+.venv-docs/bin/mkdocs serve
+```
+
+The `pages.yml` GitHub Actions workflow rebuilds and publishes the site on every push to
+`main` (repository owners enable it once under *Settings → Pages → Source: GitHub
+Actions*). Corrections and additions are welcome &mdash; see the
+[contributing guide](https://github.com/sonoransun/highuvlith/blob/main/CONTRIBUTING.md).
+
+## References
+
+- ASML, [TWINSCAN NXT:870](https://www.asml.com/en/products/duv-lithography-systems/twinscan-nxt870) &mdash; KrF (248 nm), variable NA 0.55–0.80, resolution at and below 110 nm.
+- ASML, [TWINSCAN NXT:1470](https://www.asml.com/en/products/duv-lithography-systems/twinscan-nxt1470) &mdash; ArF dry, variable NA 0.70–0.93, production resolution down to 57 nm.
+- ASML, [TWINSCAN NXT:2000i](https://www.asml.com/en/products/duv-lithography-systems/twinscan-nxt2000i) &mdash; ArF immersion, NA 1.35, resolution down to 38 nm (dipole illumination).
+- ASML, [EUV lithography systems](https://www.asml.com/en/products/euv-lithography-systems) &mdash; NXE systems NA 0.33 with 13 nm resolution; EXE (High-NA) systems NA 0.55 with 8 nm resolution.

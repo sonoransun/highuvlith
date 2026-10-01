@@ -1,0 +1,46 @@
+# =============================================================================
+# CW superconducting-linac FEL at 13.5 nm (LCLS-II-like architecture)  [PROJECTION]
+# =============================================================================
+#
+# A continuous-wave superconducting linac (the LCLS-II architecture) drives a
+# SASE FEL at up to ~1 MHz instead of the 10–120 Hz of warm linacs. The preset
+# scales that architecture to 13.5 nm with ILLUSTRATIVE parameters:
+#
+#     1 GeV, 50 pC (50 fs at 1 kA) at 1 MHz, ε_n = 0.5 µm, σ_δ = 1e-4, β = 10 m,
+#     λ_u = 39 mm, 30 m of undulator
+#
+# DERIVED: K = 1.82, ρ = 2.54e-3, L_g(3D) = 0.87 m, saturation ≈ 2.7 GW
+#          → ≈ 135 µJ per pulse → ≈ 135 W average (about half an HVM LPP source)
+#
+# STATUS — PROJECTION (🧪): no 13.5 nm CW-SC FEL exists.
+#
+# Run with:  highuvlith simulate --config examples/sim_xfel_cw_sc.toml
+# -----------------------------------------------------------------------------
+
+[source]
+type          = "xfel"
+xfel_preset   = "cw_sc"
+wavelength_nm = 13.5
+
+[optics]
+# EUV has no transparent lens material, so the optics are mirrors: the
+# NXE-class projection pupil (NA 0.33, unobscured). Do not pair this nearly
+# coherent laser-like fill (sigma ~0.05) with a centrally obscured
+# Schwarzschild (type = "schwarzschild", obscuration 0.25-0.3 of the NA): the
+# obscuration blocks the zero diffraction order and the image becomes DARK
+# FIELD (frequency-doubled fringes; the CLI warns). A Schwarzschild needs a
+# pupil fill larger than its obscuration.
+type = "euv_projection"
+na   = 0.33
+
+[mask]
+cd_nm    = 30.0
+pitch_nm = 60.0
+
+[grid]
+size     = 128     # 2 nm requested; the CLI snaps to 1.875 nm so the 240 nm
+pixel_nm = 2.0     #   field holds exactly 4 pitches (it prints a note)
+
+[process]
+dose_mj_cm2 = 30.0
+focus_nm    = 0.0

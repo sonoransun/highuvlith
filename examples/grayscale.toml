@@ -20,11 +20,13 @@
 # continuous-transmittance mask that prints it via the inverse map, then
 # re-prints it in the ideal 2.5D model (local dose = exposure_dose × mask
 # transmittance) and reports the achieved height and its RMS error vs target —
-# a self-consistency check on the contrast-curve inversion.
+# a self-consistency check on the contrast-curve inversion. This run: target
+# and achieved height 418.8–1000 nm (600 nm blaze sampled at 32 px: the last
+# step is 31/32 × 600 = 581 nm deep), RMS error 0.000 nm.
 #
 # Reference: C. M. Waits et al., "Investigation of gray-scale technology for
 #            large area 3D silicon MEMS structures," J. Micromech. Microeng.
-#            13, 170 (2003); Dill et al., IEEE TED 22, 440 (1975).
+#            13, 170 (2003); Dill et al., IEEE TED 22, 445 (1975).
 #
 # Run with:  highuvlith deep --config examples/grayscale.toml --output /tmp/gray.json
 #            (or --output /tmp/gray.png for the height map)
@@ -32,12 +34,13 @@
 
 [source]
 # Grayscale is typically done on an i-line mask aligner / DMD writer. The source
-# is unused by this analytic 2.5D mode (only [grid].size sets the array); the
-# 365 nm value is documentary.
+# is unused by this analytic 2.5D mode (only [grid] sets the array); the CLI
+# notes that [source], [optics] and [mask] are ignored, and all three may be
+# omitted. The 365 nm value is documentary.
 wavelength_nm = 365.0
 
 [optics]
-na = 0.4        # unused by the 2.5D height model; present for the shared schema
+na = 0.4        # unused by the 2.5D height model (ignored; may be omitted)
 
 [mask]
 cd_nm    = 1000.0   # unused by this mode (the relief is built parametrically)

@@ -18,7 +18,13 @@
 # The constructor REJECTS even harmonics (inversion symmetry) and any harmonic
 # above the cutoff, so this config doubles as a cutoff-law demonstration.
 # Flux is low (nJ–µJ/pulse) but laser-coherent — the candidate compact source
-# for actinic EUV mask inspection.
+# for actinic EUV mask inspection. `highuvlith simulate` also prints the Keldysh
+# parameter (0.67: tunnelling regime), the critical ionization for phase matching
+# (0.86 % in Ne at 800 nm) and an ORDER-OF-MAGNITUDE conversion-efficiency
+# estimate (≈ 5e-8 for q = 59 in the cutoff rolloff) → the driver power a 250 W
+# source would need (≈ 5.6 GW average). Default power: the ASSUMED 5 W driver
+# × 4.5e-8 = 0.22 µW, about 0.2× the measured-record curve at this photon
+# energy (≈ 1 µW); hvm_power_ratio ≈ 9e-10.
 #
 # Reference: Popmintchev et al., "Bright coherent ultrahigh harmonics in the
 #            keV X-ray regime," Science 336, 1287 (2012).
@@ -33,19 +39,30 @@ driver_wavelength_nm = 800.0      # Ti:Sapphire
 driver_intensity_w_cm2 = 4.0e14   # sets U_p and hence the cutoff
 harmonic             = 59         # 800/59 = 13.56 nm; E = 91.4 eV ≤ 97.3 eV cutoff
 monochromator_bandwidth_pm = 15.0 # single-harmonic imaging (honest for litho)
+# driver_average_power_w = 100.0  # derive the harmonic power from the driver
+# conversion_efficiency  = 1e-7   # measured efficiency (overrides the estimate)
+# full_comb = true                # image the whole comb (then delete `harmonic` and
+#                                 #   `monochromator_bandwidth_pm`); restrict it:
+# comb_passband_nm = [12.5, 20.0]
 
 [optics]
-# EUV has no refractive lens material — reflective Schwarzschild mirrors only.
-type = "schwarzschild"
-na   = 0.3
+# EUV has no transparent lens material, so the optics are mirrors: the
+# NXE-class projection pupil (NA 0.33, unobscured). Do not pair this nearly
+# coherent laser-like fill (sigma ~0.05) with a centrally obscured
+# Schwarzschild (type = "schwarzschild", obscuration 0.25-0.3 of the NA): the
+# obscuration blocks the zero diffraction order and the image becomes DARK
+# FIELD (frequency-doubled fringes; the CLI warns). A Schwarzschild needs a
+# pupil fill larger than its obscuration.
+type = "euv_projection"
+na   = 0.33
 
 [mask]
-cd_nm    = 30.0    # k1 = (pitch/2)·NA/λ = 15·0.3/13.56 ≈ 0.33
+cd_nm    = 30.0    # k1 = (pitch/2)·NA/λ = 30·0.33/13.56 ≈ 0.73
 pitch_nm = 60.0
 
 [grid]
-size     = 128     # 128 × 2 nm = 256 nm field ≈ 4 pitches
-pixel_nm = 2.0
+size     = 128     # 2 nm requested; the CLI snaps to 1.875 nm so the 240 nm
+pixel_nm = 2.0     #   field holds exactly 4 pitches (it prints a note)
 
 [process]
 dose_mj_cm2 = 30.0

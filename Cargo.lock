@@ -1695,7 +1695,7 @@ checksum = "dfa686283ad6dd069f105e5ab091b04c62850d3e4cf5d67debad1933f55023df"
 
 [[package]]
 name = "highuvlith-cli"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "clap",
@@ -1710,7 +1710,7 @@ dependencies = [
 
 [[package]]
 name = "highuvlith-core"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "approx",
  "criterion",
@@ -1730,19 +1730,20 @@ dependencies = [
 
 [[package]]
 name = "highuvlith-gui"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "eframe",
  "egui_plot",
  "highuvlith-core",
  "ndarray",
  "num",
+ "png",
  "serde",
 ]
 
 [[package]]
 name = "highuvlith-py"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "highuvlith-core",
  "ndarray",

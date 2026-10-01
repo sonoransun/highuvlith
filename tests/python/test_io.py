@@ -1,7 +1,6 @@
 """Tests for I/O utilities."""
 import pytest
 import numpy as np
-from pathlib import Path
 from highuvlith.io.config_io import save_config, load_config
 from highuvlith.io.results_io import save_result, load_result
 
@@ -47,7 +46,7 @@ class TestResultsIO:
         source = huv.SourceConfig.f2_laser()
         optics = huv.OpticsConfig()
         mask = huv.MaskConfig.line_space(65.0, 180.0)
-        grid = huv.GridConfig(size=64, pixel_nm=4.0)
+        grid = mask.commensurate_grid(size=64, target_pixel_nm=4.0)
         engine = huv.SimulationEngine(source, optics, mask, grid=grid, max_kernels=10)
         result = engine.compute_aerial_image(focus_nm=0.0)
 
@@ -67,7 +66,7 @@ class TestResultsIO:
         source = huv.SourceConfig.f2_laser()
         optics = huv.OpticsConfig()
         mask = huv.MaskConfig.line_space(65.0, 180.0)
-        grid = huv.GridConfig(size=64, pixel_nm=4.0)
+        grid = mask.commensurate_grid(size=64, target_pixel_nm=4.0)
         batch = huv.BatchSimulator(source, optics, mask, grid)
         pw = batch.process_window(
             doses=[20.0, 30.0, 40.0],
@@ -87,7 +86,7 @@ class TestResultsIO:
         source = huv.SourceConfig.f2_laser()
         optics = huv.OpticsConfig()
         mask = huv.MaskConfig.line_space(65.0, 180.0)
-        grid = huv.GridConfig(size=64, pixel_nm=4.0)
+        grid = mask.commensurate_grid(size=64, target_pixel_nm=4.0)
         engine = huv.SimulationEngine(source, optics, mask, grid=grid, max_kernels=10)
         result = engine.compute_aerial_image(focus_nm=0.0)
         original_intensity = np.asarray(result.intensity).copy()

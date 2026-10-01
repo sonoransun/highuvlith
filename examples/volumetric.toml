@@ -1,11 +1,14 @@
 # =============================================================================
-# Volumetric exposure + development — F2 157.63 nm into 300 nm resist
+# Volumetric exposure + bake + development — F2 157.63 nm into 300 nm resist
 # =============================================================================
 #
-# The full 3D latent image: the lateral aerial image is combined with the exact
+# The full 3D pipeline: the lateral aerial image is combined with the exact
 # thin-film (transfer-matrix) intensity through the resist depth, the Dill
-# exposure is integrated with SPLIT-STEP bleaching, and development returns a
-# per-slice CD and sidewall angle. The separable exposure model is
+# exposure is integrated with SPLIT-STEP bleaching, an anisotropic Gaussian
+# post-exposure bake smooths the latent image (or a chemically amplified
+# acid/quencher bake converts it — peb = "car"), and a LEVEL-SET development
+# front with surface inhibition dissolves the resist, giving per-slice
+# developed CD and a sidewall angle. The separable exposure model is
 #
 #     I(x, y, z) = I_aer(x, y; d0 + z/n_r) · S(z)
 #
@@ -20,11 +23,31 @@
 # downward, so a strongly bleaching resist gets more exposure at depth — the
 # reason thick/high-A resists need several steps to converge.
 #
-# Reference: Dill et al., IEEE Trans. Electron Devices 22, 440 (1975);
-#            Mack, "Fundamental Principles of Optical Lithography" (2007), ch. 5.
+# DEVELOPMENT (develop): "threshold" only reports latent-image CDs; "fmm" solves
+# the static-rate arrival-time (Eikonal) problem; "level_set" evolves the
+# moving boundary phi_t + R|grad phi| = 0 with the rate re-evaluated at the
+# front, R = R_bulk(m) * f_inh(depth) * g(t). Surface inhibition
+# f_inh = 1 - (1 - r_s) exp(-depth/delta) slows the top skin and produces
+# T-topped / rounded profiles; g(t) is optional developer ageing / loading
+# (depletion = "exponential" | "loading" | "local_loading", level set only).
+#
+# This run: latent CD 265.5 nm at the top (not measurable at mid/bottom),
+# developed CD 75.0 / 112.5 / 112.5 nm (top / mid / bottom) with a 93.6°
+# sidewall and a mean remaining height of 98 nm (the lines stand with eroded,
+# rounded tops). Both CDs are the width of the resist LINE at the field centre,
+# but the latent CD is the PAC m = 0.5 contour (the PAC only dips to ≈ 0.48 at
+# the top of the spaces at this dose), whereas the 20 s development front
+# stops where m ≈ 0.87–0.91 — so they are not comparable; the developed CD is
+# the print prediction.
+# ~5 s in a release build (minutes in debug: the level set dominates).
+#
+# Reference: Dill et al., IEEE Trans. Electron Devices 22, 445 (1975);
+#            Mack, "Fundamental Principles of Optical Lithography" (2007).
 #
 # Run with:  highuvlith deep --config examples/volumetric.toml --output /tmp/vol.json
-#            (or --output /tmp/vol.png for the mid-depth PAC slice)
+#            (or --output /tmp/vol.png for the x–z developed profile through the
+#            centre row; with develop = "threshold" the PNG is the mid-depth
+#            latent slice)
 # -----------------------------------------------------------------------------
 
 [source]
@@ -38,24 +61,47 @@ na             = 0.75
 flare_fraction = 0.02
 
 [mask]
-cd_nm    = 100.0   # 100 nm lines on a 300 nm pitch (well-resolved, k1 ≈ 0.71)
+cd_nm    = 150.0   # 150 nm opaque lines on a 300 nm pitch (1:1, well resolved, k1 ≈ 0.71)
 pitch_nm = 300.0
 
 [grid]
 size     = 128     # keep the 3D volume modest (grid² × nz voxels)
-pixel_nm = 6.0     # 768 nm field ≈ 2.5 pitches
+pixel_nm = 4.6875  # 600 nm field = exactly 2 pitches (commensurate with the mask)
 
 [process]
-dose_mj_cm2 = 120.0  # baseline dose (overridden by [deep].dose_mj_cm2 below)
+dose_mj_cm2 = 24.0   # baseline dose (overridden by [deep].dose_mj_cm2 below)
 focus_nm    = 0.0    # aerial-image focus at the resist top
 
 [deep]
 mode = "volumetric"
 
 resist_thickness_nm = 300.0   # resist layer (default film stack, resized)
-dose_mj_cm2         = 120.0   # dose chosen so the spaces clear top-to-bottom,
-                              #   giving a measurable per-slice CD and sidewall
+dose_mj_cm2         = 24.0    # with the 20 s development below the spaces clear
+                              #   to the substrate while the lines stand, giving
+                              #   a per-slice developed CD and sidewall angle
+                              #   (developed CD ≈ 75 / 112 / 112 nm top/mid/bottom).
+                              #   Was 40 before the 2026-10-01 fix that scales the
+                              #   in-resist intensity by n_r (= 1.65): 40/1.65 ≈ 24
+                              #   reproduces the old profile.
 nz                  = 32      # depth slices
 n_defocus_planes    = 4       # aerial planes interpolated through depth
 dose_steps          = 5       # split-step Dill bleaching steps
-# develop_threshold = 0.5      # PAC threshold for per-slice CD (default 0.5)
+# develop_threshold = 0.5      # PAC contour for the per-slice LATENT CD (default 0.5)
+
+# --- post-exposure bake ---
+peb             = "gaussian"  # none | gaussian | car
+peb_lateral_nm  = 20.0        # lateral acid diffusion length sqrt(2 D t)
+peb_vertical_nm = 10.0        # vertical length (z-anisotropic bake)
+# peb = "car" reads the two keys below instead of peb_lateral_nm / peb_vertical_nm
+# (the CLI rejects those with peb = "car"):
+# car_quencher = 0.15         # (peb = "car") base loading, fraction of the PAG
+# car_k_amp    = 0.1          # (peb = "car") deprotection rate constant, 1/s
+
+# --- development ---
+develop             = "level_set" # threshold | fmm | level_set
+dev_time_s          = 20.0
+surface_rate_ratio  = 0.3         # top-surface rate / bulk rate (surface inhibition)
+inhibition_depth_nm = 15.0        # inhibition e-folding depth
+lateral_boundary    = "periodic"  # periodic (matches the FFT image) | reflecting
+# depletion = "exponential"       # none | exponential | loading | local_loading
+# depletion_time_constant_s = 40.0

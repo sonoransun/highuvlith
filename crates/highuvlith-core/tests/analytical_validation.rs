@@ -2,10 +2,11 @@
 //! known closed-form solutions from optics textbooks.
 
 use approx::assert_relative_eq;
-use highuvlith_core::aerial::AerialImageEngine;
-use highuvlith_core::mask::Mask;
+use highuvlith_core::aerial::{AerialImageEngine, ImagingSettings};
+use highuvlith_core::mask::{Mask, MaskFeature, MaskType};
+use highuvlith_core::math::fft2d::Fft2D;
 use highuvlith_core::metrics;
-use highuvlith_core::optics::ProjectionOptics;
+use highuvlith_core::optics::{defocus_phase, ProjectionOptics};
 use highuvlith_core::source::{IlluminationShape, SpectralShape, VuvSource};
 use highuvlith_core::thinfilm::{FilmLayer, FilmStack};
 use highuvlith_core::types::{Complex64, GridConfig, Polarization};
@@ -205,4 +206,88 @@ fn test_brewster_angle_zero_reflection() {
         "TM reflectance at Brewster's angle should be ~0, got {:.2e}",
         r_tm
     );
+}
+
+/// Opaque lines of width pitch/2 tiling a field of `periods` pitches.
+fn half_duty_lines(pitch: f64, periods: usize) -> Mask {
+    let field = pitch * periods as f64;
+    Mask {
+        mask_type: MaskType::Binary,
+        dark_field: false,
+        features: (0..periods)
+            .map(|k| MaskFeature::Rect {
+                x: -field / 2.0 + (k as f64 + 0.5) * pitch,
+                y: 0.0,
+                w: pitch / 2.0,
+                h: field,
+            })
+            .collect(),
+    }
+}
+
+/// Test: coherent three-beam imaging in closed form.
+///
+/// On-axis coherent illumination of a grating whose ±1 orders pass the pupil
+/// (λ/p < NA) and whose ±2 orders do not gives
+///   E(x) = c₀ + (c₁ e^{2πix/p} + c₋₁ e^{−2πix/p}) · e^{iφ(z)},
+///   φ(z) = (2π/λ) z (1 − √(1 − (λ/p)²)),
+/// with c_k the mask Fourier coefficients (read from the mask spectrum, so
+/// this checks the imaging, not the mask model). The engine must reproduce
+/// |E|² pixel by pixel, in focus and defocused.
+#[test]
+fn test_coherent_three_beam_image_closed_form() {
+    let (wl, na, pitch, pixel) = (100.0, 0.5, 300.0, 10.0);
+    let periods = 4;
+    let n = (pitch * periods as f64 / pixel) as usize; // 120 pixels
+    let grid = GridConfig {
+        size: n,
+        pixel_nm: pixel,
+    };
+    let mask = half_duty_lines(pitch, periods);
+    let mut optics = ProjectionOptics::new(na).unwrap();
+    optics.flare_fraction = 0.0;
+    let fft = Fft2D::new();
+    let spectrum = mask.spectrum(&grid, &fft);
+    let norm = (n * n) as f64;
+    let (c0, c1, cm1) = (
+        spectrum[[0, 0]] / norm,
+        spectrum[[0, periods]] / norm,
+        spectrum[[0, n - periods]] / norm,
+    );
+    // Exactly coherent on-axis point: `source_points_per_axis = Some(1)`.
+    let settings = ImagingSettings {
+        source_points_per_axis: Some(1),
+        ..Default::default()
+    };
+    let engine =
+        AerialImageEngine::with_settings(&coherent_source(wl), &optics, grid.clone(), settings)
+            .unwrap();
+    // A slightly extended (σ = 0.01) source images the same to ~1e-3.
+    let extended = AerialImageEngine::new(&coherent_source(wl), &optics, grid, 8).unwrap();
+    for z in [0.0, 400.0, -900.0] {
+        let phi = defocus_phase(z, wl / pitch, wl, false);
+        let tilt = Complex64::from_polar(1.0, phi);
+        let img = engine.compute(&mask, z);
+        let img_ext = extended.compute(&mask, z);
+        for j in 0..n {
+            let x = 2.0 * std::f64::consts::PI * j as f64 / (n / periods) as f64;
+            let e = c0
+                + (c1 * Complex64::from_polar(1.0, x) + cm1 * Complex64::from_polar(1.0, -x))
+                    * tilt;
+            for i in [0, n / 3] {
+                assert!(
+                    (img.data[[i, j]] - e.norm_sqr()).abs() < 1e-12,
+                    "z = {z}, j = {j}"
+                );
+                assert!(
+                    (img_ext.data[[i, j]] - e.norm_sqr()).abs() < 2e-3,
+                    "z = {z}, j = {j}"
+                );
+            }
+        }
+    }
+    // Sanity: the in-focus contrast of a half-duty grating with ±1 orders
+    // only, 4|c₀c₁| / (c₀² + 2|c₁|²)… is large (≈ 0.97 for continuous c_k).
+    let c = metrics::image_contrast(&engine.compute(&mask, 0.0).data);
+    assert!(c > 0.95, "three-beam contrast {c}");
 }

@@ -7,6 +7,29 @@
 //! light, and the internal tangential fields give the standing-wave intensity
 //! that exposes the resist.
 //!
+//! # Key equations
+//!
+//! With the Snell invariant `s = n_0 sin θ_0`, every medium `j` has the normal
+//! wave-vector component (in units of `k_0 = 2π/λ`)
+//!
+//! ```text
+//!   q_j = sqrt(n_j^2 - s^2),   Im q_j >= 0  (and Re q_j >= 0 if Im q_j = 0)
+//!   η_j = q_j (TE, s-pol)      η_j = n_j^2 / q_j (TM, p-pol)   (tilted admittances)
+//!   δ_j = k_0 q_j d_j
+//!   M_j = [[cos δ_j, -i sin δ_j / η_j], [-i η_j sin δ_j, cos δ_j]],  M = Π M_j (top first)
+//!   r = (η_0 m00 + η_0 η_s m01 - m10 - η_s m11) / (η_0 m00 + η_0 η_s m01 + m10 + η_s m11)
+//!   t = 2 η_0 / (same denominator),   T = Re(η_s) |t|^2 / Re(η_0)
+//! ```
+//!
+//! The branch choice makes every field decay (or propagate forward) into the
+//! absorbing medium; writing everything with `q_j` instead of `cos θ_j =
+//! sqrt(1 - (s/n_j)^2)` keeps it valid for complex indices at any angle,
+//! including X-ray grazing incidence (`n = 1 - δ + iβ`, total external
+//! reflection below `θ_c ≈ sqrt(2δ)`). For TM, `r` is the ratio of the
+//! tangential E components (the admittance convention); it differs by a sign
+//! from the Fresnel-coefficient convention `r_p = (n cos θ_i - cos θ_t) / (n cos
+//! θ_i + cos θ_t)`, and the reflectance is the same.
+//!
 //! # Standing waves and the two field methods
 //!
 //! [`FilmStack::intensity_profile`] is the exact result: it propagates the
@@ -15,19 +38,40 @@
 //! tangential-field intensity `|U|²`, a documented approximation).
 //! [`FilmStack::standing_wave`] is an older approximation that combines only
 //! the stack-top reflection with single-layer plane-wave propagation; it is
-//! kept because the MNSL module depends on its exact numbers. Prefer
-//! `intensity_profile` for quantitative work.
+//! kept because the MNSL module depends on it. Prefer `intensity_profile` for
+//! quantitative work.
 //!
 //! # Conventions
 //!
-//! Refractive indices are stored as `n + ik` (k ≥ 0 for loss). The Macleod
-//! matrix formalism needs `N = n − ik` for the downward field to decay, so
-//! `intensity_profile` conjugates internally; reflectance is invariant to the
-//! sign and does not. Standing-wave minima are spaced by `λ / (2n)`.
+//! Refractive indices are stored as `n + ik` (k ≥ 0 for loss), the physics
+//! convention for fields `exp(i(kz − ωt))`; the amplitude coefficients
+//! returned by [`FilmStack::amplitude_coefficients`] are in that convention
+//! (`r = (1 − n)/(1 + n)` for a bare substrate at normal incidence). The
+//! matrix above is the complex conjugate of Macleod's `exp(i(ωt − kz))` form,
+//! which needs `N = n − ik`; `intensity_profile` works in Macleod's convention
+//! and conjugates internally. Standing-wave minima are spaced by `λ / (2n)`.
+//!
+//! # Model status
+//!
+//! Implemented and tested against analytic results: Fresnel single interfaces
+//! (complex, oblique, TE/TM), the Airy single-layer formula for an absorbing
+//! film, quarter-wave AR, Brewster, energy conservation `R + T = 1` for
+//! lossless stacks, X-ray total external reflection, exact in-film intensity.
+//! Before 2026-09-30 the reflectance path inserted `n + ik` into Macleod's
+//! `n − ik` matrix, which is wrong for absorbing layers (e.g. R = 0.77 instead
+//! of 0.26 for the default 150 nm resist on Si at 157 nm); fixed here.
+//! [`FilmStack::default`] carries fixed 157 nm indices (no wavelength
+//! dependence); wavelength-aware stacks come from
+//! `MaterialsDatabase::resist_on_silicon_stack`, which refuses wavelengths
+//! without data instead of reusing them.
+//! Approximations: ideal flat, abrupt interfaces (roughness is modelled only in
+//! [`crate::materials::multilayer`]); oblique-TM in-film intensity is `|U|²`.
 //!
 //! # References
 //!
-//! - Macleod, *Thin-Film Optical Filters*, 4th ed. — characteristic matrices.
+//! - Macleod, *Thin-Film Optical Filters*, 4th ed. — characteristic matrices,
+//!   tilted admittances.
+//! - Born & Wolf, *Principles of Optics*, §1.6 — stratified media.
 
 use num::Complex;
 use serde::{Deserialize, Serialize};
@@ -179,23 +223,20 @@ impl FilmStack {
         // The stack stores extinction as n + ik, but the Macleod
         // characteristic-matrix formalism (and its downward-propagating
         // field e^{-i delta}) requires N = n - ik for absorption to DECAY.
-        // Reflectance is conjugation-invariant so `transfer_matrix` can
-        // ignore this; the internal field cannot. Work in the conjugated
-        // convention throughout this method.
+        // Work in that conjugated convention throughout this method: the
+        // normal wave-vector component is Q = conj(q(n)) (see `normal_q`),
+        // the admittances are Q (TE) and N^2/Q (TM), and delta = k0 Q d.
         let k0 = 2.0 * std::f64::consts::PI / wavelength_nm;
         let cos_0 = angle_rad.cos();
         let n_super = self.superstrate.conj();
-        let n0_sin = n_super * Complex64::new(angle_rad.sin(), 0.0);
+        let s0 = self.superstrate * Complex64::new(angle_rad.sin(), 0.0);
         let i_unit = Complex64::new(0.0, 1.0);
 
+        // Returns (Q = N cos theta in the layer, admittance) for the
+        // conjugated index `n` (= N) of a medium.
         let eta_of = |n: Complex64| -> (Complex64, Complex64) {
-            // Returns (cos_theta_in_layer, admittance) for this polarization.
-            let cos_j = (Complex64::new(1.0, 0.0) - (n0_sin / n).powi(2)).sqrt();
-            let eta = match pol {
-                Polarization::TE | Polarization::Unpolarized => n * cos_j,
-                Polarization::TM => n / cos_j,
-            };
-            (cos_j, eta)
+            let q = normal_q(n.conj(), s0).conj();
+            (q, admittance(n, q, pol))
         };
 
         // First pass: build the full characteristic matrix (conjugated
@@ -206,8 +247,8 @@ impl FilmStack {
         ];
         for layer in &self.layers {
             let n = layer.n.conj();
-            let (cos_j, eta_j) = eta_of(n);
-            let delta = k0 * n * cos_j * layer.thickness_nm;
+            let (q_j, eta_j) = eta_of(n);
+            let delta = k0 * q_j * layer.thickness_nm;
             let l = [
                 [delta.cos(), i_unit * delta.sin() / eta_j],
                 [i_unit * eta_j * delta.sin(), delta.cos()],
@@ -244,8 +285,8 @@ impl FilmStack {
 
         for layer in &self.layers {
             let n = layer.n.conj();
-            let (cos_j, eta_j) = eta_of(n);
-            let kz = k0 * n * cos_j;
+            let (q_j, eta_j) = eta_of(n);
+            let kz = k0 * q_j;
 
             layer_fields.push(LayerFields {
                 top_z: z_cursor,
@@ -271,8 +312,8 @@ impl FilmStack {
 
         // Substrate propagation constant: Im(kz_s) <= 0 in this
         // convention, so intensity decays as exp(2 * Im(kz_s) * dz).
-        let (cos_s, _) = eta_of(n_sub);
-        let kz_s = k0 * n_sub * cos_s;
+        let (q_s, _) = eta_of(n_sub);
+        let kz_s = k0 * q_s;
 
         // Superstrate (real index assumed) for z < 0.
         let kz_0 = k0 * n_super.re * cos_0;
@@ -305,6 +346,46 @@ impl FilmStack {
             .collect()
     }
 
+    /// Solve the stack in the physics (`n + ik`, `exp(i(kz - wt))`)
+    /// convention: amplitude reflection/transmission coefficients plus the
+    /// incidence- and exit-medium admittances (see module docs).
+    fn solve(&self, wavelength_nm: f64, angle_rad: f64, pol: Polarization) -> StackSolution {
+        let k0 = 2.0 * std::f64::consts::PI / wavelength_nm;
+        // Snell invariant n0 sin(theta0).
+        let s0 = self.superstrate * Complex64::new(angle_rad.sin(), 0.0);
+        let i_unit = Complex64::new(0.0, 1.0);
+
+        // Build transfer matrix M = product of layer matrices
+        let mut m = [
+            [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
+            [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
+        ];
+        for layer in &self.layers {
+            let q = normal_q(layer.n, s0);
+            let eta = admittance(layer.n, q, pol);
+            let delta = k0 * q * layer.thickness_nm;
+            let l = [
+                [delta.cos(), -i_unit * delta.sin() / eta],
+                [-i_unit * eta * delta.sin(), delta.cos()],
+            ];
+            m = mat2_mul(&m, &l);
+        }
+
+        let eta_s = admittance(self.substrate, normal_q(self.substrate, s0), pol);
+        let eta_0 = admittance(self.superstrate, normal_q(self.superstrate, s0), pol);
+
+        // r = (eta_0 * M11 + eta_0*eta_s*M12 - M21 - eta_s*M22) /
+        //     (eta_0 * M11 + eta_0*eta_s*M12 + M21 + eta_s*M22)
+        let r_num = eta_0 * m[0][0] + eta_0 * eta_s * m[0][1] - m[1][0] - eta_s * m[1][1];
+        let r_den = eta_0 * m[0][0] + eta_0 * eta_s * m[0][1] + m[1][0] + eta_s * m[1][1];
+        StackSolution {
+            r: r_num / r_den,
+            t: Complex64::new(2.0, 0.0) * eta_0 / r_den,
+            eta_0,
+            eta_s,
+        }
+    }
+
     /// Transfer matrix method for the entire stack.
     /// Returns (reflection_coefficient, transmission_coefficient).
     fn transfer_matrix(
@@ -313,64 +394,52 @@ impl FilmStack {
         angle_rad: f64,
         pol: Polarization,
     ) -> (Complex64, Complex64) {
-        let k0 = 2.0 * std::f64::consts::PI / wavelength_nm;
-        let cos_0 = angle_rad.cos();
+        let sol = self.solve(wavelength_nm, angle_rad, pol);
+        (sol.r, sol.t)
+    }
 
-        // Snell's law for complex media
-        let n0_sin = self.superstrate * Complex64::new(angle_rad.sin(), 0.0);
-
-        // Build transfer matrix M = product of layer matrices
-        let mut m = [
-            [Complex64::new(1.0, 0.0), Complex64::new(0.0, 0.0)],
-            [Complex64::new(0.0, 0.0), Complex64::new(1.0, 0.0)],
-        ];
-
-        for layer in &self.layers {
-            let cos_j = (Complex64::new(1.0, 0.0) - (n0_sin / layer.n).powi(2)).sqrt();
-            let phase = k0 * layer.n * cos_j * layer.thickness_nm;
-
-            let eta_j = match pol {
-                Polarization::TE | Polarization::Unpolarized => layer.n * cos_j,
-                Polarization::TM => layer.n / cos_j,
-            };
-
-            // Layer matrix
-            let cos_phase = phase.cos();
-            let sin_phase = phase.sin();
-            let l = [
-                [cos_phase, Complex64::new(0.0, 1.0) * sin_phase / eta_j],
-                [Complex64::new(0.0, 1.0) * eta_j * sin_phase, cos_phase],
-            ];
-
-            // Matrix multiply: m = m * l
-            let new_m = mat2_mul(&m, &l);
-            m = new_m;
+    /// Amplitude reflection and transmission coefficients `(r, t)` of the
+    /// stack for TE (s) or TM (p) light at `angle_rad` from the normal, in
+    /// the physics convention (`n + ik`, `exp(i(kz - wt))`; for TM, ratios of
+    /// the tangential E components - see module docs). The phase reference
+    /// is the top surface. Errors for [`Polarization::Unpolarized`]
+    /// (amplitudes need a definite polarization).
+    pub fn amplitude_coefficients(
+        &self,
+        wavelength_nm: f64,
+        angle_rad: f64,
+        pol: Polarization,
+    ) -> crate::error::Result<(Complex64, Complex64)> {
+        match pol {
+            Polarization::Unpolarized => Err(crate::error::LithographyError::InvalidParameter {
+                name: "pol",
+                value: f64::NAN,
+                reason: "amplitude coefficients need a definite polarization (TE or TM)",
+            }),
+            _ => Ok(self.transfer_matrix(wavelength_nm, angle_rad, pol)),
         }
+    }
 
-        // Substrate admittance
-        let cos_s = (Complex64::new(1.0, 0.0) - (n0_sin / self.substrate).powi(2)).sqrt();
-        let eta_s = match pol {
-            Polarization::TE | Polarization::Unpolarized => self.substrate * cos_s,
-            Polarization::TM => self.substrate / cos_s,
-        };
-
-        // Superstrate admittance
-        let eta_0 = match pol {
-            Polarization::TE | Polarization::Unpolarized => {
-                self.superstrate * Complex64::new(cos_0, 0.0)
+    /// Power transmittance into the substrate, `T = Re(η_s) |t|^2 /
+    /// Re(η_0)`, for a non-absorbing superstrate (TE, TM, or the mean of both
+    /// for `Unpolarized`). With the reflectance, `1 - R - T` is the power
+    /// absorbed in the layers.
+    pub fn transmittance_at_angle(
+        &self,
+        wavelength_nm: f64,
+        angle_rad: f64,
+        pol: Polarization,
+    ) -> f64 {
+        match pol {
+            Polarization::Unpolarized => {
+                0.5 * (self.transmittance_at_angle(wavelength_nm, angle_rad, Polarization::TE)
+                    + self.transmittance_at_angle(wavelength_nm, angle_rad, Polarization::TM))
             }
-            Polarization::TM => self.superstrate / Complex64::new(cos_0, 0.0),
-        };
-
-        // r = (eta_0 * M11 + eta_0*eta_s*M12 - M21 - eta_s*M22) /
-        //     (eta_0 * M11 + eta_0*eta_s*M12 + M21 + eta_s*M22)
-        let r_num = eta_0 * m[0][0] + eta_0 * eta_s * m[0][1] - m[1][0] - eta_s * m[1][1];
-        let r_den = eta_0 * m[0][0] + eta_0 * eta_s * m[0][1] + m[1][0] + eta_s * m[1][1];
-
-        let r = r_num / r_den;
-        let t = Complex64::new(2.0, 0.0) * eta_0 / r_den;
-
-        (r, t)
+            _ => {
+                let sol = self.solve(wavelength_nm, angle_rad, pol);
+                sol.eta_s.re * sol.t.norm_sqr() / sol.eta_0.re
+            }
+        }
     }
 
     /// Compute forward and backward propagating field amplitudes at a given depth.
@@ -407,6 +476,40 @@ impl FilmStack {
     }
 }
 
+/// Result of [`FilmStack::solve`].
+struct StackSolution {
+    r: Complex64,
+    t: Complex64,
+    eta_0: Complex64,
+    eta_s: Complex64,
+}
+
+/// Normal wave-vector component `q = sqrt(n^2 - s^2)` (units of `k0`) of a
+/// medium of index `n` (`n + ik` convention) for Snell invariant `s`, on the
+/// branch that decays (or propagates forward) into the medium: `Im q >= 0`,
+/// and `Re q >= 0` when `Im q = 0`. Exactly `n` at normal incidence.
+pub(crate) fn normal_q(n: Complex64, s: Complex64) -> Complex64 {
+    if s == Complex64::new(0.0, 0.0) {
+        return n;
+    }
+    let q = (n * n - s * s).sqrt();
+    if q.im < 0.0 || (q.im == 0.0 && q.re < 0.0) {
+        -q
+    } else {
+        q
+    }
+}
+
+/// Tilted admittance for polarization `pol`: `q` (TE, and the TE half of
+/// `Unpolarized`) or `n^2 / q` (TM), written `n (n / q)` so that it is
+/// exactly `n` at normal incidence.
+fn admittance(n: Complex64, q: Complex64, pol: Polarization) -> Complex64 {
+    match pol {
+        Polarization::TE | Polarization::Unpolarized => q,
+        Polarization::TM => n * (n / q),
+    }
+}
+
 fn mat2_mul(a: &[[Complex64; 2]; 2], b: &[[Complex64; 2]; 2]) -> [[Complex64; 2]; 2] {
     [
         [
@@ -420,6 +523,11 @@ fn mat2_mul(a: &[[Complex64; 2]; 2], b: &[[Complex64; 2]; 2]) -> [[Complex64; 2]
     ]
 }
 
+/// The 157 nm VUV stack: 150 nm fluoropolymer resist (1.65 + 0.015i) on Si
+/// (0.88 + 2.10i). These are fixed 157 nm constants, not wavelength-dependent:
+/// use it only near 157 nm. For other wavelengths build the stack from
+/// [`crate::materials::database::MaterialsDatabase::resist_on_silicon_stack`]
+/// (range-checked: VUV tables or Henke EUV values) or explicitly.
 impl Default for FilmStack {
     fn default() -> Self {
         // Default VUV stack: resist on silicon
@@ -642,6 +750,145 @@ mod tests {
         for i in 0..z.len() {
             assert_relative_eq!(un[i], (te[i] + tm[i]) / 2.0, epsilon = 1e-12);
         }
+    }
+
+    #[test]
+    fn test_absorbing_film_matches_airy_formula() {
+        // 50 nm film n = 1.65 + 0.3i on Si (0.88 + 2.10i) at 157 nm, normal
+        // incidence. Airy: r = (r01 + r12 e^{2i beta}) / (1 + r01 r12
+        // e^{2i beta}), beta = k0 n1 d (numpy): r = -0.274833 - 0.244401i,
+        // R = 0.135265. (The pre-fix code gave R = 2.75.)
+        let stack = FilmStack::new_vuv(
+            vec![FilmLayer {
+                name: "film".to_string(),
+                thickness_nm: 50.0,
+                n: Complex64::new(1.65, 0.3),
+            }],
+            Complex64::new(0.88, 2.10),
+        );
+        let (r, _) = stack
+            .amplitude_coefficients(157.0, 0.0, Polarization::TE)
+            .unwrap();
+        assert_relative_eq!(r.re, -0.27483265355339537, epsilon = 1e-12);
+        assert_relative_eq!(r.im, -0.24440118107595052, epsilon = 1e-12);
+        assert_relative_eq!(
+            stack.reflectance(157.0, Polarization::Unpolarized),
+            0.13526492477052018,
+            epsilon = 1e-12
+        );
+    }
+
+    #[test]
+    fn test_default_stack_reflectance_regression() {
+        // 150 nm resist (1.65 + 0.015i) on Si at 157 nm: R = 0.258433
+        // (numpy characteristic matrix in the physics convention, which
+        // matches the Airy formula); the pre-2026-09-30 code returned 0.772.
+        let r = FilmStack::default().reflectance(157.0, Polarization::TE);
+        assert_relative_eq!(r, 0.25843266126522824, epsilon = 1e-12);
+    }
+
+    #[test]
+    fn test_single_absorbing_interface_oblique_fresnel() {
+        // n2 = 1.5 + 0.4i at 40 deg: Fresnel r_s = (cos i - n cos t) /
+        // (cos i + n cos t) = -0.310979 - 0.141736i; the admittance-convention
+        // TM coefficient is -r_p = -(n cos i - cos t)/(n cos i + cos t)
+        // = -0.126357 - 0.104038i (numpy).
+        let stack = FilmStack::new_vuv(vec![], Complex64::new(1.5, 0.4));
+        let th = 40f64.to_radians();
+        let (rs, _) = stack
+            .amplitude_coefficients(157.0, th, Polarization::TE)
+            .unwrap();
+        let (rp, _) = stack
+            .amplitude_coefficients(157.0, th, Polarization::TM)
+            .unwrap();
+        assert_relative_eq!(rs.re, -0.310979472500379, epsilon = 1e-12);
+        assert_relative_eq!(rs.im, -0.14173580587915624, epsilon = 1e-12);
+        assert_relative_eq!(rp.re, -0.12635738363035284, epsilon = 1e-12);
+        assert_relative_eq!(rp.im, -0.10403793359842713, epsilon = 1e-12);
+        assert!(stack
+            .amplitude_coefficients(157.0, th, Polarization::Unpolarized)
+            .is_err());
+    }
+
+    #[test]
+    fn test_lossless_energy_conservation_oblique() {
+        // R + T = 1 for a lossless three-layer stack at 35 deg, TE and TM.
+        let layer = |d: f64, n: f64| FilmLayer {
+            name: "l".to_string(),
+            thickness_nm: d,
+            n: Complex64::new(n, 0.0),
+        };
+        let stack = FilmStack::new_vuv(
+            vec![layer(40.0, 1.8), layer(70.0, 1.3), layer(33.0, 2.1)],
+            Complex64::new(1.5, 0.0),
+        );
+        let th = 35f64.to_radians();
+        for pol in [
+            Polarization::TE,
+            Polarization::TM,
+            Polarization::Unpolarized,
+        ] {
+            let r = stack.reflectance_at_angle(157.0, th, pol);
+            let t = stack.transmittance_at_angle(157.0, th, pol);
+            assert_relative_eq!(r + t, 1.0, epsilon = 1e-12);
+        }
+        // With absorption, R + T < 1.
+        let lossy = FilmStack::default();
+        let r = lossy.reflectance_at_angle(157.0, th, Polarization::TE);
+        let t = lossy.transmittance_at_angle(157.0, th, Polarization::TE);
+        assert!(r + t < 1.0 && r > 0.0 && t >= 0.0);
+    }
+
+    #[test]
+    fn test_xray_total_external_reflection() {
+        // Au at 8 keV (CXRO delta = 4.773e-5, beta = 4.960e-6, lambda =
+        // 0.15498 nm): critical grazing angle sqrt(2 delta) = 9.77 mrad.
+        // Numpy Fresnel: R_s = 0.911603 at 4 mrad, 0.415618 at 9.77 mrad,
+        // 0.004682 at 20 mrad (grazing).
+        let stack =
+            FilmStack::new_vuv(vec![], Complex64::new(1.0 - 4.77303183e-05, 4.96011535e-06));
+        for (tg, rs, rp) in [
+            (0.004, 0.9116034828022994, 0.9115953827171392),
+            (0.00977, 0.41561754054557726, 0.4155813818218845),
+            (0.02, 0.0046817576533165215, 0.004675223589631318),
+        ] {
+            let th = std::f64::consts::FRAC_PI_2 - tg;
+            assert_relative_eq!(
+                stack.reflectance_at_angle(0.15498, th, Polarization::TE),
+                rs,
+                max_relative = 1e-8
+            );
+            assert_relative_eq!(
+                stack.reflectance_at_angle(0.15498, th, Polarization::TM),
+                rp,
+                max_relative = 1e-8
+            );
+        }
+    }
+
+    #[test]
+    fn test_thick_absorbing_layer_hides_substrate() {
+        // A 2 um layer with k = 0.8 at 157 nm (field decay e^-64) reflects
+        // exactly like the bare interface: r = (1 - n) / (1 + n).
+        let n = Complex64::new(1.2, 0.8);
+        let stack = FilmStack::new_vuv(
+            vec![FilmLayer {
+                name: "thick".to_string(),
+                thickness_nm: 2000.0,
+                n,
+            }],
+            Complex64::new(1.5, 0.0),
+        );
+        let (r, _) = stack
+            .amplitude_coefficients(157.0, 0.0, Polarization::TE)
+            .unwrap();
+        let expected = (Complex64::new(1.0, 0.0) - n) / (Complex64::new(1.0, 0.0) + n);
+        assert!((r - expected).norm() < 1e-12, "{r} vs {expected}");
+        // TE and TM coincide at normal incidence.
+        let (rp, _) = stack
+            .amplitude_coefficients(157.0, 0.0, Polarization::TM)
+            .unwrap();
+        assert!((r - rp).norm() < 1e-15);
     }
 
     #[test]

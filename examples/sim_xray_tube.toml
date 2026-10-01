@@ -1,0 +1,70 @@
+# =============================================================================
+# Hard X-ray tube — lab-scale LIGA without a synchrotron (W anode, 60 kV)
+# =============================================================================
+#
+# A tungsten-anode tube at 60 kV / 30 mA (1.8 kW electron beam) emits a
+# thick-target bremsstrahlung continuum up to the Duane–Hunt limit
+# E0 = e·V = 60 keV (λ_min = 1.23984/60 = 0.0207 nm) plus the W L lines at
+# 8.4–11.3 keV (the W K lines need more than 69.5 kV). Only ~0.5% of the beam
+# power becomes X-rays; the rest heats the anode:
+#
+#     Kramers:    dN/dE ∝ Z (E0/E − 1)          (photon-number spectrum)
+#     efficiency: η = 1.1e-9 · Z · V[V] = 1.1e-9 · 74 · 60000 ≈ 4.9e-3
+#                 → η · V · I ≈ 8.8 W of bremsstrahlung into 4π
+#
+# The 250 µm Be exit window (NIST attenuation data) hardens the beam: mean
+# photon ≈ 12.9 keV in this unabsorbed-anode model (a real anode's
+# self-absorption makes the beam harder still). The whole filtered 1–60 keV
+# spectrum is handed to the LIGA depth-dose module as a RELATIVE
+# XraySpectrum::Tabulated, so this run reports dose ratios but no exposure
+# time. For 200 µm PMMA it gives top 6.65 / bottom 3.00 kJ/cm³ (ratio 2.22),
+# with dose-weighted mean photon energies of 5.8 keV (top) and 8.1 keV
+# (bottom). For an ABSOLUTE exposure time, uncomment [deep] source_distance_m
+# below (isotropic point source, inverse-square law): at 100 mm from the focal
+# spot the model needs 52.3 h for this resist (13.1 h at 50 mm). An external
+# table can be given instead as [deep] flux_density (Python:
+# SourceConfig.xray_tube(...).spectral_flux_density(distance_mm, n_bins)).
+#
+# STATUS: line energies/edges, Duane–Hunt cutoff, Be window ✅;
+#         continuum shape, spectral moments and absolute flux 🔶 (Kramers
+#         thick-target law, empirical η, isotropic emission, empirical
+#         characteristic-line law ±×2, no anode self-absorption / heel effect /
+#         backscatter).
+# This is a BROADBAND, incoherent source — not for projection imaging.
+#
+# Reference: H. A. Kramers, Phil. Mag. 46, 836 (1923); line energies from the
+#            X-ray Data Booklet (LBNL CXRO), Tables 1-1 and 1-2.
+#
+# Run with:  highuvlith deep --config examples/sim_xray_tube.toml --output /tmp/tube_liga.json
+#            (or --output /tmp/tube_liga.png for the developed-depth map)
+# -----------------------------------------------------------------------------
+
+[source]
+type            = "xray_tube"
+anode           = "w"      # "w" | "mo" | "cu" | "rh" (each has a preset kVp/mA)
+kvp             = 60.0     # tube voltage in kV = maximum photon energy in keV
+current_ma      = 30.0     # tube current (alias tube_current_ma); flux ∝ current
+be_window_um    = 250.0    # inherent Be filtration
+
+[optics]
+# Unused by LIGA shadow printing (there is no projection lens); the CLI prints
+# a note that [optics] is ignored, and the table may be omitted entirely.
+na = 0.2
+
+[mask]
+# Au-absorber shadow mask: 20 µm bars on a 40 µm pitch.
+cd_nm    = 20000.0
+pitch_nm = 40000.0
+
+[grid]
+size     = 64        # small field; LIGA features are microns
+pixel_nm = 2000.0    # 2 µm requested; the CLI snaps to 1.875 µm → 120 µm field
+                     #   = exactly 3 mask periods (it prints a note)
+
+[deep]
+mode = "liga"
+resist_thickness_um = 200.0    # thick PMMA
+proximity_gap_um    = 100.0    # mask-to-resist gap
+nz                  = 64       # depth slices for the developed-depth map
+min_feature_nm      = 5000.0   # aspect-ratio figure of merit
+# source_distance_m = 0.1      # focal spot → mask: absolute flux → exposure time (52.3 h)

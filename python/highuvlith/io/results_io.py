@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 
@@ -13,7 +14,8 @@ def save_result(
 ) -> None:
     """Save simulation result to .npz file."""
     path = Path(path)
-    data = {}
+    # Any-valued: numpy's savez stub types **kwds against its allow_pickle flag.
+    data: dict[str, Any] = {}
 
     if hasattr(result, "intensity"):
         data["intensity"] = np.asarray(result.intensity)

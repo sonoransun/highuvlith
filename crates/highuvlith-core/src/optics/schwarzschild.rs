@@ -4,10 +4,31 @@
 //! (convex primary + concave secondary) to form an image. It provides
 //! NA up to ~0.3 for EUV/soft X-ray wavelengths where refractive optics
 //! are impossible.
+//!
+//! # Key equations
+//!
+//! ```text
+//!   P(ρ) = R · exp[i Φ_z(ρ)]   for ε ≤ ρ ≤ 1,   0 otherwise
+//!   Φ_z(ρ) = (2π/λ) z (1 − √(1 − NA²ρ²))      (paraxial option: π z NA² ρ²/λ)
+//! ```
+//! with `ε` the central obscuration ratio and `R` the per-mirror
+//! reflectivity (two-mirror system intensity transmission `R²`).
+//!
+//! # Model status
+//!
+//! Annular scalar pupil with a constant reflectivity by default. An optional
+//! [`MultilayerPupil`] replaces the constant with the angle-dependent
+//! multilayer response (pupil apodization and phase) from user-supplied
+//! incidence-angle maps; the multilayer's spectral response enters per
+//! wavelength in `compute_multiwavelength`. No mirror figure error (no
+//! Zernike terms), achromatic focus (default `chromatic_defocus = 0`).
+//! Defocus phase is exact for a plane wave in vacuum; the paraxial form is
+//! available via `paraxial_defocus`.
 
 use num::Complex;
 use serde::{Deserialize, Serialize};
 
+use super::multilayer_pupil::MultilayerPupil;
 use crate::types::Complex64;
 
 /// Schwarzschild two-mirror reflective objective.
@@ -24,6 +45,16 @@ pub struct SchwarzschildObjective {
     pub mirror_reflectivity: f64,
     /// Flare fraction from mirror scatter.
     pub flare: f64,
+    /// Use the paraxial (quadratic) defocus phase instead of the exact
+    /// plane-wave form. Default `false`.
+    #[serde(default)]
+    pub paraxial_defocus: bool,
+    /// Optional angle-dependent multilayer response of the two mirrors
+    /// (apodization + phase across the pupil). `None` (default) keeps the
+    /// scalar constant `mirror_reflectivity`; when set, the coating replaces
+    /// it in the pupil amplitude.
+    #[serde(default)]
+    pub multilayer: Option<MultilayerPupil>,
 }
 
 impl SchwarzschildObjective {
@@ -35,6 +66,8 @@ impl SchwarzschildObjective {
             reduction_ratio: 4.0,
             mirror_reflectivity: 0.67, // Mo/Si multilayer at 13.5nm
             flare: 0.03,
+            paraxial_defocus: false,
+            multilayer: None,
         }
     }
 
@@ -46,6 +79,8 @@ impl SchwarzschildObjective {
             reduction_ratio: 4.0,
             mirror_reflectivity: 0.50, // La/B4C multilayer at 6.7nm
             flare: 0.05,
+            paraxial_defocus: false,
+            multilayer: None,
         }
     }
 
@@ -64,6 +99,8 @@ impl SchwarzschildObjective {
             reduction_ratio: 1.0,     // typically 1:1 for X-ray microscopy
             mirror_reflectivity: 0.3, // grazing-incidence or multilayer
             flare: 0.05,
+            paraxial_defocus: false,
+            multilayer: None,
         })
     }
 
@@ -93,19 +130,22 @@ impl super::OpticalSystem for SchwarzschildObjective {
             return Complex64::new(0.0, 0.0);
         }
 
-        // Transmission: two-mirror reflectivity
-        let transmission = self.system_transmission().sqrt();
+        // Transmission: two-mirror reflectivity — scalar constant, or the
+        // angle-dependent multilayer response of the mirror train.
+        let amplitude = match &self.multilayer {
+            Some(ml) => ml.amplitude(fx_norm, fy_norm, wavelength_nm),
+            None => Complex64::new(self.system_transmission().sqrt(), 0.0),
+        };
 
-        // Defocus phase
-        let defocus_phase = std::f64::consts::PI
-            * defocus_nm
-            * rho
-            * rho
-            * self.numerical_aperture
-            * self.numerical_aperture
-            / wavelength_nm;
+        // Defocus phase of the order at sin(theta) = NA * rho
+        let defocus_phase = super::defocus_phase(
+            defocus_nm,
+            self.numerical_aperture * rho,
+            wavelength_nm,
+            self.paraxial_defocus,
+        );
 
-        Complex::from_polar(transmission, defocus_phase)
+        amplitude * Complex::from_polar(1.0, defocus_phase)
     }
 
     fn na(&self) -> f64 {
@@ -118,6 +158,17 @@ impl super::OpticalSystem for SchwarzschildObjective {
 
     fn flare_fraction(&self) -> f64 {
         self.flare
+    }
+
+    fn clone_box(&self) -> Box<dyn super::OpticalSystem> {
+        Box::new(self.clone())
+    }
+
+    fn prepare(&self, wavelength_nm: f64) -> crate::error::Result<()> {
+        match &self.multilayer {
+            Some(ml) => ml.prepare(wavelength_nm),
+            None => Ok(()),
+        }
     }
 }
 
@@ -180,5 +231,38 @@ mod tests {
         assert!(SchwarzschildObjective::soft_xray(f64::NAN).is_err());
         // Valid NA should succeed
         assert!(SchwarzschildObjective::soft_xray(0.15).is_ok());
+    }
+
+    #[test]
+    fn test_defocus_matches_shared_formula() {
+        let obj = SchwarzschildObjective::euv_standard();
+        let p = obj.pupil_function(0.8, 0.0, 40.0, 13.5);
+        let expected = crate::optics::defocus_phase(40.0, 0.33 * 0.8, 13.5, false);
+        assert_relative_eq!(p.arg(), expected, epsilon = 1e-12);
+        assert_relative_eq!(p.norm(), 0.67, epsilon = 1e-12);
+        let mut par = obj.clone();
+        par.paraxial_defocus = true;
+        let pp = par.pupil_function(0.8, 0.0, 40.0, 13.5);
+        let expected_par = std::f64::consts::PI * 40.0 * (0.33f64 * 0.8).powi(2) / 13.5;
+        assert_relative_eq!(pp.arg(), expected_par, epsilon = 1e-12);
+    }
+
+    #[test]
+    fn test_multilayer_pupil_replaces_constant_reflectivity() {
+        use crate::materials::multilayer::MultilayerMirror;
+        use crate::optics::multilayer_pupil::MirrorAngleMap;
+        let coating = MultilayerMirror::mo_si(40, 6.9, 0.4).unwrap();
+        let ml = MultilayerPupil::new(coating, vec![MirrorAngleMap::constant(0.0); 2]).unwrap();
+        let mut obj = SchwarzschildObjective::euv_standard();
+        let plain = obj.pupil_function(0.5, 0.0, 20.0, 13.5);
+        obj.multilayer = Some(ml.clone());
+        assert!(obj.prepare(13.5).is_ok());
+        let coated = obj.pupil_function(0.5, 0.0, 20.0, 13.5);
+        // Same defocus phase, amplitude from the coating instead of R.
+        let m = ml.amplitude(0.5, 0.0, 13.5);
+        assert!((coated - m * Complex::from_polar(1.0, plain.arg())).norm() < 1e-12);
+        // Obscuration still applies.
+        assert_eq!(obj.pupil_function(0.1, 0.0, 0.0, 13.5).norm(), 0.0);
+        assert!(obj.prepare(3000.0).is_err());
     }
 }

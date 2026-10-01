@@ -1,0 +1,100 @@
+# =============================================================================
+# Talbot / achromatic Talbot (ATL) lithography — EUV 13.5 nm, 100 nm grating
+# =============================================================================
+#
+# A periodic transmission grating under coherent illumination re-images itself
+# every Talbot length. For p = 100 nm at λ ≈ 13.5 nm:
+#
+#     z_T = 2 p² / λ              ≈ 2 · 100² / 13.5       ≈ 1481 nm (paraxial)
+#     z_T = λ / (1 − √(1 − λ²/p²))                        ≈ 1474 nm (exact, 0/±1)
+#
+# so the image at a fixed gap changes completely within a few hundred nm of gap
+# — impractical for printing. Two tricks make the printed image gap-independent
+# ("stationary"):
+#
+#   DTL — displacement Talbot lithography: scan the gap over a Talbot length
+#         during the exposure (talbot_mode = "dtl", scan_talbot_lengths = 1);
+#   ATL — achromatic Talbot lithography: illuminate with a band Δλ and put the
+#         wafer beyond the achromatic distance
+#
+#     z_A = 2 p² / Δλ = 2 · 100² / 0.3 ≈ 66.7 µm   (first zero of the 0/±1 term
+#                                                   for a flat-top band)
+#
+# For a 1D grating the stationary image has HALF the mask period — here 50 nm:
+#
+#     I = Σ|c_n|² + 2 Re Σ_{n>0} c_n c_{−n}* exp(4πi n x / p)
+#
+# talbot_mode = "euv_il" instead overlaps the +1 / −1 orders of two such
+# gratings (two-grating EUV interference lithography): fringes of period
+# p/(2m) = 50 nm for m = 1, independent of the wavelength. Each beam carries only
+# the first-order efficiency |c₁|² = 1/π² ≈ 10% of a 50% slit grating, so raise
+# dose_scale (≈ 40) for euv_il to clear the fringes.
+#
+# Model: scalar thin-grating (Kirchhoff) Fourier orders, exact angular-spectrum
+# propagation, no Fresnel coefficients at the resist surface, perfectly
+# spatially coherent illumination — see docs/processes/talbot.md.
+#
+# Run with:  highuvlith deep --config examples/talbot.toml --output /tmp/talbot.json
+#            (or --output /tmp/talbot.png for the wafer-plane image; with
+#            talbot_mode = "carpet" the PNG is the Talbot carpet)
+# -----------------------------------------------------------------------------
+
+[source]
+# Synchrotron undulator — the spatially coherent EUV source used for ATL and
+# EUV-IL. Its wavelength is DERIVED from the machine (538 MeV ring, 20 mm period,
+# K = 1, first harmonic → 13.51 nm), and its natural ~1/(nN) = 1% line
+# (≈ 0.135 nm) is the default ATL bandwidth; [deep] bandwidth_nm below
+# overrides it (e.g. a monochromator setting).
+type     = "synchrotron"
+beamline = "undulator"
+electron_energy_gev = 0.538
+period_mm           = 20.0
+undulator_k         = 1.0
+num_periods         = 100
+harmonic            = 1
+
+[optics]
+# Unused by Talbot printing (there is no projection lens); the CLI notes it is
+# ignored, and the table may be omitted.
+type = "schwarzschild"
+na   = 0.3
+
+[mask]
+cd_nm    = 50.0     # the grating period defaults to pitch_nm
+pitch_nm = 100.0
+
+[grid]
+size     = 128      # 128 × 3.125 nm = 400 nm field = 4 grating periods
+pixel_nm = 3.125
+
+[deep]
+mode        = "talbot"
+talbot_mode = "atl"           # carpet | dtl | atl | euv_il
+
+grating_type   = "amplitude"  # amplitude (binary slits) | phase (binary phase)
+duty_cycle     = 0.5          # open fraction of each 100 nm period
+max_order      = 10           # |n| ≤ 10 retained (|n| ≤ 7 propagate at 13.5 nm)
+propagation    = "exact"      # exact angular spectrum | paraxial Fresnel
+bandwidth_nm   = 0.3          # ATL band (Gaussian FWHM) → z_A ≈ 66.7 µm
+spectrum_shape = "gaussian"   # gaussian | flat
+gap_um         = 150.0        # > 2 z_A: the stationary (half-period) image
+# Other modes: the CLI is strict, so switching talbot_mode means deleting the
+# keys that mode does not read (it names them): "dtl" drops bandwidth_nm /
+# spectrum_shape; "euv_il" also drops gap_um / propagation (and needs
+# dose_scale ≈ 40: fill 0.50 vs 0.00 at 15); "carpet" keeps only the grating
+# keys + carpet_* (no resist recording).
+# scan_talbot_lengths = 1.0   # DTL gap-scan length   (talbot_mode = "dtl")
+# carpet_z_max_um     = 3.0   # carpet depth          (talbot_mode = "carpet"; default 2 z_T)
+# carpet_nz           = 256   # carpet rows           (talbot_mode = "carpet")
+# il_order            = 1     # EUV-IL order m        (talbot_mode = "euv_il")
+
+# Recording in a resist at the gap → PAC → fill fraction.
+n_medium          = 0.97      # EUV resist index (n = 1 − δ < 1)
+absorption_per_nm = 0.004     # ≈ 4 /µm intensity absorption (illustrative)
+z_span_nm         = 50.0      # resist thickness
+nz                = 16        # depth slices
+dose_scale        = 15.0      # Dill dose scale: C·D = 1.5 clears the bright lines
+dill_c            = 0.1
+# fill_threshold  = 0.5       # PAC clearing threshold (default 0.5)
+# This ATL run: printed period 50.00 nm, image contrast 0.457, fill 0.445
+# (DTL: contrast 0.452, fill 0.449).

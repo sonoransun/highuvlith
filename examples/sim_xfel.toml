@@ -7,13 +7,20 @@
 # full transverse coherence, but poor LONGITUDINAL coherence and large shot-to-
 # shot fluctuations. The relative bandwidth is set by the FEL Pierce parameter ρ,
 #
-#     Δλ/λ ≈ 2 ρ   →   Δλ[pm] = 2 ρ λ[nm] · 1e3
-#                  =   2 · 3e-3 · 13.5 · 1e3 = 81 pm
+#     Δλ/λ ≈ 2 ρ
 #
-# SASE intensity fluctuates ~100% shot-to-shot (M ≈ 1 mode), but averaging over
-# M independent pulses/modes suppresses the relative fluctuation as 1/√M — so a
-# dose delivered in many pulses is far more stable than any single shot. Seeded
-# / self-seeded modes trade this for a much narrower, more stable line.
+# and ρ is DERIVED from the machine (1D FEL theory): the undulator K is gap-tuned
+# to the wavelength set-point, K = √(2(2γ²λ/λ_u − 1)), and
+#
+#     ρ = [ (1/16)(I/I_A) K²[JJ]² / (γ³ σ_x² k_u²) ]^(1/3),  σ_x = √(ε_n β / γ)
+#
+# For the illustrative FLASH-like preset (680 MeV, λ_u = 31.4 mm, 2.5 kA,
+# ε_n = 1.5 µm, β = 6 m): K = 1.025, ρ = 2.31e-3 → Δλ ≈ 62 pm (0.46 %), a 1D gain
+# length of 0.62 m (0.79 m with the Ming Xie 3D correction) and a ~116 µJ
+# saturation estimate for 30 fs. `highuvlith simulate` prints these.
+#
+# SASE pulse energy fluctuates as 1/√M (M ≈ 3 modes per 30 fs pulse here), but a
+# scanner integrates many pulses per exposure point, which averages it down.
 #
 # Reference: Ackermann et al. (FLASH), "Operation of a free-electron laser from
 #            the extreme ultraviolet to the water window," Nat. Photonics 1, 336
@@ -24,24 +31,41 @@
 
 [source]
 type            = "xfel"
+xfel_preset     = "flash"   # flash | fermi | cw_sc | erl (machine-class presets)
 mode            = "sase"    # sase | seeded
-wavelength_nm   = 13.5
-pierce_parameter = 3.0e-3   # ρ → SASE bandwidth Δλ/λ ≈ 2ρ ≈ 81 pm
-pulse_duration_fs = 50.0
-# rel_bandwidth = 5.0e-5     # used instead of pierce_parameter when mode="seeded"
+wavelength_nm   = 13.5      # set-point: K is gap-tuned to it
+pulse_duration_fs = 30.0
+# Machine overrides (re-derive ρ, gain length, saturation power). Unless
+# pulse_energy_uj is also given, the pulse energy (hence average power) is
+# re-derived too, keeping the preset's pulse_energy_over_saturation (0.86 for
+# FLASH; 1 for cw_sc / erl, i.e. the saturation estimate itself):
+# electron_energy_mev   = 680.0
+# period_mm             = 31.4
+# peak_current_a        = 2500.0
+# norm_emittance_um     = 1.5
+# beta_m                = 6.0
+# electron_energy_spread_rel = 7.0e-4
+# pierce_parameter = 3.0e-3  # an explicit ρ overrides the machine derivation
+# rel_bandwidth = 5.0e-5     # used instead of ρ when mode = "seeded"
 
 [optics]
-# EUV band → reflective Schwarzschild objective.
-type = "schwarzschild"
-na   = 0.3
+# EUV has no transparent lens material, so the optics are mirrors: the
+# NXE-class projection pupil (NA 0.33, unobscured). Do not pair this nearly
+# coherent laser-like fill (sigma ~0.05) with a centrally obscured
+# Schwarzschild (type = "schwarzschild", obscuration 0.25-0.3 of the NA): the
+# obscuration blocks the zero diffraction order and the image becomes DARK
+# FIELD (frequency-doubled fringes; the CLI warns). A Schwarzschild needs a
+# pupil fill larger than its obscuration.
+type = "euv_projection"
+na   = 0.33
 
 [mask]
 cd_nm    = 30.0
 pitch_nm = 60.0
 
 [grid]
-size     = 128     # 256 nm field at 2 nm pixels
-pixel_nm = 2.0
+size     = 128     # 2 nm requested; the CLI snaps to 1.875 nm so the 240 nm
+pixel_nm = 2.0     #   field holds exactly 4 pitches (it prints a note)
 
 [process]
 dose_mj_cm2 = 30.0

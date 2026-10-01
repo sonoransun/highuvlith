@@ -1,0 +1,50 @@
+id,class,machine_or_paper,wavelength_nm,power_w_low,power_w_high,plane_or_definition,status,year,citation,url,conversion_note
+1,DUV KrF,Cymer ELS-7010,248,30,40,laser output (spec),PRODUCTION,current,Cymer,https://www.cymer.com/product/els-7010/,
+2,DUV KrF,Gigaphoton G60K,248,40,60,"laser output, 10–15 mJ at 4 kHz",PRODUCTION,current,Gigaphoton,https://www.gigaphoton.com/en/products/7613,15 mJ x 4000 Hz = 60 W
+3,DUV ArF immersion,Cymer XLR 1000ix,193,60,90,"laser output, 6.75 kHz",PRODUCTION,current,Cymer,https://www.cymer.com/product/xlr-1000ix/,
+4,DUV ArF immersion,Gigaphoton GT66A (GT80A same range),193,60,90,"laser output, 6 kHz",PRODUCTION,2020,Gigaphoton,https://www.gigaphoton.com/en/products/7536,
+5,DUV ArF immersion,Gigaphoton GT64A,193,60,120,10–20 mJ at 6 kHz,PRODUCTION (legacy),spec,Gigaphoton,https://www.gigaphoton.com/en/products/7557,20 mJ x 6000 Hz = 120 W
+6,DUV ArF immersion,"Rokitski et al., High power 120W ArF immersion XLR laser system",193,120,120,laser output (from title),DEMONSTRATED,2013,"Proc. SPIE 8683, 86831H",https://doi.org/10.1117/12.2012681,
+7,DUV ArF,"Cymer XLR, first 90 W ArF laser to market",193,90,90,laser output,PRODUCTION,2008,Laser Focus World,https://www.laserfocusworld.com/optics/article/16563896/cymer-installs-90-w-xlr-light-source-at-nikon-in-japan,
+8,Sn LPP,ASML NXE:3400B source,13.5,250,250,"dose-controlled at IF; 50 kHz, 21.5 kW CO2, CE 6%, 10% dose margin",PRODUCTION (end-2017),2017,"Fomenkov, 2017 Source Workshop",https://www.euvlitho.com/2017/S1.pdf,~5 mJ per pulse at IF
+9,Sn LPP,ASML NXE:3800E,13.5,500,500,"""500W EUV Source"" (IF by ASML convention)",PRODUCTION,2024,"ASML Investor Day, 14 Nov 2024",https://www.sec.gov/Archives/edgar/data/937966/000093796624000026/exhibit994.htm,
+10,Sn LPP,ASML current highest-power industrial source,13.5,600,600,stated to press; plane not stated,PRODUCTION (per ASML statements to press),2026,Reuters 23 Feb 2026; Bits&Chips,https://www.investing.com/news/stock-market-news/exclusiveasml-unveils-euv-light-source-advance-that-could-yield-50-more-chips-by-2030-4518955,
+11,Sn LPP,ASML research source,13.5,470,470,"in-spec, dose-controlled, full duty cycle",DEMONSTRATED,2021,"van Schoot, 2021",https://euvlitho.com/2021/P3.pdf,
+12,Sn LPP,ASML research source,13.5,530,530,"open loop, 60 kHz, ~7 h (>530 W)",DEMONSTRATED,2022,"van Schoot, 2022",https://euvlitho.com/2022/P3.pdf,
+13,Sn LPP,ASML research source,13.5,740,740,"""740W EUV power demonstrated""",DEMONSTRATED,2024,ASML Investor Day 2024,https://www.sec.gov/Archives/edgar/data/937966/000093796624000026/exhibit994.htm,
+14,Sn LPP,ASML 1 kW source,13.5,1000,1000,"~100 kHz droplets, two-burst droplet shaping, 'same requirements … at a customer'",DEMONSTRATED (April 2025),2025,"ASML Annual Report 2025, p. 31; Reuters",https://ourbrand.asml.com/m/8ab959d4926657b/original/asml-2025-annual-report-strategic-report-section.pdf,~10 mJ per pulse
+15,Sn LPP,ASML roadmap,13.5,1500,2000,Purvis quotes,PROJECTED,2026,Reuters,https://www.investing.com/news/stock-market-news/exclusiveasml-unveils-euv-light-source-advance-that-could-yield-50-more-chips-by-2030-4518955,
+16,Sn LPP (High-NA),ASML EXE source,13.5,360,360,"""Target power of >360W achieved""",DEMONSTRATED,2023,"van Schoot, 2023",https://euvlitho.com/2023/P1.pdf,
+17,Sn LPP,Gigaphoton Pilot#1,13.5,125,125,"average at IF, 100% duty, 100 kHz, 53 Bpls",DEMONSTRATED,2019,"Mizoguchi, 2019",https://euvlitho.com/2019/S2.pdf,1.25 mJ per pulse
+18,Sn LPP,Gigaphoton Pilot#1,13.5,230,230,"average at IF, closed loop (30 min shown)",DEMONSTRATED (short),2019,"Mizoguchi, 2019",https://euvlitho.com/2019/S2.pdf,
+19,Sn LPP,Gigaphoton Pilot#1,13.5,365,365,"""365W with 5.4% CE"", short-term; plane not stated",DEMONSTRATED (short),2019,"Mizoguchi, 2019",https://euvlitho.com/2019/S2.pdf,
+20,Sn DPP,TRINITI rotating-disk-electrode DPP,13.5,360,360,"into 2π sr AT THE SOURCE; continuous ≥44 min",DEMONSTRATED,2010,Borisov et al.,https://euvlitho.com/2010/P1.pdf,180 mJ x 2 kHz
+21,Sn DPP,"TRINITI, same source",13.5,1000,1000,"into 2π sr AT THE SOURCE; 10 s at 63 kW, ~7 kHz",DEMONSTRATED (short),2010,Borisov et al.,https://euvlitho.com/2010/P1.pdf,
+22,Sn DPP,Philips Extreme UV lamp,13.5,200,200,"""200W/2π continuous"" (AT THE SOURCE)",DEMONSTRATED (labelled 2005),2005,Banine & Moors 2011,https://www.euvlitho.com/2011/S8.pdf,
+23,Sn DPP (laser-assisted LDP),XTREME/Ushio on NXE:3100,13.5,18,20,"""20 W @ 90% duty""; 37 W at 50% duty; expose power (IF convention)",PRODUCTION (pre-production),2011,Banine & Moors 2011; Banine 2011,https://euvlitho.com/2011/S8.pdf,~18 W time-averaged
+24,Xe DPP (metrology),Energetiq EQ-10 / EQ-10HP,13.5,10,20,"13.5 nm ±1% into 2π sr (AT THE SOURCE)",PRODUCTION,2005/2012/now,Energetiq,https://www.energetiq.com/euv-lithography-high-brightness-extreme-ultraviolet-light-source-electrodeless-z-pinch-eq-10hp,
+25,Xe DPP,Energetiq EQ10-HP at LBNL MET5,13.5,27,27,into 2π sr (AT THE SOURCE),PRODUCTION,2024,"Miyakawa, 2024",https://euvlitho.com/2024/P13.pdf,
+26,Xe DPP,Fraunhofer ILT FS5440,13.5,20,40,2% bandwidth into 2π sr (AT THE SOURCE),PRODUCTION,2020,"Vieker, 2020",https://euvlitho.com/2020/P32.pdf,
+27,Gd LPP,"Endo, kW BEUV source concept",6.7,1000,1000,"at IF, 0.6% bandwidth; 160 kW CO2",PROJECTED-DESIGN,2012,Endo,https://euvlitho.com/2012/S2.pdf,
+28,ERL-FEL,KEK beyond-EUV FEL,6.7,12700,25400,"FEL output, 2% taper",PROJECTED-DESIGN,2018,"reproduced in Watanabe, 2019",https://euvlitho.com/2019/P4.pdf,
+29,Inverse-Compton (ICS),"Waseda design, 100 kHz",6.7,1.28e-5,1.28e-5,per 2% bandwidth,PROJECTED-DESIGN,2011,Sakaue et al.,https://euvlitho.com/2011/P30.pdf,
+30,ICS,"Waseda design, 100 MHz",6.7,1e-3,1e-3,per 2% bandwidth,PROJECTED-DESIGN,2011,Sakaue et al.,https://euvlitho.com/2011/P30.pdf,
+31,Synchrotron undulator,PSI SLS XIL-II,13.48,1.1e-2,1.1e-2,"3e15 ph/s/cm², 4% bandwidth, 0.3 A, 5x5 mm² spot",PRODUCTION,now,PSI,https://www.psi.ch/en/sls/xil,44 mW/cm² x 0.25 cm²
+32,Linac FEL,FLASH,13.7,0.020,0.020,measured average; 700 pulses/s (paper states 20 mW; 70 µJ x 700 = 49 mW),DEMONSTRATED,2007,"Ackermann et al., Nat. Photonics 1, 336",https://doi.org/10.1038/nphoton.2007.76,as reported
+33,Linac FEL,FLASH,18.2,0.35,0.35,average SASE power,DEMONSTRATED,2015,"Schreiber & Faatz, High Power Laser Sci. Eng. 3, e20",https://doi.org/10.1017/hpl.2015.16,80 µJ x 4300/s
+34,Linac FEL,FERMI FEL-2,15,1e-4,1.5e-3,10–30 µJ x 10 or 50 Hz (λ 10–20 nm),PRODUCTION (derived),2022/now,Elettra,https://www.elettra.eu/lightsources/fermi/fel1-2-parameters.html,derived
+35,Laser-plasma FEL,SIOM laser-wakefield FEL,27,1.5e-7,1.5e-7,"≤150 nJ per shot, ≤1 Hz",DEMONSTRATED,2021,"Wang et al., Nature 595, 516",https://doi.org/10.1038/s41586-021-03678-x,150 nJ x 1 Hz
+36,ERL-FEL,KEK EUV-FEL design,13.5,9000,22000,9–11 kW at 162.5 MHz; 18–22 kW at 325 MHz,PROJECTED-DESIGN,2015,"Nakamura et al., ERL2015",https://doi.org/10.18429/JACoW-ERL2015-MOPCTH010,67.6 µJ x 162.5 MHz = 11 kW
+37,Superconducting-linac FEL,DESY FLASH-technology design,13.5,1700,1700,"""P=1.7 kW""",PROJECTED-DESIGN,2011,Schneidmiller et al.,https://www.euvlitho.com/2011/S15.pdf,
+38,Steady-state microbunching (SSMB),SLAC design (Chao et al.),13.7,1120,1120,per tool,PROJECTED-DESIGN,2016,IPAC2016 TUXB01,https://doi.org/10.18429/JACoW-IPAC2016-TUXB01,
+39,SSMB,Ratner & Chao,13.5,4000,4000,sample parameter set,PROJECTED,2015,2015 EUVL Workshop,https://euvlitho.com/2015/P41.pdf,
+40,SSMB,Tsinghua-led collaboration,13.5,1000,1000,target (>1 kW per tool),PROJECTED,2018,2018 EUVL Workshop,https://euvlitho.com/2018/P18.pdf,
+41,HHG,Klas et al.,46.8,1.29e-2,1.29e-2,"26.5 eV, single harmonic line",DEMONSTRATED,2021,"PhotoniX 2, 4",https://doi.org/10.1186/s43074-021-00028-y,λ = 1239.84/26.5
+42,HHG,Klas et al.,57.1,8.32e-4,8.32e-4,21.7 eV,DEMONSTRATED,2016,"Optica 3, 1167",https://doi.org/10.1364/OPTICA.3.001167,λ = 1239.84/21.7
+43,HHG,Hädrich et al.,41.3,1.43e-4,1.43e-4,"30 eV, 3e13 ph/s",DEMONSTRATED,2014,"Nat. Photonics 8, 779",https://doi.org/10.1038/nphoton.2014.214,3e13 x 30 eV = 144 µW
+44,HHG,Hädrich et al.,44.8,5e-5,5e-5,"27.7 eV, >1e13 ph/s (lower bound)",DEMONSTRATED,2015,"Light Sci. Appl. 4, e320",https://doi.org/10.1038/lsa.2015.93,
+45,HHG at 13.5 nm,KMLabs / JILA XUUS,13.48,4.3e-7,4.3e-7,2.9e10 ph/s at 92 eV,DEMONSTRATED,2017,"Kapteyn, Murnane et al.",https://euvlitho.com/2017/P4.pdf,2.9e10 x 92 eV = 0.43 µW
+46,HHG at 13.5 nm,"Univ. of Hyogo / RIKEN, 59th harmonic",13.5,1e-6,1e-6,"""1 uW""",DEMONSTRATED,2012,Kinoshita et al.,https://euvlitho.com/2012/P33.pdf,
+47,Soft-X-ray laser,CSU capillary-discharge Ar laser,46.9,3.5e-3,3.5e-3,laser output,DEMONSTRATED,1999,"Macchietto et al., Opt. Lett. 24, 1115",https://doi.org/10.1364/OL.24.001115,0.88 mJ x 4 Hz
+48,Soft-X-ray laser,CSU desk-top capillary laser,46.9,1.6e-4,1.6e-4,laser output,DEMONSTRATED,2005,"Heinbuch et al., Opt. Express 13, 4050",https://doi.org/10.1364/OPEX.13.004050,13 µJ x 12 Hz
+49,Soft-X-ray laser,CSU diode-pumped Ni-like Mo laser,18.9,1e-4,1e-4,~0.1 mW at 100 Hz,DEMONSTRATED,2013,"Reagan et al., Opt. Express 21, 28380",https://doi.org/10.1364/OE.21.028380,1 µJ x 100 Hz

@@ -1,0 +1,62 @@
+# =============================================================================
+# Plasma soft-X-ray laser — transient-collisional Ni-like Ag at 13.9 nm
+# =============================================================================
+#
+# Collisional-excitation X-ray lasers amplify a fixed atomic J = 0 → 1 line of
+# a closed-shell-like ion in a hot plasma column, so the wavelength is set by
+# the ION, not by a tunable machine parameter:
+#
+#     capillary discharge  Ne-like Ar8+   3p 1S0 → 3s 1P1   46.9 nm
+#     transient (ps laser) Ni-like Ag19+  4d 1S0 → 4p 1P1   13.9 nm
+#                          Ni-like Cd20+                     13.2 nm
+#                          Ni-like Mo14+                     18.9 nm
+#
+# Narrow line (Δλ/λ ~ 1e-4 → coherence length λ/(Δλ/λ) = 139 µm here) and
+# partial spatial coherence make these lasers natural sources for EUV
+# interference (Lloyd's-mirror) and Talbot lithography demonstrations; the
+# minimum two-beam half-pitch is λ/4 ≈ 3.5 nm. Reported average powers run from
+# ≈1 µW to a few mW (e.g. 0.16 mW from a desk-top 46.9 nm capillary laser,
+# Heinbuch et al. 2005; ~0.1 mW from a diode-pumped 18.9 nm Ni-like Mo laser at
+# 100 Hz, Reagan et al. 2013; ~0.1 mW reported for Ni-like Ag), i.e. five to
+# eight orders of magnitude below HVM. This preset:
+#
+#     P = E_pulse · f = 10 µJ · 10 Hz = 0.1 mW   →  ~2.5e6x short of 250 W HVM
+#
+# Wavelengths are exact (✅); the pulse-energy/rate split (matched to the
+# reported ~0.1 mW), duration, linewidth and coherent fraction are
+# order-of-magnitude assumptions (🔶).
+#
+# Run with:  highuvlith simulate --config examples/sim_sxrl.toml
+# -----------------------------------------------------------------------------
+
+[source]
+type   = "sxrl"
+scheme = "ag_13nm9"         # "ar_46nm9" | "ag_13nm9" | "cd_13nm2" | "mo_18nm9"
+# wavelength_nm = 13.9      # optional; must match the lasing line within 1%
+# pulse_energy_uj   = 10.0
+# rep_rate_hz       = 10.0
+# pulse_duration_ps = 5.0
+# rel_linewidth     = 1e-4  # relative linewidth Δλ/λ (rel_bandwidth also accepted)
+
+[optics]
+# EUV has no transparent lens material, so the optics are mirrors: the
+# NXE-class projection pupil (NA 0.33, unobscured). The laser's few coherent
+# modes give a nearly coherent fill (sigma ~0.11); a centrally obscured
+# Schwarzschild (type = "schwarzschild", obscuration 0.25-0.3 of the NA) would
+# block ~90 % of the zero diffraction order and image in near dark field
+# (frequency-doubled fringes). A Schwarzschild needs a pupil fill larger than
+# its obscuration.
+type = "euv_projection"
+na   = 0.33
+
+[mask]
+cd_nm    = 30.0
+pitch_nm = 60.0
+
+[grid]
+size     = 128     # 2 nm requested; the CLI snaps to 1.875 nm so the 240 nm
+pixel_nm = 2.0     #   field holds exactly 4 pitches (it prints a note)
+
+[process]
+dose_mj_cm2 = 30.0
+focus_nm    = 0.0

@@ -1,0 +1,42 @@
+# =============================================================================
+# KrF excimer laser (~248.3 nm) — the DUV dawn
+# =============================================================================
+#
+# KrF first lased on 5 June 1975 (Ewing & Brau, Appl. Phys. Lett. 27, 350
+# (1975)); excimer-laser lithography was first proposed and demonstrated by
+# Jain, Willson & Lin (IEEE Electron Device Lett. 3, 53 (1982)). Nikon's
+# NSR-1505EX (1988) was the first KrF excimer stepper (an R&D tool); the
+# Perkin-Elmer/SVGL Micrascan I and II step-and-scan tools used lamp DUV
+# (~250 nm), and SVGL's first laser tool was the Micrascan III (1996). KrF
+# shrank features from ~280 nm (i-line) to 150 nm and modern KrF tools reach
+# ~80 nm (ASML).
+#
+# Preset `krf`: REPRESENTATIVE line-narrowed scanner-class values — 0.6 pm FWHM
+# Gaussian line (E95 ≈ 1.0 pm; vendors specify E95), 10 mJ × 4 kHz = 40 W
+# (KrF litho lasers span roughly 30–60 W).
+#
+# Run with:  highuvlith simulate --config examples/sim_krf.toml
+# -----------------------------------------------------------------------------
+
+[source]
+type   = "vuv"
+preset = "krf"
+sigma  = 0.7
+# bandwidth_pm = 0.6      # overrides the preset (FWHM)
+# rep_rate_hz  = 4000.0
+
+[optics]
+na             = 0.8
+flare_fraction = 0.02
+
+[mask]
+cd_nm    = 130.0     # k1 = 130 x 0.8 / 248.3 = 0.42
+pitch_nm = 260.0
+
+[grid]
+size     = 128
+pixel_nm = 4.0625    # 520 nm field = exactly 2 pitches
+
+[process]
+dose_mj_cm2 = 30.0
+focus_nm    = 0.0

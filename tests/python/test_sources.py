@@ -15,8 +15,9 @@ class TestLppSource:
         src = huv.SourceConfig.lpp_sn_13nm5()
         assert src.kind == "lpp"
         assert src.wavelength_nm == pytest.approx(13.5)
-        # Power chain is live: 25 kW x 5.5% x 5% = 68.75 W.
-        assert src.average_power_w == pytest.approx(68.75)
+        # Power chain is live: the NXE:3400B source, 21.5 kW x 6 % CE,
+        # calibrated collection -> 250 W in-band at intermediate focus.
+        assert src.average_power_w == pytest.approx(250.0)
 
     def test_gd_beuv_preset(self):
         src = huv.SourceConfig.lpp_gd_6nm7()
@@ -113,8 +114,8 @@ class TestEntangledSource:
     def test_noon_reports_physical_wavelength(self):
         src = huv.SourceConfig.entangled_noon(wavelength_nm=157.63, n=2)
         assert src.kind == "entangled"
-        # The trait reports the PHYSICAL wavelength; quantum sharpening
-        # is applied via the quantum module, not silently.
+        # The trait reports the PHYSICAL wavelength; N-photon models are
+        # applied via the quantum module, not silently.
         assert src.wavelength_nm == pytest.approx(157.63)
 
     def test_n1_rejected(self):
@@ -145,7 +146,7 @@ def test_end_to_end_imaging_smoke(factory, na):
     # Feature scale ~2x wavelength keeps diffraction orders in the pupil.
     cd = max(20.0, 2.0 * source.wavelength_nm)
     mask = huv.MaskConfig.line_space(cd_nm=cd, pitch_nm=3.0 * cd)
-    grid = huv.GridConfig(size=64, pixel_nm=max(1.0, cd / 16.0))
+    grid = mask.commensurate_grid(size=64, target_pixel_nm=max(1.0, cd / 16.0))
 
     engine = huv.SimulationEngine(source, optics, mask, grid=grid, max_kernels=8)
     aerial = engine.compute_aerial_image(focus_nm=0.0)

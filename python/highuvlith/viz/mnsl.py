@@ -70,7 +70,12 @@ def _plot_emission_matplotlib(
     # Create 2D plot
     im = ax.imshow(
         emission,
-        extent=[x_coords[0], x_coords[-1], y_coords[0], y_coords[-1]],
+        extent=(
+            float(x_coords[0]),
+            float(x_coords[-1]),
+            float(y_coords[0]),
+            float(y_coords[-1]),
+        ),
         origin="lower",
         cmap=colormap,
         aspect="equal",
@@ -481,7 +486,12 @@ def _plot_optimization_heatmap_matplotlib(
     best_separation = optimization_data["best_separation_nm"]
 
     # Create heatmap
-    extent = [separations[0], separations[-1], angles[0], angles[-1]]
+    extent = (
+        float(separations[0]),
+        float(separations[-1]),
+        float(angles[0]),
+        float(angles[-1]),
+    )
     im = ax.imshow(
         enhancement_grid,
         extent=extent,

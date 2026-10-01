@@ -1,0 +1,49 @@
+# =============================================================================
+# SRAF insertion — isolated 80 nm line, annular 0.5/0.8, F2 157.63 nm, NA 0.75
+# =============================================================================
+#
+#   highuvlith optimize --config examples/optimize_sraf.toml -o sraf.json
+#
+# Status: 🔶 SRAF. Scattering bars come from a heuristic rule deck scaled to
+# λ/NA ≈ 210 nm and the illumination centre σ_c = 0.65 (taken from the annular
+# fill): bars 0.14 λ/NA ≈ 29.4 nm wide centred near the equivalent dense pitch.
+# Every assist is then imaged at focus ±150 nm × dose 1 ± 8 % and shrunk or
+# removed until none prints with a 5 % margin (constant-threshold resist).
+# This is not an optimized or calibrated SRAF deck.
+#
+# Result (dose-to-size threshold t = 0.3759 for the 80 nm line, k1 ≈ 0.38):
+#
+#   Assists: 3 kept (3 placed, 0 removed); worst no-print margin 0.283
+#            (bars at x = ±161.7 nm and one centred between periodic images)
+#   DOF (±10 % CD, each mask at its own dose-to-size): 210.3 -> 275.2 nm (×1.31)
+#
+# The DOF gain is an off-axis-illumination effect; under dipole illumination
+# the same deck gives essentially none (see docs/research-modules.md).
+
+[source]
+wavelength_nm = 157.63
+
+[illumination]
+shape = "annular"
+sigma_inner = 0.5
+sigma_outer = 0.8
+
+[optics]
+na = 0.75
+
+[mask]
+pattern = "features"
+features = [{ type = "rect", x = 0.0, y = 0.0, w = 80.0, h = 768.0 }]
+
+[grid]
+size = 64
+pixel_nm = 12.0
+commensurate = false
+
+[imaging]
+max_kernels = 16
+
+[optimize]
+method = "sraf"
+dose_to_size_cd_nm = 80.0
+compare_dof = true

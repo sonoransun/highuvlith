@@ -1,0 +1,37 @@
+# =============================================================================
+# Mercury i-line (365.0 nm) — the last lamp wavelength of optical lithography
+# =============================================================================
+#
+# i-line (365 nm) steppers pushed features below 1 µm, eventually to ~220 nm
+# (ASML). The filtered i-line is broad — "the relatively large 3 nm
+# bandwidth of the Hg i-line required multiple glasses to correct color
+# aberrations" (J. H. Bruning, Proc. SPIE 6520, 652004 (2007)) — which is why
+# the line-narrowed KrF laser (few-pm bandwidth) let lenses go all-fused-silica.
+#
+# Preset `hg_i`: NIST air wavelength 365.0153 nm, REPRESENTATIVE 3 nm FWHM
+# passband, CW, one spectral sample. Photon energy 3.40 eV (18.4 photons/nm²
+# per mJ/cm²).
+#
+# Run with:  highuvlith simulate --config examples/sim_hg_iline.toml
+# -----------------------------------------------------------------------------
+
+[source]
+type   = "vuv"
+preset = "hg_i"
+sigma  = 0.6
+
+[optics]
+na             = 0.6
+flare_fraction = 0.02
+
+[mask]
+cd_nm    = 350.0     # k1 = 350 x 0.6 / 365 = 0.58 (350 nm node era)
+pitch_nm = 700.0
+
+[grid]
+size     = 128
+pixel_nm = 10.9375   # 1400 nm field = exactly 2 pitches
+
+[process]
+dose_mj_cm2 = 100.0
+focus_nm    = 0.0

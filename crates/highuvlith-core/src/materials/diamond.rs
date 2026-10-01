@@ -3,10 +3,47 @@
 //! Diamond (C) is emerging as a next-gen substrate for quantum computing,
 //! power electronics, and X-ray window applications due to its extreme
 //! thermal conductivity and optical properties.
+//!
+//! # Model status
+//!
+//! Sellmeier index (transparent region only), simple thermal-dose estimate,
+//! NIST X-ray window transmission. Range checks: the optical index and the
+//! film-stack presets are defined only from the bandgap cutoff
+//! (`hc / 5.47 eV` = 226.7 nm, [`DIAMOND_MIN_NM`]) to 2000 nm and return
+//! `WavelengthOutOfRange` elsewhere - diamond absorbs strongly above its gap
+//! and no absorbing-regime `n + ik` data are carried here. (Before
+//! 2026-10-01 the presets substituted a fixed `n = 2.7, k = 0` below 225 nm
+//! and hard-coded the 157 nm VUV resist and Si indices at every wavelength;
+//! the resist and Si indices are now explicit arguments.) X-ray transmission
+//! accepts 0.03 keV - 20 MeV.
 
+use crate::error::{LithographyError, Result};
 use crate::materials::dispersion::SellmeierCoefficients;
 use crate::thinfilm::{FilmLayer, FilmStack};
 use crate::types::Complex64;
+
+/// Shortest wavelength (nm) at which the diamond index is evaluated: the
+/// bandgap cutoff `hc / 5.47 eV`.
+pub const DIAMOND_MIN_NM: f64 = 1239.84193 / 5.47;
+/// Longest wavelength (nm) at which the diamond index is evaluated (the
+/// database's common Sellmeier upper limit).
+pub const DIAMOND_MAX_NM: f64 = 2000.0;
+
+/// Diamond refractive index (real, `k = 0`) from [`diamond_sellmeier`] in
+/// [[`DIAMOND_MIN_NM`], [`DIAMOND_MAX_NM`]]; `WavelengthOutOfRange` outside.
+pub fn diamond_index(wavelength_nm: f64) -> Result<f64> {
+    if !(DIAMOND_MIN_NM..=DIAMOND_MAX_NM).contains(&wavelength_nm) {
+        return Err(LithographyError::WavelengthOutOfRange {
+            material: "diamond".to_string(),
+            wavelength_nm,
+            range_nm: (DIAMOND_MIN_NM, DIAMOND_MAX_NM),
+            hint: "diamond absorbs above its 5.47 eV bandgap and no n + ik data are carried \
+                   for that regime; for X-rays use 'henke:C@3.515'"
+                .to_string(),
+        });
+    }
+    diamond_sellmeier().refractive_index(wavelength_nm)
+}
 
 /// Diamond Sellmeier coefficients (type IIa, UV-visible-IR).
 /// Reference: Peter, 1923; valid ~225nm to far-IR.
@@ -61,54 +98,53 @@ impl DiamondProperties {
     }
 }
 
-/// Create a resist-on-diamond film stack for VUV lithography.
-pub fn resist_on_diamond(resist_thickness_nm: f64, wavelength_nm: f64) -> FilmStack {
-    let sellmeier = diamond_sellmeier();
-    let n_diamond = if wavelength_nm > 225.0 {
-        sellmeier.refractive_index(wavelength_nm).unwrap_or(2.7)
-    } else {
-        2.7 // approximate for deep UV (absorbing regime)
-    };
-
-    FilmStack::new_vuv(
+/// Resist (index `resist_n` at this wavelength) on a semi-infinite diamond
+/// substrate, vacuum above. Errors outside diamond's transparent range
+/// ([`diamond_index`]).
+pub fn resist_on_diamond(
+    resist_thickness_nm: f64,
+    wavelength_nm: f64,
+    resist_n: Complex64,
+) -> Result<FilmStack> {
+    let n_diamond = diamond_index(wavelength_nm)?;
+    Ok(FilmStack::new_vuv(
         vec![FilmLayer {
             name: "resist".to_string(),
             thickness_nm: resist_thickness_nm,
-            n: Complex64::new(1.65, 0.015), // VUV fluoropolymer
+            n: resist_n,
         }],
         Complex64::new(n_diamond, 0.0), // diamond substrate (transparent)
-    )
+    ))
 }
 
-/// Create a diamond-on-silicon film stack (diamond membrane).
-pub fn diamond_on_silicon(diamond_thickness_nm: f64, wavelength_nm: f64) -> FilmStack {
-    let sellmeier = diamond_sellmeier();
-    let n_diamond = if wavelength_nm > 225.0 {
-        sellmeier.refractive_index(wavelength_nm).unwrap_or(2.7)
-    } else {
-        2.7
-    };
-
-    FilmStack::new_vuv(
+/// A diamond membrane on silicon (index `silicon_n` at this wavelength),
+/// vacuum above. Errors outside diamond's transparent range
+/// ([`diamond_index`]).
+pub fn diamond_on_silicon(
+    diamond_thickness_nm: f64,
+    wavelength_nm: f64,
+    silicon_n: Complex64,
+) -> Result<FilmStack> {
+    let n_diamond = diamond_index(wavelength_nm)?;
+    Ok(FilmStack::new_vuv(
         vec![FilmLayer {
             name: "diamond".to_string(),
             thickness_nm: diamond_thickness_nm,
             n: Complex64::new(n_diamond, 0.0),
         }],
-        Complex64::new(0.88, 2.10), // Si at 157nm
-    )
+        silicon_n,
+    ))
 }
 
-/// X-ray transmission through a diamond window.
-/// At hard X-ray energies (>5 keV), diamond is nearly transparent.
-pub fn xray_transmission(thickness_um: f64, energy_kev: f64) -> f64 {
-    // Carbon linear absorption coefficient (approximate, from NIST)
-    // μ/ρ ≈ 4.6 cm²/g at 8 keV, scales as ~E^-3
-    let mu_rho_8kev = 4.6; // cm²/g
-    let mu_rho = mu_rho_8kev * (8.0 / energy_kev).powi(3);
-    let mu = mu_rho * 3.515; // linear coefficient (1/cm)
-    let thickness_cm = thickness_um * 1e-4;
-    (-mu * thickness_cm).exp()
+/// X-ray transmission `exp(-mu t)` through a diamond window (3.515 g/cm^3)
+/// of `thickness_um` at `energy_kev`, with the NIST carbon attenuation
+/// coefficient of [`crate::materials::attenuation`] (photoabsorption +
+/// scattering, 30 eV - 20 MeV; other energies are an error). At hard X-ray
+/// energies (>5 keV) diamond is nearly transparent.
+pub fn xray_transmission(thickness_um: f64, energy_kev: f64) -> Result<f64> {
+    crate::materials::attenuation::check_energy_kev(energy_kev)?;
+    let mu_per_um = crate::materials::attenuation::Compound::diamond().mu_per_um(energy_kev);
+    Ok((-mu_per_um * thickness_um).exp())
 }
 
 #[cfg(test)]
@@ -149,7 +185,7 @@ mod tests {
     #[test]
     fn test_xray_transmission_high_energy() {
         // At 10 keV, 100μm diamond should be highly transparent
-        let t = xray_transmission(100.0, 10.0);
+        let t = xray_transmission(100.0, 10.0).unwrap();
         assert!(
             t > 0.9,
             "Diamond should be >90% transparent at 10 keV, got {:.1}%",
@@ -158,18 +194,54 @@ mod tests {
     }
 
     #[test]
+    fn test_xray_transmission_nist_fixture() {
+        // NIST carbon mu/rho = 2.373 cm^2/g at 10 keV: 100 um of diamond
+        // transmits exp(-2.373 * 3.515 * 0.01) = 0.9200.
+        assert_relative_eq!(
+            xray_transmission(100.0, 10.0).unwrap(),
+            0.91998,
+            epsilon = 1e-4
+        );
+    }
+
+    #[test]
     fn test_xray_transmission_low_energy() {
         // At 1 keV, diamond absorbs more
-        let t_low = xray_transmission(100.0, 1.0);
-        let t_high = xray_transmission(100.0, 10.0);
+        let t_low = xray_transmission(100.0, 1.0).unwrap();
+        let t_high = xray_transmission(100.0, 10.0).unwrap();
         assert!(t_low < t_high, "Lower energy should have more absorption");
     }
 
     #[test]
     fn test_resist_on_diamond_stack() {
-        let stack = resist_on_diamond(150.0, 589.0);
+        let resist = Complex64::new(1.5, 0.001);
+        let stack = resist_on_diamond(150.0, 589.0, resist).unwrap();
         assert_eq!(stack.layers.len(), 1);
-        // Diamond substrate has high real index, near-zero imaginary
-        assert!(stack.substrate.im.abs() < 0.01);
+        assert_eq!(stack.layers[0].n, resist);
+        // Diamond substrate: the Sellmeier index (independent evaluation of
+        // the Peter coefficients at 589 nm: 2.41073), k = 0.
+        assert!((stack.substrate.re - 2.41073).abs() < 1e-5);
+        assert_eq!(stack.substrate.im, 0.0);
+        let si = Complex64::new(3.88, 0.02);
+        let m = diamond_on_silicon(500.0, 633.0, si).unwrap();
+        assert_eq!(m.substrate, si);
+    }
+
+    #[test]
+    fn test_diamond_index_range() {
+        // hc / 5.47 eV = 226.66 nm.
+        assert!((DIAMOND_MIN_NM - 226.6621).abs() < 1e-3);
+        assert!(diamond_index(248.0).is_ok());
+        // VUV (absorbing) and EUV: typed errors, no stand-in value.
+        for wl in [157.63, 13.5, 2500.0] {
+            assert!(matches!(
+                diamond_index(wl),
+                Err(LithographyError::WavelengthOutOfRange { .. })
+            ));
+            assert!(resist_on_diamond(100.0, wl, Complex64::new(1.65, 0.015)).is_err());
+            assert!(diamond_on_silicon(100.0, wl, Complex64::new(0.88, 2.1)).is_err());
+        }
+        assert!(xray_transmission(10.0, 0.001).is_err());
+        assert!(xray_transmission(10.0, 5.0e4).is_err());
     }
 }

@@ -2,6 +2,15 @@
 //!
 //! Implements the extended Ptychographic Iterative Engine (ePIE) algorithm
 //! for lensless imaging and mask metrology at X-ray wavelengths.
+//!
+//! # Model status
+//!
+//! 🔶 Simplified: single far-field FFT (Fraunhofer) propagation with a fully
+//! coherent probe and noise-free intensities; integer-pixel scan positions
+//! without position refinement; no mixed-state (partial-coherence) or noise
+//! model. The probe update uses the freshly updated object. The tests check
+//! that the Fourier-magnitude error does not grow and that shapes are
+//! consistent; they do not assert recovery of a known object.
 
 use ndarray::Array2;
 

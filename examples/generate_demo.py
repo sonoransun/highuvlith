@@ -1,513 +1,556 @@
 #!/usr/bin/env python3
-"""Generate demo videos showcasing VUV lithography simulation.
+"""Render the highuvlith demo video and the documentation stills.
 
-Produces VP9 (.webm) and MPEG-4 (.mp4) animations of contrived
-lithographic application sequences.
+Five sequences, all computed live by the simulator:
 
-Usage:
-    python examples/generate_demo.py
+1. through focus: conventional vs dipole illumination (exact defocus model);
+2. vector imaging: TE vs TM contrast as the numerical aperture grows to 0.95;
+3. the light-source landscape, one preset at a time;
+4. level-set development of a volumetric latent image;
+5. a scan through a Talbot carpet with the displacement-Talbot average.
 
-Outputs:
-    examples/demo_vp9.webm
-    examples/demo_mpeg4.mp4
+Usage (from a checkout with the extension built, e.g. ``maturin develop --release``):
+
+    python examples/generate_demo.py                # video + stills
+    python examples/generate_demo.py --quick        # fewer frames, for a smoke test
+    python examples/generate_demo.py --stills-only  # only docs/assets/images/demo/*
+
+Outputs (the videos are git-ignored; the stills are tracked):
+
+    examples/demo_vp9.webm, examples/demo_mpeg4.mp4
+    docs/assets/images/demo/demo-through-focus.gif
+    docs/assets/images/demo/demo-te-tm.png
+    docs/assets/images/demo/demo-talbot.png
+
+Needs matplotlib and ffmpeg (with libvpx-vp9) on PATH.
 """
 
 from __future__ import annotations
 
-import os
+import argparse
 import shutil
 import subprocess
-import sys
 import tempfile
 from pathlib import Path
 
 import matplotlib
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-import numpy as np
 
-import highuvlith as huv
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
+
+import highuvlith as huv  # noqa: E402
 
 # --- Constants ---
 FPS = 24
 DPI = 150
-FIG_W, FIG_H = 12.8, 7.2  # inches → 1920×1080 at 150 DPI
+FIG_W, FIG_H = 12.8, 7.2  # inches -> 1920x1080 at 150 DPI
 BG_COLOR = "#1a1a2e"
+PANEL_COLOR = "#16213e"
 TEXT_COLOR = "#e0e0e0"
+MUTED_COLOR = "#8a8aa0"
 ACCENT_COLOR = "#f0a030"
+BLUE = "#4fc3f7"
+GREEN = "#76ff03"
+PINK = "#ff6f91"
 CMAP = "inferno"
 
-BANNER = "highuvlith  ·  VUV Lithography Simulator  ·  λ = 157.63 nm"
+REPO_URL = "github.com/sonoransun/highuvlith"
+BANNER = "highuvlith  ·  VUV → X-ray lithography simulator  ·  " + REPO_URL
+
+ROOT = Path(__file__).resolve().parent.parent
+STILLS_DIR = ROOT / "docs" / "assets" / "images" / "demo"
 
 
 def setup_style():
     plt.rcParams.update({
         "figure.facecolor": BG_COLOR,
-        "axes.facecolor": "#16213e",
+        "axes.facecolor": PANEL_COLOR,
         "axes.edgecolor": "#555555",
         "axes.labelcolor": TEXT_COLOR,
         "text.color": TEXT_COLOR,
         "xtick.color": TEXT_COLOR,
         "ytick.color": TEXT_COLOR,
         "grid.color": "#333333",
+        "legend.facecolor": PANEL_COLOR,
+        "legend.edgecolor": "#555555",
         "font.size": 12,
         "axes.titlesize": 14,
         "figure.titlesize": 16,
     })
 
 
-def save_frame(fig, frames_dir: Path, idx: int):
-    fig.savefig(frames_dir / f"{idx:04d}.png", dpi=DPI, facecolor=fig.get_facecolor())
-    plt.close(fig)
+class FrameWriter:
+    """Numbered PNG frames for ffmpeg."""
+
+    def __init__(self, frames_dir: Path):
+        self.dir = frames_dir
+        self.count = 0
+
+    def save(self, fig):
+        fig.savefig(self.dir / f"{self.count:05d}.png", dpi=DPI, facecolor=fig.get_facecolor())
+        plt.close(fig)
+        self.count += 1
 
 
 def add_banner(fig, text: str = BANNER):
-    fig.text(0.5, 0.01, text, ha="center", va="bottom",
-             fontsize=9, color="#888888", family="monospace")
+    fig.text(0.5, 0.01, text, ha="center", va="bottom", fontsize=9, color="#888888", family="monospace")
+
+
+def add_badge(fig, text: str):
+    """Model-status note under the title, right-aligned (plain words: emoji glyphs are not in the default font)."""
+    fig.text(0.99, 0.92, "model: " + text, ha="right", va="bottom", fontsize=10, color=MUTED_COLOR)
 
 
 # --- Title & transition cards ---
 
-def render_title_card(frames_dir: Path, start: int, text: str,
-                      subtitle: str = "", num_frames: int = 48) -> int:
+def render_title_card(w: FrameWriter, text: str, subtitle: str = "", footer: str = "",
+                      num_frames: int = 48):
     for i in range(num_frames):
         fig = plt.figure(figsize=(FIG_W, FIG_H))
-        alpha = min(1.0, i / 12.0)  # fade in
+        alpha = min(1.0, i / 12.0)
         if i > num_frames - 12:
-            alpha = max(0.0, (num_frames - i) / 12.0)  # fade out
-        fig.text(0.5, 0.52, text, ha="center", va="center",
-                 fontsize=36, fontweight="bold", color=TEXT_COLOR, alpha=alpha)
+            alpha = max(0.0, (num_frames - i) / 12.0)
+        fig.text(0.5, 0.55, text, ha="center", va="center", fontsize=40, fontweight="bold",
+                 color=TEXT_COLOR, alpha=alpha)
         if subtitle:
-            fig.text(0.5, 0.40, subtitle, ha="center", va="center",
-                     fontsize=18, color=ACCENT_COLOR, alpha=alpha)
+            fig.text(0.5, 0.43, subtitle, ha="center", va="center", fontsize=18, color=ACCENT_COLOR, alpha=alpha)
+        if footer:
+            fig.text(0.5, 0.33, footer, ha="center", va="center", fontsize=14, color=MUTED_COLOR,
+                     alpha=alpha, family="monospace")
         add_banner(fig)
-        save_frame(fig, frames_dir, start + i)
-    return start + num_frames
+        w.save(fig)
 
 
-def render_transition(frames_dir: Path, start: int, num_frames: int = 12) -> int:
-    for i in range(num_frames):
-        fig = plt.figure(figsize=(FIG_W, FIG_H))
-        add_banner(fig)
-        save_frame(fig, frames_dir, start + i)
-    return start + num_frames
-
-
-def render_section_title(frames_dir: Path, start: int, title: str,
-                         num_frames: int = 30) -> int:
+def render_section_title(w: FrameWriter, title: str, subtitle: str = "", num_frames: int = 36):
     for i in range(num_frames):
         fig = plt.figure(figsize=(FIG_W, FIG_H))
         alpha = min(1.0, i / 8.0)
         if i > num_frames - 8:
             alpha = max(0.0, (num_frames - i) / 8.0)
-        fig.text(0.5, 0.5, title, ha="center", va="center",
-                 fontsize=28, color=ACCENT_COLOR, alpha=alpha)
+        fig.text(0.5, 0.53, title, ha="center", va="center", fontsize=30, color=ACCENT_COLOR, alpha=alpha)
+        if subtitle:
+            fig.text(0.5, 0.44, subtitle, ha="center", va="center", fontsize=15, color=TEXT_COLOR, alpha=alpha)
         add_banner(fig)
-        save_frame(fig, frames_dir, start + i)
-    return start + num_frames
+        w.save(fig)
 
 
-# --- Sequence 1: Through-Focus ---
-
-def render_through_focus(frames_dir: Path, start: int) -> int:
-    print("  Rendering Sequence 1: Through-Focus...")
-    source = huv.SourceConfig.f2_laser(sigma=0.7)
-    optics = huv.OpticsConfig(numerical_aperture=0.75)
-    mask = huv.MaskConfig.line_space(cd_nm=65.0, pitch_nm=180.0)
-    grid = huv.GridConfig(size=128, pixel_nm=2.0)
-    engine = huv.SimulationEngine(source, optics, mask, grid=grid)
-
-    focuses = np.linspace(-400, 400, 120)
-
-    for i, focus in enumerate(focuses):
-        result = engine.compute_aerial_image(focus_nm=float(focus))
-        intensity = np.asarray(result.intensity)
-        x, cross = result.cross_section(y_nm=0.0)
-        x = np.asarray(x)
-        cross = np.asarray(cross)
-        contrast = result.image_contrast()
-
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(FIG_W, FIG_H),
-                                        gridspec_kw={"width_ratios": [1, 1.2]})
-        fig.suptitle("Through-Focus Aerial Image", fontsize=18, fontweight="bold")
-
-        # 2D aerial image
-        ax1.imshow(intensity, cmap=CMAP, vmin=0, vmax=0.7,
-                   extent=[x[0], x[-1], x[-1], x[0]], aspect="equal")
-        ax1.set_xlabel("x (nm)")
-        ax1.set_ylabel("y (nm)")
-        ax1.set_title("Aerial Image")
-
-        # Cross-section
-        ax2.plot(x, cross, color="#4fc3f7", linewidth=2)
-        ax2.fill_between(x, 0, cross, alpha=0.15, color="#4fc3f7")
-        ax2.axhline(y=0.3, color="#ff5555", linestyle="--", alpha=0.5, linewidth=1)
-        ax2.set_xlim(x[0], x[-1])
-        ax2.set_ylim(0, 0.8)
-        ax2.set_xlabel("x (nm)")
-        ax2.set_ylabel("Intensity")
-        ax2.set_title("Cross-Section at y = 0")
-        ax2.grid(True, alpha=0.2)
-
-        # Annotations
-        ax2.text(0.97, 0.95, f"Focus: {focus:+.0f} nm",
-                 transform=ax2.transAxes, ha="right", va="top",
-                 fontsize=14, fontweight="bold", color=ACCENT_COLOR)
-        ax2.text(0.97, 0.87, f"Contrast: {contrast:.3f}",
-                 transform=ax2.transAxes, ha="right", va="top",
-                 fontsize=13, color=TEXT_COLOR)
-
-        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-        add_banner(fig)
-        save_frame(fig, frames_dir, start + i)
-
-    print(f"    → {len(focuses)} frames")
-    return start + len(focuses)
-
-
-# --- Sequence 2: Wavelength Comparison ---
-
-def render_wavelength_comparison(frames_dir: Path, start: int) -> int:
-    print("  Rendering Sequence 2: Wavelength Comparison (157nm vs 193nm)...")
-    cds = np.linspace(80, 30, 100)
-    grid = huv.GridConfig(size=128, pixel_nm=2.0)
-
-    for i, cd in enumerate(cds):
-        pitch = cd * 2.5
-
-        # 157nm VUV
-        src_vuv = huv.SourceConfig(wavelength_nm=157.63, sigma_outer=0.7)
-        opt_vuv = huv.OpticsConfig(numerical_aperture=0.75)
-        mask_vuv = huv.MaskConfig.line_space(cd_nm=float(cd), pitch_nm=float(pitch))
-        eng_vuv = huv.SimulationEngine(src_vuv, opt_vuv, mask_vuv, grid=grid)
-        res_vuv = eng_vuv.compute_aerial_image()
-        x_vuv, cs_vuv = res_vuv.cross_section(y_nm=0.0)
-        c_vuv = res_vuv.image_contrast()
-
-        # 193nm DUV (simulated — same optics, different wavelength)
-        src_duv = huv.SourceConfig(wavelength_nm=193.0, sigma_outer=0.7)
-        try:
-            eng_duv = huv.SimulationEngine(src_duv, opt_vuv, mask_vuv, grid=grid)
-            res_duv = eng_duv.compute_aerial_image()
-            x_duv, cs_duv = res_duv.cross_section(y_nm=0.0)
-            c_duv = res_duv.image_contrast()
-        except Exception:
-            x_duv, cs_duv = np.asarray(x_vuv), np.ones_like(np.asarray(cs_vuv)) * 0.5
-            c_duv = 0.0
-
-        x_vuv, cs_vuv = np.asarray(x_vuv), np.asarray(cs_vuv)
-        x_duv, cs_duv = np.asarray(x_duv), np.asarray(cs_duv)
-
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(FIG_W, FIG_H), sharey=True)
-        fig.suptitle(f"Wavelength Comparison — CD = {cd:.1f} nm, Pitch = {pitch:.0f} nm",
-                     fontsize=18, fontweight="bold")
-
-        ax1.plot(x_vuv, cs_vuv, color="#ff9800", linewidth=2)
-        ax1.fill_between(x_vuv, 0, cs_vuv, alpha=0.15, color="#ff9800")
-        ax1.set_xlim(x_vuv[0], x_vuv[-1])
-        ax1.set_ylim(0, 0.85)
-        ax1.set_xlabel("x (nm)")
-        ax1.set_ylabel("Intensity")
-        ax1.set_title("λ = 157.63 nm (VUV)", color="#ff9800")
-        ax1.grid(True, alpha=0.2)
-        ax1.text(0.97, 0.95, f"Contrast: {c_vuv:.3f}",
-                 transform=ax1.transAxes, ha="right", va="top",
-                 fontsize=13, color="#ff9800", fontweight="bold")
-
-        ax2.plot(x_duv, cs_duv, color="#4fc3f7", linewidth=2)
-        ax2.fill_between(x_duv, 0, cs_duv, alpha=0.15, color="#4fc3f7")
-        ax2.set_xlim(x_duv[0], x_duv[-1])
-        ax2.set_xlabel("x (nm)")
-        ax2.set_title("λ = 193 nm (DUV)", color="#4fc3f7")
-        ax2.grid(True, alpha=0.2)
-        ax2.text(0.97, 0.95, f"Contrast: {c_duv:.3f}",
-                 transform=ax2.transAxes, ha="right", va="top",
-                 fontsize=13, color="#4fc3f7", fontweight="bold")
-
-        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
-        add_banner(fig)
-        save_frame(fig, frames_dir, start + i)
-
-    print(f"    → {len(cds)} frames")
-    return start + len(cds)
-
-
-# --- Sequence 3: NA Exploration ---
-
-def render_na_exploration(frames_dir: Path, start: int) -> int:
-    print("  Rendering Sequence 3: NA Exploration...")
-    nas = np.linspace(0.5, 0.9, 90)
-    grid = huv.GridConfig(size=128, pixel_nm=2.0)
-
-    for i, na in enumerate(nas):
-        source = huv.SourceConfig.f2_laser(sigma=0.7)
-        optics = huv.OpticsConfig(numerical_aperture=float(na))
-        mask = huv.MaskConfig.line_space(cd_nm=65.0, pitch_nm=180.0)
-        engine = huv.SimulationEngine(source, optics, mask, grid=grid)
-
-        result = engine.compute_aerial_image()
-        intensity = np.asarray(result.intensity)
-        x, cross = result.cross_section(y_nm=0.0)
-        x, cross = np.asarray(x), np.asarray(cross)
-        contrast = result.image_contrast()
-
-        # Focus sweep for DOF visualization
-        focus_pts = np.linspace(-300, 300, 11)
-        contrasts = []
-        for f in focus_pts:
-            contrasts.append(engine.image_contrast(focus_nm=float(f)))
-
+def render_blank(w: FrameWriter, num_frames: int = 8):
+    for _ in range(num_frames):
         fig = plt.figure(figsize=(FIG_W, FIG_H))
-        gs = fig.add_gridspec(2, 2, height_ratios=[1.2, 1], hspace=0.35, wspace=0.3)
-        fig.suptitle("NA Exploration — Resolution vs Depth of Focus",
-                     fontsize=18, fontweight="bold")
-
-        # Top: aerial image
-        ax_aerial = fig.add_subplot(gs[0, :])
-        ax_aerial.imshow(intensity, cmap=CMAP, vmin=0, vmax=0.7,
-                         extent=[x[0], x[-1], x[-1], x[0]], aspect="auto")
-        ax_aerial.set_xlabel("x (nm)")
-        ax_aerial.set_ylabel("y (nm)")
-        ax_aerial.set_title(f"Aerial Image — NA = {na:.2f}")
-
-        # Bottom-left: cross-section
-        ax_cs = fig.add_subplot(gs[1, 0])
-        ax_cs.plot(x, cross, color="#4fc3f7", linewidth=2)
-        ax_cs.fill_between(x, 0, cross, alpha=0.15, color="#4fc3f7")
-        ax_cs.set_xlim(x[0], x[-1])
-        ax_cs.set_ylim(0, 0.8)
-        ax_cs.set_xlabel("x (nm)")
-        ax_cs.set_ylabel("Intensity")
-        ax_cs.set_title(f"Cross-Section (Contrast: {contrast:.3f})")
-        ax_cs.grid(True, alpha=0.2)
-
-        # Bottom-right: contrast vs focus
-        ax_dof = fig.add_subplot(gs[1, 1])
-        ax_dof.plot(focus_pts, contrasts, "o-", color=ACCENT_COLOR, linewidth=2, markersize=4)
-        ax_dof.set_xlabel("Focus (nm)")
-        ax_dof.set_ylabel("Contrast")
-        ax_dof.set_title("Process Window")
-        ax_dof.set_ylim(0, 1)
-        ax_dof.grid(True, alpha=0.2)
-
-        # Rayleigh resolution annotation
-        rayleigh = 0.61 * 157.63 / na
-        fig.text(0.98, 0.97, f"Rayleigh: {rayleigh:.0f} nm",
-                 ha="right", va="top", fontsize=12, color=ACCENT_COLOR)
-
-        fig.tight_layout(rect=[0, 0.03, 1, 0.93])
         add_banner(fig)
-        save_frame(fig, frames_dir, start + i)
-
-    print(f"    → {len(nas)} frames")
-    return start + len(nas)
+        w.save(fig)
 
 
-# --- Sequence 4: Sigma Sweep ---
+def line_space_engine(source, optics, cd, pitch, *, periods=2, px_per_period=64, spp=41, **kw):
+    """Engine for periodic lines/spaces on a commensurate grid (``periods`` pitches in the field)."""
+    mask = huv.MaskConfig.line_space(cd, pitch)
+    grid = huv.GridConfig(size=periods * px_per_period, pixel_nm=pitch / px_per_period)
+    return huv.SimulationEngine(source, optics, mask, grid=grid, max_kernels=40 * periods,
+                                source_points_per_axis=spp, **kw)
 
-def render_sigma_sweep(frames_dir: Path, start: int) -> int:
-    print("  Rendering Sequence 4: Partial Coherence (σ) Sweep...")
-    sigmas = np.linspace(0.1, 0.95, 80)
-    grid = huv.GridConfig(size=128, pixel_nm=2.0)
 
-    for i, sigma in enumerate(sigmas):
-        source = huv.SourceConfig(wavelength_nm=157.63, sigma_outer=float(sigma))
-        optics = huv.OpticsConfig(numerical_aperture=0.75)
-        mask = huv.MaskConfig.line_space(cd_nm=65.0, pitch_nm=180.0)
-        engine = huv.SimulationEngine(source, optics, mask, grid=grid)
+# --- Sequence 1: through focus, conventional vs dipole ---
 
-        result = engine.compute_aerial_image()
-        intensity = np.asarray(result.intensity)
-        x, cross = result.cross_section(y_nm=0.0)
-        x, cross = np.asarray(x), np.asarray(cross)
-        contrast = result.image_contrast()
+def through_focus_data(n_frames: int):
+    wl, na, cd, pitch = 157.63, 0.75, 90.0, 180.0
+    sigma_c = wl / (2 * pitch * na)
+    optics = huv.OpticsConfig(numerical_aperture=na)
+    sources = {
+        "conventional σ 0.7": huv.SourceConfig.f2_laser(sigma=0.7),
+        f"dipole σc {sigma_c:.2f}": huv.SourceConfig.f2_laser().with_illumination("dipole", sigma_c, 0.1, 0.0),
+    }
+    sweep = np.concatenate([np.linspace(0, 500, n_frames // 4), np.linspace(500, -500, n_frames // 2),
+                            np.linspace(-500, 0, n_frames - n_frames // 4 - n_frames // 2)])
+    grid_focus = np.linspace(-500, 500, 41)
+    out = {"focus": sweep, "grid_focus": grid_focus, "panels": {}}
+    for name, src in sources.items():
+        eng = line_space_engine(src, optics, cd, pitch)
+        planes = eng.compute_through_focus(list(sweep))
+        curve = [p.image_contrast() for p in eng.compute_through_focus(list(grid_focus))]
+        out["panels"][name] = {
+            "images": [np.asarray(p.intensity).copy() for p in planes],
+            "cuts": [np.asarray(p.cross_section(0.0)[1]) for p in planes],
+            "x": np.asarray(planes[0].x_nm),
+            "contrast": [p.image_contrast() for p in planes],
+            "curve": np.asarray(curve),
+        }
+    return out
 
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(FIG_W, FIG_H),
-                                        gridspec_kw={"width_ratios": [1, 1.2]})
-        fig.suptitle("Partial Coherence Sweep", fontsize=18, fontweight="bold")
 
-        ax1.imshow(intensity, cmap=CMAP, vmin=0, vmax=0.7,
-                   extent=[x[0], x[-1], x[-1], x[0]], aspect="equal")
-        ax1.set_xlabel("x (nm)")
-        ax1.set_ylabel("y (nm)")
-        ax1.set_title("Aerial Image")
-
-        ax2.plot(x, cross, color="#76ff03", linewidth=2)
-        ax2.fill_between(x, 0, cross, alpha=0.15, color="#76ff03")
-        ax2.set_xlim(x[0], x[-1])
-        ax2.set_ylim(0, 0.8)
-        ax2.set_xlabel("x (nm)")
-        ax2.set_ylabel("Intensity")
-        ax2.set_title("Cross-Section at y = 0")
-        ax2.grid(True, alpha=0.2)
-
-        ax2.text(0.97, 0.95, f"σ = {sigma:.2f}",
-                 transform=ax2.transAxes, ha="right", va="top",
-                 fontsize=16, fontweight="bold", color=ACCENT_COLOR)
-        ax2.text(0.97, 0.86, f"Contrast: {contrast:.3f}",
-                 transform=ax2.transAxes, ha="right", va="top",
-                 fontsize=13, color=TEXT_COLOR)
-
-        label = "coherent" if sigma < 0.2 else "partially coherent" if sigma < 0.8 else "incoherent"
-        ax2.text(0.97, 0.78, f"({label})",
-                 transform=ax2.transAxes, ha="right", va="top",
-                 fontsize=11, color="#888888", style="italic")
-
-        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+def draw_through_focus(data, i: int, *, banner: bool = True):
+    fig = plt.figure(figsize=(FIG_W, FIG_H))
+    gs = fig.add_gridspec(2, 3, width_ratios=[1, 1, 1.25], hspace=0.38, wspace=0.32)
+    fig.suptitle("Through focus: conventional vs dipole illumination", fontsize=18, fontweight="bold")
+    focus = data["focus"][i]
+    colors = (BLUE, GREEN)
+    ax_c = fig.add_subplot(gs[:, 2])
+    for row, ((name, p), color) in enumerate(zip(data["panels"].items(), colors)):
+        x = p["x"]
+        ax_img = fig.add_subplot(gs[row, 0])
+        ax_img.imshow(p["images"][i], cmap=CMAP, vmin=0, vmax=1.1, origin="lower",
+                      extent=[x[0], x[-1], x[0], x[-1]], aspect="equal")
+        ax_img.set_title(name, color=color, fontsize=12)
+        ax_img.set_xticks([])
+        ax_img.set_yticks([])
+        ax_cut = fig.add_subplot(gs[row, 1])
+        ax_cut.plot(x, p["cuts"][i], color=color, lw=2)
+        ax_cut.fill_between(x, 0, p["cuts"][i], color=color, alpha=0.15)
+        ax_cut.set(xlim=(x[0], x[-1]), ylim=(0, 1.15), xlabel="x (nm)", ylabel="intensity")
+        ax_cut.grid(alpha=0.2)
+        ax_cut.text(0.97, 0.93, f"C = {p['contrast'][i]:.2f}", transform=ax_cut.transAxes, ha="right",
+                    va="top", color=color, fontsize=12, fontweight="bold")
+        ax_c.plot(data["grid_focus"], p["curve"], color=color, lw=2, label=name)
+        ax_c.plot([focus], [p["contrast"][i]], "o", color=color, ms=9)
+    ax_c.axvline(focus, color=ACCENT_COLOR, lw=1, alpha=0.6)
+    ax_c.set(xlabel="defocus (nm)", ylabel="image contrast", ylim=(0, 1), title="Contrast vs focus")
+    ax_c.grid(alpha=0.2)
+    ax_c.legend(loc="lower center")
+    ax_c.text(0.03, 0.97, f"focus {focus:+.0f} nm", transform=ax_c.transAxes, va="top", fontsize=15,
+              fontweight="bold", color=ACCENT_COLOR)
+    fig.text(0.02, 0.92, "90 nm lines / 180 nm pitch · F2 157.63 nm · NA 0.75 (k1 ≈ 0.43)", fontsize=11,
+             color=MUTED_COLOR)
+    add_badge(fig, "exact non-paraxial defocus per source point (implemented)")
+    if banner:
         add_banner(fig)
-        save_frame(fig, frames_dir, start + i)
-
-    print(f"    → {len(sigmas)} frames")
-    return start + len(sigmas)
+    return fig
 
 
-# --- Sequence 5: Resist Development ---
+def render_through_focus(w: FrameWriter, n_frames: int):
+    print("  Sequence 1: through focus (conventional vs dipole)...")
+    data = through_focus_data(n_frames)
+    for i in range(len(data["focus"])):
+        w.save(draw_through_focus(data, i))
+    return data
 
-def render_resist_development(frames_dir: Path, start: int) -> int:
-    print("  Rendering Sequence 5: Resist Development Time-Lapse...")
+
+# --- Sequence 2: TE vs TM as NA grows ---
+
+def te_tm_data(n_frames: int):
+    wl, sigma_c = 193.368, 0.8
+    nas = np.linspace(0.5, 0.95, n_frames)
+    curve_na = np.linspace(0.5, 0.95, 46)
+    out = {"na": nas, "curve_na": curve_na, "pol": {}}
+
+    def run(na, pol):
+        pitch = wl / (2 * sigma_c * na)        # x-dipole poles at ±0.8: the orders meet at sin θ = 0.8 NA
+        src = huv.SourceConfig.arf_laser().with_illumination("dipole", sigma_c, 0.08, 0.0)
+        optics = huv.OpticsConfig(numerical_aperture=float(na))
+        mask = huv.MaskConfig.line_space(pitch / 2, pitch)
+        grid = huv.GridConfig(size=128, pixel_nm=2 * pitch / 128)
+        vec = huv.VectorSettings(polarization=pol)
+        eng = huv.SimulationEngine(src, optics, mask, grid=grid, max_kernels=40, vector=vec,
+                                   source_points_per_axis=41)
+        img = eng.compute_aerial_image()
+        x, cut = img.cross_section(0.0)
+        return img.image_contrast(), np.asarray(x) / pitch, np.asarray(cut)
+
+    for pol, label in (("y", "TE (y-polarized)"), ("x", "TM (x-polarized)"), ("unpolarized", "unpolarized")):
+        frames = [run(na, pol) for na in nas]
+        out["pol"][label] = {
+            "contrast": [f[0] for f in frames],
+            "x": [f[1] for f in frames],
+            "cut": [f[2] for f in frames],
+        }
+    # Two-beam closed form relative to the TE image: the TM fringe is weighted by cos 2θ and the
+    # unpolarized fringe is the mean of TE and TM (sin θ = 0.8 NA for this dipole and pitch).
+    te = np.interp(curve_na, nas, out["pol"]["TE (y-polarized)"]["contrast"])
+    cos2t = 1 - 2 * (sigma_c * curve_na) ** 2
+    out["pol"]["TE (y-polarized)"]["curve"] = te
+    out["pol"]["TM (x-polarized)"]["curve"] = te * np.abs(cos2t)
+    out["pol"]["unpolarized"]["curve"] = te * np.abs(1 + cos2t) / 2
+    return out
+
+
+def draw_te_tm(data, i: int, *, banner: bool = True):
+    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(FIG_W, FIG_H), gridspec_kw={"width_ratios": [1.2, 1]})
+    fig.suptitle("Vector imaging: TE keeps its contrast, TM collapses", fontsize=18, fontweight="bold")
+    na = data["na"][i]
+    colors = (BLUE, PINK, GREEN)
+    for (label, p), color in zip(data["pol"].items(), colors):
+        ax0.plot(p["x"][i], p["cut"][i], color=color, lw=2, label=f"{label}: C = {p['contrast'][i]:.2f}")
+        ax1.plot(data["na"][: i + 1], p["contrast"][: i + 1], color=color, lw=2.5)
+        ax1.plot(data["curve_na"], p["curve"], color="#ffffff", lw=1.0, ls=":", alpha=0.7)
+        ax1.plot([na], [p["contrast"][i]], "o", color=color, ms=9)
+    ax0.set(xlabel="x / pitch", ylabel="intensity", title="Aerial image (two periods)", ylim=(0, None))
+    ax0.legend(loc="upper center", fontsize=10)
+    ax0.grid(alpha=0.2)
+    ax1.set(xlabel="numerical aperture (dry)", ylabel="image contrast", xlim=(0.5, 0.95), ylim=(0, 1.05),
+            title="Contrast vs NA (dotted: TE × |cos 2θ| closed form)")
+    ax1.grid(alpha=0.2)
+    sin_t = 0.8 * na
+    ax1.text(0.03, 0.08, f"NA {na:.2f}   sin θ = {sin_t:.2f}   2θ = {2 * np.degrees(np.arcsin(sin_t)):.0f}°",
+             transform=ax1.transAxes, fontsize=13, fontweight="bold", color=ACCENT_COLOR)
+    fig.text(0.02, 0.92, "ArF 193.368 nm · x-dipole σc 0.8 · pitch λ/(1.6 NA): the two orders cross at sin θ = 0.8 NA",
+             fontsize=11, color=MUTED_COLOR)
+    add_badge(fig, "vector imaging, thin mask, no film (implemented)")
+    fig.tight_layout(rect=[0, 0.03, 1, 0.9])
+    if banner:
+        add_banner(fig)
+    return fig
+
+
+def render_te_tm(w: FrameWriter, n_frames: int):
+    print("  Sequence 2: TE vs TM as NA grows...")
+    data = te_tm_data(n_frames)
+    for i in range(len(data["na"])):
+        w.save(draw_te_tm(data, i))
+    hold = len(data["na"]) - 1
+    for _ in range(FPS):
+        w.save(draw_te_tm(data, hold))
+    return data
+
+
+# --- Sequence 3: source landscape ---
+
+def render_landscape(w: FrameWriter, frames_per_preset: int):
+    print("  Sequence 3: source landscape...")
+    presets = [p for p in huv.source_landscape() if p.average_power_w is not None]
+    markers = {"demonstrated": "o", "projection": "s", "theoretical": "^"}
+    for k, p in enumerate(presets):
+        src = eval("huv.SourceConfig." + p.factory)
+        derived = src.derived_quantities()
+        for _ in range(frames_per_preset):
+            fig = plt.figure(figsize=(FIG_W, FIG_H))
+            gs = fig.add_gridspec(1, 2, width_ratios=[1.5, 1], wspace=0.25)
+            fig.suptitle("Light-source landscape: every preset, one pipeline", fontsize=18, fontweight="bold")
+            ax = fig.add_subplot(gs[0, 0])
+            ax.axhspan(250, 1000, xmin=0, xmax=1, color=ACCENT_COLOR, alpha=0.08)
+            ax.text(0.12, 300, "EUV HVM 250 W – 1 kW at IF", color=ACCENT_COLOR, fontsize=9)
+            for j, q in enumerate(presets):
+                active = j == k
+                ax.plot(q.wavelength_nm, q.average_power_w, markers.get(q.maturity, "o"),
+                        color=ACCENT_COLOR if active else (BLUE if j < k else "#555577"),
+                        ms=14 if active else 7, zorder=3 if active else 2)
+            ax.set(xscale="log", yscale="log", xlabel="wavelength (nm)", ylabel="average power (W)",
+                   xlim=(0.08, 600), ylim=(1e-10, 1e5))
+            ax.grid(alpha=0.2, which="major")
+            for name, mk in markers.items():
+                ax.plot([], [], mk, color=MUTED_COLOR, label=name)
+            ax.legend(loc="lower right", fontsize=9, title="maturity", title_fontsize=9)
+            ax.text(0.02, 0.97, "powers use each family's own definition (IF, laser output, 4π X-ray)",
+                    transform=ax.transAxes, fontsize=9, color=MUTED_COLOR, va="top")
+            info = fig.add_subplot(gs[0, 1])
+            info.axis("off")
+            lines = [
+                (p.label, 20, ACCENT_COLOR, "bold"),
+                (f"family: {p.family}", 12, TEXT_COLOR, "normal"),
+                (f"λ = {p.wavelength_nm:.4g} nm   ({p.photon_energy_ev:.4g} eV)", 12, TEXT_COLOR, "normal"),
+                (f"P = {p.average_power_w:.3g} W", 12, TEXT_COLOR, "normal"),
+                (f"   {p.power_definition[:44]}", 10, MUTED_COLOR, "normal"),
+                (f"machine: {p.maturity}", 12, TEXT_COLOR, "normal"),
+                (f"model status: {_status_words(p.status)}", 12, TEXT_COLOR, "normal"),
+                ("", 8, TEXT_COLOR, "normal"),
+                ("derived from machine parameters:", 11, MUTED_COLOR, "normal"),
+            ]
+            for name, value, unit, _note in derived[1:7]:
+                lines.append((f"  {name} = {value:.3g} {unit}", 10, TEXT_COLOR, "normal"))
+            y = 0.95
+            for text, size, color, weight in lines:
+                info.text(0.0, y, text, fontsize=size, color=color, fontweight=weight, va="top",
+                          transform=info.transAxes, family="monospace" if text.startswith("  ") else None)
+                y -= 0.075 if size >= 12 else 0.055
+            add_banner(fig)
+            w.save(fig)
+
+
+def _status_words(badge: str) -> str:
+    words = {"✅": "implemented", "🔶": "simplified", "🧪": "theoretical", "🗺️": "planned"}
+    return " / ".join(words.get(part, part) for part in badge.split("/"))
+
+
+# --- Sequence 4: level-set development ---
+
+def render_development(w: FrameWriter, n_frames: int):
+    print("  Sequence 4: level-set development...")
     source = huv.SourceConfig.f2_laser(sigma=0.7)
     optics = huv.OpticsConfig(numerical_aperture=0.75)
-    mask = huv.MaskConfig.line_space(cd_nm=65.0, pitch_nm=180.0)
-    resist = huv.ResistConfig.vuv_fluoropolymer()
-    grid = huv.GridConfig(size=256, pixel_nm=1.0)
-    engine = huv.SimulationEngine(source, optics, mask, resist, grid)
-
-    dev_times = np.linspace(0.1, 120.0, 60)
-
-    for i, dt in enumerate(dev_times):
-        profile = engine.compute_resist_profile(dose_mj_cm2=30.0, focus_nm=0.0,
-                                                 dev_time_s=float(dt))
-        x = np.asarray(profile.x_nm)
-        h = np.asarray(profile.height_nm)
-        thickness = profile.thickness_nm
-
-        fig, ax = plt.subplots(figsize=(FIG_W, FIG_H))
-        fig.suptitle("Resist Development Time-Lapse", fontsize=18, fontweight="bold")
-
-        # Substrate
-        ax.axhspan(-10, 0, color="#555555", alpha=0.8)
-        ax.text(0.5, -5, "Si Substrate", ha="center", va="center",
-                fontsize=10, color="#aaaaaa")
-
-        # Resist profile
-        ax.fill_between(x, 0, h, color="#1e88e5", alpha=0.7, label="Resist")
-        ax.plot(x, h, color="#42a5f5", linewidth=1.5)
-
-        # Original thickness line
-        ax.axhline(y=thickness, color="#888888", linestyle="--", alpha=0.5,
-                   linewidth=1, label=f"Original ({thickness:.0f} nm)")
-
-        ax.set_xlim(x[0], x[-1])
-        ax.set_ylim(-15, thickness * 1.15)
-        ax.set_xlabel("x (nm)", fontsize=13)
-        ax.set_ylabel("Height (nm)", fontsize=13)
-        ax.set_title(f"Developed Resist Profile — CD = 65 nm, Pitch = 180 nm")
-        ax.grid(True, alpha=0.2)
-        ax.legend(loc="upper right")
-
-        ax.text(0.97, 0.80, f"Dev Time: {dt:.1f} s",
-                transform=ax.transAxes, ha="right", va="top",
-                fontsize=16, fontweight="bold", color=ACCENT_COLOR)
-        ax.text(0.97, 0.72, f"Dose: 30 mJ/cm²",
-                transform=ax.transAxes, ha="right", va="top",
-                fontsize=12, color=TEXT_COLOR)
-
-        fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+    mask = huv.MaskConfig.line_space(150.0, 300.0)
+    grid = huv.GridConfig(size=128, pixel_nm=600.0 / 128)
+    t_end = 30.0
+    proc = huv.simulate_volumetric(
+        source, optics, mask, huv.FilmStackConfig(), huv.ResistConfig(), grid,
+        dose_mj_cm2=24.0, nz=48, n_defocus_planes=4, dose_steps=5,
+        peb="gaussian", peb_lateral_nm=20.0, peb_vertical_nm=10.0,
+        develop="level_set", dev_time_s=t_end, surface_rate_ratio=0.3, inhibition_depth_nm=15.0,
+    )
+    lat = np.asarray(proc.baked.values)
+    times = np.asarray(proc.level_set.arrival_times.values)
+    mid = lat.shape[1] // 2
+    x = np.asarray(proc.baked.x_nm)
+    z = np.asarray(proc.baked.z_nm)
+    plane_t = np.where(np.isfinite(times[:, mid, :]), times[:, mid, :], 1e9)
+    for t in np.linspace(0.0, t_end, n_frames):
+        fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(FIG_W, FIG_H), gridspec_kw={"width_ratios": [1.3, 1]})
+        fig.suptitle("Development: a level-set front moving through the latent image", fontsize=18,
+                     fontweight="bold")
+        ax0.imshow(1 - lat[:, mid, :], cmap="magma", origin="upper", aspect="auto", vmin=0, vmax=1,
+                   extent=[x[0], x[-1], z[-1], z[0]])
+        dissolved = np.ma.masked_where(plane_t > t, np.ones_like(plane_t))
+        ax0.imshow(dissolved, cmap="Blues", alpha=0.75, origin="upper", aspect="auto", vmin=0, vmax=1.2,
+                   extent=[x[0], x[-1], z[-1], z[0]])
+        if 0 < t and plane_t.min() < t:
+            ax0.contour(x, z, plane_t, levels=[t], colors=[BLUE], linewidths=2)
+        ax0.set(xlabel="x (nm)", ylabel="depth (nm)", title="x–z slice: exposure after bake (glow), developed (blue)")
+        remaining = (plane_t > t).sum(axis=0) * (z[1] - z[0])
+        ax1.fill_between(x, 0, remaining, color="#1e88e5", alpha=0.7, step="mid")
+        ax1.set(xlabel="x (nm)", ylabel="undissolved resist per column (nm)", xlim=(x[0], x[-1]),
+                ylim=(0, (z[-1] - z[0]) * 1.2), title="Resist profile (centre row)")
+        ax1.grid(alpha=0.2)
+        ax1.text(0.97, 0.95, f"t = {t:4.1f} s", transform=ax1.transAxes, ha="right", va="top", fontsize=16,
+                 fontweight="bold", color=ACCENT_COLOR)
+        fig.text(0.02, 0.92, "F2 · 150/300 nm L/S · 150 nm resist on Si · 24 mJ/cm² · bake · surface inhibition",
+                 fontsize=11, color=MUTED_COLOR)
+        add_badge(fig, "exposure simplified · level set implemented/simplified")
+        fig.tight_layout(rect=[0, 0.03, 1, 0.9])
         add_banner(fig)
-        save_frame(fig, frames_dir, start + i)
-
-    print(f"    → {len(dev_times)} frames")
-    return start + len(dev_times)
+        w.save(fig)
 
 
-# --- Video encoding ---
+# --- Sequence 5: Talbot carpet scan ---
 
-def encode_video(frames_dir: Path, total_frames: int, output_path: Path,
-                 codec: str, extra_args: list[str] | None = None):
-    cmd = [
-        "ffmpeg", "-y",
-        "-framerate", str(FPS),
-        "-i", str(frames_dir / "%04d.png"),
-        "-frames:v", str(total_frames),
-        "-pix_fmt", "yuv420p",
-        "-c:v", codec,
-    ]
-    if extra_args:
-        cmd.extend(extra_args)
-    cmd.append(str(output_path))
-
-    print(f"  Encoding {output_path.name} ({codec})...")
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode != 0:
-        print(f"  ffmpeg error: {result.stderr[-500:]}")
-        raise RuntimeError(f"ffmpeg failed with exit code {result.returncode}")
-    size_mb = output_path.stat().st_size / (1024 * 1024)
-    print(f"    → {output_path.name}: {size_mb:.1f} MB")
+def talbot_data():
+    talbot = huv.simulate_talbot(13.5, 100.0, grating="amplitude", max_order=10, carpet_nz=240,
+                                 carpet_z_max_nm=2 * 1481.5)
+    return {
+        "carpet": np.asarray(talbot.carpet),
+        "x": np.asarray(talbot.carpet_x_nm),
+        "z": np.asarray(talbot.carpet_z_nm),
+        "z_t": talbot.talbot_length_nm,
+        "dtl": np.asarray(talbot.dtl_image)[0],
+        "x_img": np.asarray(talbot.x_nm),
+    }
 
 
-# --- Main ---
+def draw_talbot(d, k: int, *, banner: bool = True):
+    carpet, x, z = d["carpet"], d["x"], d["z"]
+    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(FIG_W, FIG_H), gridspec_kw={"width_ratios": [1.1, 1]})
+    fig.suptitle("Talbot lithography: scanning the self-imaging carpet", fontsize=18, fontweight="bold")
+    ax0.imshow(carpet, cmap=CMAP, origin="lower", aspect="auto", extent=[x[0], x[-1], z[0], z[-1]])
+    ax0.axhline(z[k], color=BLUE, lw=2)
+    for m, lab in ((0.5, "z_T/2"), (1.0, "z_T"), (1.5, "3z_T/2")):
+        ax0.axhline(m * d["z_t"], color="#cccccc", lw=0.8, ls="--")
+        ax0.text(x[-1], m * d["z_t"], f" {lab}", color="#cccccc", fontsize=9, va="center")
+    ax0.set(xlabel="x (nm)", ylabel="distance behind the mask z (nm)", title="Talbot carpet, p = 100 nm, λ = 13.5 nm")
+    ax1.plot(x, carpet[k], color=BLUE, lw=2, label=f"at z = {z[k]:.0f} nm")
+    window = carpet[max(0, k - int(len(z) / 2) + 1): k + 1]
+    ax1.plot(x, window.mean(axis=0), color=GREEN, lw=2, label="running average, up to one z_T (DTL)")
+    ax1.plot(d["x_img"], d["dtl"], color=ACCENT_COLOR, lw=1.2, ls="--", label="DTL image (engine)")
+    ax1.set(xlabel="x (nm)", ylabel="intensity", ylim=(0, max(2.4, carpet.max() * 1.05)),
+            title="Intensity at the scanned gap")
+    ax1.legend(loc="upper right", fontsize=10)
+    ax1.grid(alpha=0.2)
+    fig.text(0.02, 0.92, "Coherent plane wave · amplitude grating, 1:1 · scalar thin-mask orders · "
+             "DTL prints at half the mask period", fontsize=11, color=MUTED_COLOR)
+    add_badge(fig, "Talbot / DTL: simplified model")
+    fig.tight_layout(rect=[0, 0.03, 1, 0.9])
+    if banner:
+        add_banner(fig)
+    return fig
+
+
+def render_talbot(w: FrameWriter, n_frames: int):
+    print("  Sequence 5: Talbot carpet scan...")
+    d = talbot_data()
+    for k in np.linspace(0, len(d["z"]) - 1, n_frames).astype(int):
+        w.save(draw_talbot(d, int(k)))
+    return d
+
+
+# --- Encoding and stills ---
+
+def encode_video(frames_dir: Path, output_path: Path, codec_args: list[str]):
+    cmd = ["ffmpeg", "-y", "-loglevel", "error", "-framerate", str(FPS), "-i", str(frames_dir / "%05d.png"),
+           "-pix_fmt", "yuv420p", *codec_args, str(output_path)]
+    print(f"  Encoding {output_path.name}...")
+    subprocess.run(cmd, check=True)
+    print(f"    -> {output_path.stat().st_size / 2**20:.1f} MiB")
+
+
+def write_stills(stills_dir: Path, tf_data=None, tt_data=None, talbot=None):
+    """Small tracked stills for the docs: an animated GIF and two PNGs."""
+    stills_dir.mkdir(parents=True, exist_ok=True)
+    print(f"  Writing stills to {stills_dir}...")
+    if tf_data is None:
+        tf_data = through_focus_data(48)
+    with tempfile.TemporaryDirectory(prefix="huv_gif_") as tmp:
+        tmp = Path(tmp)
+        for i in range(0, len(tf_data["focus"]), 2):
+            fig = draw_through_focus(tf_data, i, banner=False)
+            fig.savefig(tmp / f"{i // 2:04d}.png", dpi=60, facecolor=fig.get_facecolor())
+            plt.close(fig)
+        gif = stills_dir / "demo-through-focus.gif"
+        palette = tmp / "palette.png"
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(tmp / "%04d.png"),
+                        "-vf", "scale=768:-1:flags=lanczos,palettegen=max_colors=96", str(palette)], check=True)
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", "12", "-i", str(tmp / "%04d.png"),
+                        "-i", str(palette), "-lavfi", "scale=768:-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer",
+                        "-loop", "0", str(gif)], check=True)
+    if tt_data is None:
+        tt_data = te_tm_data(19)
+    fig = draw_te_tm(tt_data, len(tt_data["na"]) - 1, banner=False)
+    fig.savefig(stills_dir / "demo-te-tm.png", dpi=80, facecolor=fig.get_facecolor())
+    plt.close(fig)
+    if talbot is None:
+        talbot = talbot_data()
+    fig = draw_talbot(talbot, int(0.75 * (len(talbot["z"]) - 1)), banner=False)
+    fig.savefig(stills_dir / "demo-talbot.png", dpi=80, facecolor=fig.get_facecolor())
+    plt.close(fig)
+    for f in sorted(stills_dir.iterdir()):
+        print(f"    -> {f.name}: {f.stat().st_size / 2**20:.2f} MiB")
+
 
 def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap.add_argument("--quick", action="store_true", help="few frames per sequence (smoke test)")
+    ap.add_argument("--stills-only", action="store_true", help="only write the documentation stills")
+    ap.add_argument("--no-stills", action="store_true", help="skip the documentation stills")
+    ap.add_argument("--out-dir", type=Path, default=Path(__file__).resolve().parent, help="video directory")
+    ap.add_argument("--stills-dir", type=Path, default=STILLS_DIR, help="stills directory")
+    args = ap.parse_args()
+    if shutil.which("ffmpeg") is None:
+        raise SystemExit("ffmpeg not found on PATH")
     setup_style()
-    out_dir = Path(__file__).parent
+
+    if args.stills_only:
+        write_stills(args.stills_dir)
+        return
+
+    n = 12 if args.quick else 1
     frames_dir = Path(tempfile.mkdtemp(prefix="highuvlith_demo_"))
     print(f"Rendering frames to {frames_dir}")
+    w = FrameWriter(frames_dir)
+    try:
+        render_title_card(w, "highuvlith", subtitle="VUV → X-ray lithography simulator",
+                          footer="157 nm · 13.5 nm · 6.7 nm · X-ray", num_frames=48 // n + 1)
+        render_section_title(w, "1 · Through focus", "off-axis illumination, exact defocus", 36 // n + 1)
+        tf = render_through_focus(w, max(8, 144 // n))
+        render_blank(w, 8 // n + 1)
+        render_section_title(w, "2 · Polarization at high NA", "vector imaging, TE vs TM", 36 // n + 1)
+        tt = render_te_tm(w, max(6, 96 // n))
+        render_blank(w, 8 // n + 1)
+        render_section_title(w, "3 · Light sources", "fourteen families, from Hg lamps to X-ray tubes", 36 // n + 1)
+        render_landscape(w, max(1, 7 // n))
+        render_blank(w, 8 // n + 1)
+        render_section_title(w, "4 · Resist development", "volumetric exposure, bake, level set", 36 // n + 1)
+        render_development(w, max(6, 120 // n))
+        render_blank(w, 8 // n + 1)
+        render_section_title(w, "5 · Talbot lithography", "self-imaging without a lens", 36 // n + 1)
+        tb = render_talbot(w, max(6, 144 // n))
+        render_blank(w, 8 // n + 1)
+        render_title_card(w, "highuvlith", subtitle=REPO_URL,
+                          footer="sonoransun.github.io/highuvlith", num_frames=60 // n + 1)
+        print(f"\nTotal: {w.count} frames ({w.count / FPS:.1f} s at {FPS} fps)")
 
-    idx = 0
-
-    # Title card
-    idx = render_title_card(frames_dir, idx, "highuvlith",
-                            subtitle="VUV Laser Lithography Simulator", num_frames=48)
-    idx = render_transition(frames_dir, idx)
-
-    # Sequence 1
-    idx = render_section_title(frames_dir, idx, "1 · Through-Focus")
-    idx = render_through_focus(frames_dir, idx)
-    idx = render_transition(frames_dir, idx)
-
-    # Sequence 2
-    idx = render_section_title(frames_dir, idx, "2 · VUV vs DUV Wavelength")
-    idx = render_wavelength_comparison(frames_dir, idx)
-    idx = render_transition(frames_dir, idx)
-
-    # Sequence 3
-    idx = render_section_title(frames_dir, idx, "3 · Numerical Aperture")
-    idx = render_na_exploration(frames_dir, idx)
-    idx = render_transition(frames_dir, idx)
-
-    # Sequence 4
-    idx = render_section_title(frames_dir, idx, "4 · Partial Coherence")
-    idx = render_sigma_sweep(frames_dir, idx)
-    idx = render_transition(frames_dir, idx)
-
-    # Sequence 5
-    idx = render_section_title(frames_dir, idx, "5 · Resist Development")
-    idx = render_resist_development(frames_dir, idx)
-
-    # End card
-    idx = render_transition(frames_dir, idx)
-    idx = render_title_card(frames_dir, idx, "highuvlith",
-                            subtitle="github.com/martinpeck/highuvlith", num_frames=48)
-
-    total_frames = idx
-    duration = total_frames / FPS
-    print(f"\nTotal: {total_frames} frames ({duration:.1f}s at {FPS}fps)")
-
-    # Encode VP9
-    vp9_path = out_dir / "demo_vp9.webm"
-    encode_video(frames_dir, total_frames, vp9_path,
-                 "libvpx-vp9", ["-b:v", "2M", "-threads", "4"])
-
-    # Encode MPEG-4
-    mp4_path = out_dir / "demo_mpeg4.mp4"
-    encode_video(frames_dir, total_frames, mp4_path,
-                 "mpeg4", ["-q:v", "3"])
-
-    # Cleanup
-    shutil.rmtree(frames_dir)
-    print(f"\nDone! Videos saved to:")
-    print(f"  {vp9_path}")
-    print(f"  {mp4_path}")
+        args.out_dir.mkdir(parents=True, exist_ok=True)
+        encode_video(frames_dir, args.out_dir / "demo_vp9.webm",
+                     ["-c:v", "libvpx-vp9", "-crf", "38", "-b:v", "0", "-row-mt", "1", "-threads", "4"])
+        encode_video(frames_dir, args.out_dir / "demo_mpeg4.mp4", ["-c:v", "mpeg4", "-b:v", "1800k", "-g", "48"])
+        if not args.no_stills:
+            write_stills(args.stills_dir, tf, tt, tb)
+    finally:
+        shutil.rmtree(frames_dir, ignore_errors=True)
+    print("Done.")
 
 
 if __name__ == "__main__":

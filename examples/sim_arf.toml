@@ -1,0 +1,44 @@
+# =============================================================================
+# ArF excimer laser (193.368 nm) — the workhorse of modern lithography
+# =============================================================================
+#
+# ArF (193 nm) laser action was first reported by Hoffman, Hays & Tisone
+# (Sandia), Appl. Phys. Lett. 28, 538 (1976). ArF scanners arrived around
+# 1998–1999; after Intel dropped 157 nm (May 2003) and TSMC cancelled its
+# 157 nm orders and backed immersion (Oct 2003), water-immersion ArF
+# (n ≈ 1.44, an effective ~134 nm wavelength) carried the industry to the
+# ~38 nm features ASML quotes for ArF, and beyond with multipatterning.
+#
+# Preset `arf`: REPRESENTATIVE immersion-class laser values — 0.2 pm FWHM
+# Gaussian line (E95 ≈ 0.33 pm), 15 mJ × 6 kHz = 90 W (ArF immersion lasers
+# span roughly 60–120 W). Photon energy 6.41 eV: 9.73 photons/nm² per mJ/cm²,
+# 14.3× more photons than 13.5 nm EUV at the same dose. This example is a DRY
+# ArF system; for water immersion (NA 1.35, n = 1.437) use
+# `[optics] preset = "immersion_193i"` instead of `na` below.
+#
+# Result (highuvlith simulate): contrast 0.412, NILS 1.32, printed CD 85.7 nm
+# at the I = 0.3 threshold (dose 30 / 30).
+#
+# Run with:  highuvlith simulate --config examples/sim_arf.toml
+# -----------------------------------------------------------------------------
+
+[source]
+type   = "vuv"
+preset = "arf"
+sigma  = 0.7
+
+[optics]
+na             = 0.93
+flare_fraction = 0.02
+
+[mask]
+cd_nm    = 80.0      # k1 = 80 x 0.93 / 193.4 = 0.385
+pitch_nm = 160.0
+
+[grid]
+size     = 128
+pixel_nm = 2.5       # 320 nm field = exactly 2 pitches
+
+[process]
+dose_mj_cm2 = 30.0
+focus_nm    = 0.0

@@ -1,450 +1,579 @@
-use crate::state::{SimResult, SimState, SourceType};
-use eframe::egui;
-use egui_plot::{Line, Plot, PlotPoints};
+//! The eframe application: panel state, background jobs, tab bar, status
+//! bar, PNG export and window screenshots. The left-panel controls live in
+//! `panels`, the central views in `views`.
 
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::time::{Instant, SystemTime, UNIX_EPOCH};
+
+use eframe::egui::{self, RichText};
+use highuvlith_core::source::{DerivedQuantity, LithographySource, SourceKind};
+
+use crate::colormap::Colormap;
+use crate::compute::{
+    self, AerialRequest, AerialResult, EngineCache, LigaParams, LigaRequest, LigaResult, PwParams,
+    PwRequest, PwResult, Resolved, Scene, TalbotParams, TalbotRequest, TalbotResult,
+    VolumetricParams, VolumetricRequest, VolumetricResult,
+};
+use crate::imaging::{GridParams, ImagingParams, MaskParams, OpticsKind, OpticsParams};
+use crate::jobs::Job;
+use crate::sources::{Route, SourceParams};
+use crate::ui_state::{conform_dataset, conform_tab, needs, Need, Tab};
+use crate::volume::{DatasetKind, ViewerState};
+use crate::widgets::TextureSlot;
+
+/// Start-up options (from the command line).
+#[derive(Default)]
+pub struct StartOptions {
+    /// Source preset to load.
+    pub preset: Option<crate::sources::PresetId>,
+    /// Optics preset to load.
+    pub optics: Option<crate::imaging::OpticsPreset>,
+    /// View to open.
+    pub tab: Option<Tab>,
+    /// Mask CD / pitch overrides (nm).
+    pub cd_nm: Option<f64>,
+    pub pitch_nm: Option<f64>,
+    /// Volume dataset to open.
+    pub dataset: Option<DatasetKind>,
+    /// Save a screenshot of the window to this path once the view is
+    /// computed, then exit.
+    pub screenshot: Option<PathBuf>,
+}
+
+/// UI-thread cache of the built source (cheap, no imaging).
+pub struct SourceSummary {
+    key: Option<(SourceParams, Option<usize>)>,
+    pub built: Result<SourceKind, String>,
+    pub derived: Vec<DerivedQuantity>,
+}
+
+impl SourceSummary {
+    fn refresh(&mut self, params: &SourceParams, samples: Option<usize>) {
+        let key = (params.clone(), samples);
+        if self.key.as_ref() == Some(&key) {
+            return;
+        }
+        self.built = params.build(samples);
+        self.derived = self
+            .built
+            .as_ref()
+            .map(|s| s.derived_quantities())
+            .unwrap_or_default();
+        self.key = Some(key);
+    }
+
+    /// Wavelength of the built source.
+    pub fn wavelength_nm(&self) -> Option<f64> {
+        self.built.as_ref().ok().map(|s| s.wavelength_nm())
+    }
+}
+
+/// UI-thread cache of the resolved scene (optics label, grid choice).
+pub struct SceneCache {
+    key: Option<Scene>,
+    pub resolved: Result<Resolved, String>,
+}
+
+impl SceneCache {
+    fn refresh(&mut self, scene: &Scene) {
+        if self.key.as_ref() == Some(scene) {
+            return;
+        }
+        self.resolved = compute::resolve(scene);
+        self.key = Some(scene.clone());
+    }
+}
+
+/// A pending window screenshot.
+pub struct ScreenshotPlan {
+    pub path: PathBuf,
+    /// Exit after saving (command-line mode).
+    pub exit_after: bool,
+    /// Frames to wait once the view is computed (lets the layout settle).
+    settle: u32,
+    requested: bool,
+    started: Instant,
+}
+
+impl ScreenshotPlan {
+    fn new(path: PathBuf, exit_after: bool) -> Self {
+        Self {
+            path,
+            exit_after,
+            settle: 8,
+            requested: false,
+            started: Instant::now(),
+        }
+    }
+}
+
+/// The application.
 pub struct LithApp {
-    state: SimState,
-    show_cross_section: bool,
+    pub(crate) source: SourceParams,
+    pub(crate) optics: OpticsParams,
+    pub(crate) imaging: ImagingParams,
+    pub(crate) mask: MaskParams,
+    pub(crate) grid: GridParams,
+    pub(crate) focus_nm: f64,
+    /// Printed-edge intensity threshold for the CD / NILS readouts.
+    pub(crate) threshold: f64,
+    pub(crate) pw: PwParams,
+    pub(crate) vol: VolumetricParams,
+    pub(crate) liga: LigaParams,
+    pub(crate) talbot: TalbotParams,
+    pub(crate) viewer: ViewerState,
+    pub(crate) tab: Tab,
+    pub(crate) aerial_colormap: Colormap,
+    /// Recompute the heavy 3D views (volumetric, LIGA, Talbot) on every change.
+    pub(crate) live_heavy: bool,
+    /// One-shot request from a "Compute" button.
+    pub(crate) run_heavy_once: bool,
+
+    pub(crate) summary: SourceSummary,
+    pub(crate) scene_cache: SceneCache,
+
+    pub(crate) aerial: Job<AerialRequest, AerialResult>,
+    pub(crate) pw_job: Job<PwRequest, PwResult>,
+    pub(crate) vol_job: Job<VolumetricRequest, VolumetricResult>,
+    pub(crate) liga_job: Job<LigaRequest, LigaResult>,
+    pub(crate) talbot_job: Job<TalbotRequest, TalbotResult>,
+    /// Bumped whenever a result arrives (texture cache keys).
+    pub(crate) generation: u64,
+
+    pub(crate) tex_aerial: TextureSlot,
+    pub(crate) tex_xy: TextureSlot,
+    pub(crate) tex_xz: TextureSlot,
+    /// Whether the UI font has the badge emoji (checked once).
+    pub(crate) emoji_ok: Option<bool>,
+    pub(crate) export_dir: String,
+    pub(crate) status: Option<String>,
+    pub(crate) screenshot: Option<ScreenshotPlan>,
+    last_route: Route,
+    last_optics_kind: Option<OpticsKind>,
 }
 
 impl LithApp {
-    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
+    /// New application state (with optional start-up presets).
+    pub fn new(opts: StartOptions) -> Self {
+        let cache = Arc::new(EngineCache::default());
         let mut app = Self {
-            state: SimState::new(),
-            show_cross_section: true,
+            source: SourceParams::default(),
+            optics: OpticsParams::default(),
+            imaging: ImagingParams::default(),
+            mask: MaskParams::default(),
+            grid: GridParams::default(),
+            focus_nm: 0.0,
+            threshold: 0.3,
+            pw: PwParams::default(),
+            vol: VolumetricParams::default(),
+            liga: LigaParams::default(),
+            talbot: TalbotParams::default(),
+            viewer: ViewerState::default(),
+            tab: Tab::Aerial,
+            aerial_colormap: Colormap::Inferno,
+            live_heavy: true,
+            run_heavy_once: false,
+            summary: SourceSummary {
+                key: None,
+                built: Err("not built".into()),
+                derived: Vec::new(),
+            },
+            scene_cache: SceneCache {
+                key: None,
+                resolved: Err("not resolved".into()),
+            },
+            aerial: {
+                let c = Arc::clone(&cache);
+                Job::new(move |r| compute::run_aerial(&c, r))
+            },
+            pw_job: {
+                let c = Arc::clone(&cache);
+                Job::new(move |r| compute::run_process_window(&c, r))
+            },
+            vol_job: {
+                let c = Arc::clone(&cache);
+                Job::new(move |r| compute::run_volumetric(&c, r))
+            },
+            liga_job: Job::new(compute::run_liga),
+            talbot_job: Job::new(compute::run_talbot),
+            generation: 0,
+            tex_aerial: TextureSlot::default(),
+            tex_xy: TextureSlot::default(),
+            tex_xz: TextureSlot::default(),
+            emoji_ok: None,
+            export_dir: std::env::current_dir()
+                .map(|p| p.display().to_string())
+                .unwrap_or_else(|_| ".".into()),
+            status: None,
+            screenshot: None,
+            last_route: Route::Projection,
+            last_optics_kind: None,
         };
-        app.state.try_compute();
+        if let Some(id) = opts.preset {
+            if let Err(e) = app.source.apply_preset(id) {
+                app.status = Some(format!("preset failed: {e}"));
+            }
+        }
+        if let Some(p) = opts.optics {
+            app.optics.apply_preset(p);
+            // A preset fixes the kind; keep its NA.
+            app.last_optics_kind = Some(app.optics.kind);
+        }
+        if let Some(cd) = opts.cd_nm {
+            app.mask.cd_nm = cd;
+        }
+        if let Some(pitch) = opts.pitch_nm {
+            app.mask.pitch_nm = pitch;
+        }
+        if let Some(tab) = opts.tab {
+            app.tab = tab;
+        }
+        if let Some(d) = opts.dataset {
+            app.viewer.dataset = d;
+        }
+        if let Some(path) = opts.screenshot {
+            app.screenshot = Some(ScreenshotPlan::new(path, true));
+        }
+        app.sync_route();
         app
+    }
+
+    /// The projection-imaging scene of the panels.
+    pub(crate) fn scene(&self) -> Scene {
+        Scene {
+            source: self.source.clone(),
+            optics: self.optics.clone(),
+            imaging: self.imaging.clone(),
+            mask: self.mask.clone(),
+            grid: self.grid.clone(),
+        }
+    }
+
+    pub(crate) fn aerial_request(&self) -> AerialRequest {
+        AerialRequest {
+            scene: self.scene(),
+            focus_nm: self.focus_nm,
+            threshold: self.threshold,
+        }
+    }
+
+    pub(crate) fn pw_request(&self) -> PwRequest {
+        PwRequest {
+            scene: self.scene(),
+            pw: self.pw.clone(),
+        }
+    }
+
+    pub(crate) fn vol_request(&self) -> VolumetricRequest {
+        VolumetricRequest {
+            scene: self.scene(),
+            focus_nm: self.focus_nm,
+            vol: self.vol.clone(),
+        }
+    }
+
+    pub(crate) fn liga_request(&self) -> LigaRequest {
+        LigaRequest {
+            source: self.source.clone(),
+            liga: self.liga.clone(),
+        }
+    }
+
+    pub(crate) fn talbot_request(&self) -> TalbotRequest {
+        TalbotRequest {
+            source: self.source.clone(),
+            mask: self.mask.clone(),
+            talbot: self.talbot.clone(),
+        }
+    }
+
+    /// Keep the view and the optics consistent with the selected source.
+    fn sync_route(&mut self) {
+        self.summary
+            .refresh(&self.source, self.imaging.spectral_samples);
+        let route = self.source.route();
+        if route != self.last_route {
+            self.tab = conform_tab(self.tab, route);
+            self.last_route = route;
+        }
+        self.viewer.dataset = conform_dataset(self.viewer.dataset, route);
+        if let Some(lambda) = self.summary.wavelength_nm() {
+            let kind = self.optics.kind.resolve(lambda);
+            if self.last_optics_kind.is_some_and(|k| k != kind) {
+                // E.g. VUV → EUV under "Auto": start from the new kind's NA.
+                self.optics.na = kind.default_na();
+            }
+            self.last_optics_kind = Some(kind);
+            self.optics.conform_to(lambda);
+        }
+        if route == Route::Projection {
+            self.scene_cache.refresh(&self.scene());
+        }
+    }
+
+    /// Record the current optics kind as seen (no automatic NA reset), e.g.
+    /// after a preset set both the kind and its NA.
+    pub(crate) fn mark_optics_kind_current(&mut self) {
+        if let Some(lambda) = self.summary.wavelength_nm() {
+            self.last_optics_kind = Some(self.optics.kind.resolve(lambda));
+        }
+    }
+
+    /// Submit the visible view's computations and collect results.
+    fn run_jobs(&mut self, ctx: &egui::Context) {
+        let route = self.source.route();
+        let heavy = self.live_heavy || self.run_heavy_once;
+        for need in needs(self.tab, self.viewer.dataset, route) {
+            match need {
+                Need::Aerial => {
+                    let req = self.aerial_request();
+                    self.aerial.submit(req);
+                }
+                Need::ProcessWindow => {
+                    let req = self.pw_request();
+                    self.pw_job.submit(req);
+                }
+                Need::Volumetric if heavy => {
+                    let req = self.vol_request();
+                    self.vol_job.submit(req);
+                }
+                Need::Liga if heavy => {
+                    let req = self.liga_request();
+                    self.liga_job.submit(req);
+                }
+                Need::Talbot if heavy => {
+                    let req = self.talbot_request();
+                    self.talbot_job.submit(req);
+                }
+                _ => {}
+            }
+        }
+        self.run_heavy_once = false;
+        let notify = |ctx: &egui::Context| {
+            let ctx = ctx.clone();
+            move || ctx.request_repaint()
+        };
+        let mut arrived = false;
+        arrived |= self.aerial.poll(notify(ctx));
+        arrived |= self.pw_job.poll(notify(ctx));
+        arrived |= self.vol_job.poll(notify(ctx));
+        arrived |= self.liga_job.poll(notify(ctx));
+        arrived |= self.talbot_job.poll(notify(ctx));
+        if arrived {
+            self.generation += 1;
+        }
+    }
+
+    /// Whether any computation the visible view needs is still running.
+    pub(crate) fn view_busy(&self) -> bool {
+        needs(self.tab, self.viewer.dataset, self.source.route())
+            .into_iter()
+            .any(|n| match n {
+                Need::Aerial => self.aerial.is_busy(),
+                Need::ProcessWindow => self.pw_job.is_busy(),
+                Need::Volumetric => self.vol_job.is_busy(),
+                Need::Liga => self.liga_job.is_busy(),
+                Need::Talbot => self.talbot_job.is_busy(),
+            })
+    }
+
+    /// Whether the visible view has (any) result to show.
+    fn view_has_result(&self) -> bool {
+        needs(self.tab, self.viewer.dataset, self.source.route())
+            .into_iter()
+            .all(|n| match n {
+                Need::Aerial => self.aerial.latest.is_some(),
+                Need::ProcessWindow => self.pw_job.latest.is_some(),
+                Need::Volumetric => self.vol_job.latest.is_some(),
+                Need::Liga => self.liga_job.latest.is_some(),
+                Need::Talbot => self.talbot_job.latest.is_some(),
+            })
+    }
+
+    /// Directory for exports.
+    pub(crate) fn export_path(&self, stem: &str) -> PathBuf {
+        let secs = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        PathBuf::from(&self.export_dir).join(format!("highuvlith-{stem}-{secs}.png"))
+    }
+
+    /// Ask the renderer for a window screenshot (saved by `handle_screenshot`).
+    pub(crate) fn request_window_screenshot(&mut self) {
+        let path = self.export_path("window");
+        self.screenshot = Some(ScreenshotPlan::new(path, false));
+    }
+
+    fn handle_screenshot(&mut self, ctx: &egui::Context) {
+        if self.screenshot.is_none() {
+            return;
+        }
+        let view_ready = self.view_has_result() && !self.view_busy();
+        let Some(plan) = &mut self.screenshot else {
+            return;
+        };
+        // Deliver a captured frame.
+        let image = ctx.input(|i| {
+            i.raw.events.iter().find_map(|e| match e {
+                egui::Event::Screenshot { image, .. } => Some(Arc::clone(image)),
+                _ => None,
+            })
+        });
+        if let Some(image) = image {
+            let [w, h] = image.size;
+            let rgba: Vec<u8> = image.pixels.iter().flat_map(|c| c.to_array()).collect();
+            let msg = match crate::png::write_rgba(&plan.path, w as u32, h as u32, &rgba) {
+                Ok(()) => format!("saved window screenshot {}", plan.path.display()),
+                Err(e) => format!("screenshot failed: {e}"),
+            };
+            eprintln!("{msg}");
+            let exit = plan.exit_after;
+            self.status = Some(msg);
+            self.screenshot = None;
+            if exit {
+                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            }
+            return;
+        }
+        if plan.requested {
+            ctx.request_repaint();
+            return;
+        }
+        let ready = !plan.exit_after || view_ready;
+        let timed_out = plan.started.elapsed().as_secs() > 300;
+        if ready || timed_out {
+            if plan.settle > 0 {
+                plan.settle -= 1;
+            } else {
+                plan.requested = true;
+                ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::default()));
+            }
+        }
+        ctx.request_repaint();
+    }
+
+    fn draw_tab_bar(&mut self, ui: &mut egui::Ui) {
+        let route = self.source.route();
+        ui.horizontal_wrapped(|ui| {
+            for tab in Tab::ALL {
+                let enabled = tab.available(route);
+                let resp = ui.add_enabled(
+                    enabled,
+                    egui::SelectableLabel::new(self.tab == tab, tab.label()),
+                );
+                let resp = if enabled {
+                    resp
+                } else {
+                    resp.on_disabled_hover_text(match route {
+                        Route::Liga => {
+                            "Broadband X-ray source: no projection imaging (see the LIGA view)"
+                        }
+                        Route::Projection => "Select an X-ray tube, betatron or bending magnet",
+                    })
+                };
+                if resp.clicked() {
+                    self.tab = tab;
+                }
+            }
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui
+                    .button("Screenshot")
+                    .on_hover_text("Save a PNG of the whole window to the export folder")
+                    .clicked()
+                {
+                    self.request_window_screenshot();
+                }
+                if self.view_busy() {
+                    ui.spinner();
+                    ui.label(RichText::new("computing\u{2026}").weak());
+                }
+            });
+        });
+    }
+
+    fn draw_status(&self, ui: &mut egui::Ui) {
+        ui.horizontal_wrapped(|ui| {
+            match self.source.route() {
+                Route::Projection => {
+                    if let Some(r) = self.aerial.result() {
+                        ui.label(format!(
+                            "\u{3bb} {:.3} nm \u{b7} NA {:.3} \u{b7} {}\u{b2} px of {:.3} nm, \
+                             field {:.1} nm \u{b7} {} kernels ({:.4} of the TCC) \u{b7} engine \
+                             {:.0} ms{} \u{b7} image {:.0} ms \u{b7} contrast {:.4}",
+                            r.wavelength_nm,
+                            r.na,
+                            r.grid.size,
+                            r.grid.pixel_nm,
+                            r.grid.field_nm,
+                            r.num_kernels,
+                            r.captured_energy,
+                            r.engine_ms,
+                            if r.engine_reused { " (cached)" } else { "" },
+                            r.image_ms,
+                            r.contrast
+                        ));
+                    }
+                }
+                Route::Liga => {
+                    ui.label(format!(
+                        "{} \u{2014} LIGA / proximity source",
+                        self.source.family.label()
+                    ));
+                }
+            }
+            if let Some(msg) = &self.status {
+                ui.separator();
+                ui.label(RichText::new(msg).weak());
+            }
+        });
     }
 }
 
 impl eframe::App for LithApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        self.state.try_compute();
-
-        // Request repaint while computing
-        if *self.state.computing.lock().unwrap() {
-            ctx.request_repaint();
+        if self.emoji_ok.is_none() {
+            let probe = format!(
+                "{}{}{}",
+                crate::sources::Badge::Implemented.emoji(),
+                crate::sources::Badge::Simplified.emoji(),
+                crate::sources::Badge::Theoretical.emoji()
+            );
+            self.emoji_ok =
+                Some(ctx.fonts(|f| f.has_glyphs(&egui::FontId::proportional(14.0), &probe)));
         }
+        self.sync_route();
+        self.run_jobs(ctx);
 
-        // Left panel: parameters
-        egui::SidePanel::left("params_panel")
-            .min_width(260.0)
-            .show(ctx, |ui| {
-                ui.heading("Highuvlith Lithography Simulator");
-                ui.separator();
-                self.draw_params(ui);
-            });
-
-        // Bottom panel: status
         egui::TopBottomPanel::bottom("status_panel").show(ctx, |ui| {
             self.draw_status(ui);
         });
-
-        // Central panel: visualization
-        egui::CentralPanel::default().show(ctx, |ui| {
-            self.draw_visualization(ui);
-        });
-    }
-}
-
-impl LithApp {
-    fn draw_params(&mut self, ui: &mut egui::Ui) {
-        let p = &mut self.state.params;
-        let mut changed = false;
-
-        egui::CollapsingHeader::new("Source")
-            .default_open(true)
-            .show(ui, |ui| {
-                let type_label = |t: SourceType| match t {
-                    SourceType::Vuv => "VUV excimer",
-                    SourceType::LpaFel => "LPA-FEL (EUV)",
-                    SourceType::Lpp => "LPP plasma",
-                    SourceType::Synchrotron => "Synchrotron undulator",
-                    SourceType::Hhg => "HHG (table-top)",
-                    SourceType::Xfel => "XFEL",
-                };
-                ui.horizontal(|ui| {
-                    ui.label("Type:");
-                    let prev_type = p.source_type;
-                    egui::ComboBox::from_id_salt("source_type_combo")
-                        .selected_text(type_label(p.source_type))
-                        .show_ui(ui, |ui| {
-                            let entries = [
-                                (SourceType::Vuv, 157.63),
-                                (SourceType::LpaFel, 25.0),
-                                (SourceType::Lpp, 13.5),
-                                (SourceType::Synchrotron, 13.5),
-                                (SourceType::Hhg, 13.56),
-                                (SourceType::Xfel, 13.5),
-                            ];
-                            for (t, default_wl) in entries {
-                                if ui
-                                    .selectable_value(&mut p.source_type, t, type_label(t))
-                                    .clicked()
-                                    && prev_type != t
-                                {
-                                    p.wavelength_nm = default_wl;
-                                    p.sigma = 0.7;
-                                }
-                            }
-                        });
-                    if prev_type != p.source_type {
-                        changed = true;
-                    }
-                });
-
-                ui.horizontal(|ui| {
-                    ui.label("Preset:");
-                    if ui.button("F2 (157)").clicked() {
-                        p.source_type = SourceType::Vuv;
-                        p.wavelength_nm = 157.63;
-                        changed = true;
-                    }
-                    if ui.button("Ar2 (126)").clicked() {
-                        p.source_type = SourceType::Vuv;
-                        p.wavelength_nm = 126.0;
-                        changed = true;
-                    }
-                    if ui.button("FEL 25").clicked() {
-                        p.source_type = SourceType::LpaFel;
-                        p.wavelength_nm = 25.0;
-                        changed = true;
-                    }
-                    if ui.button("EUV 13.5").clicked() {
-                        p.source_type = SourceType::Lpp;
-                        p.lpp_fuel_gd = false;
-                        p.wavelength_nm = 13.5;
-                        changed = true;
-                    }
-                    if ui.button("BEUV 6.7").clicked() {
-                        p.source_type = SourceType::Lpp;
-                        p.lpp_fuel_gd = true;
-                        p.wavelength_nm = 6.7;
-                        changed = true;
-                    }
-                });
-
-                if p.wavelength_is_derived() {
-                    // Live proof the physics is live: the wavelength
-                    // follows the machine parameters.
-                    ui.label(format!(
-                        "\u{03bb} = {:.3} nm (derived from machine parameters)",
-                        p.effective_wavelength_nm()
-                    ));
-                } else {
-                    ui.horizontal(|ui| {
-                        ui.label("\u{03bb} (nm):");
-                        changed |= ui
-                            .add(
-                                egui::Slider::new(&mut p.wavelength_nm, 1.0..=170.0)
-                                    .logarithmic(true)
-                                    .step_by(0.01),
-                            )
-                            .changed();
+        egui::SidePanel::left("params_panel")
+            .resizable(true)
+            .default_width(340.0)
+            .min_width(280.0)
+            .show(ctx, |ui| {
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        self.draw_params(ui);
                     });
-                }
-                ui.horizontal(|ui| {
-                    ui.label("\u{03c3}:");
-                    changed |= ui
-                        .add(egui::Slider::new(&mut p.sigma, 0.1..=1.0).step_by(0.05))
-                        .changed();
-                });
-
-                match p.source_type {
-                    SourceType::LpaFel => {
-                        ui.horizontal(|ui| {
-                            ui.label("E_e (MeV):");
-                            changed |= ui
-                                .add(
-                                    egui::Slider::new(&mut p.electron_energy_mev, 100.0..=600.0)
-                                        .step_by(10.0),
-                                )
-                                .changed();
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("\u{03c4} (fs):");
-                            changed |= ui
-                                .add(
-                                    egui::Slider::new(&mut p.pulse_duration_fs, 5.0..=50.0)
-                                        .step_by(1.0),
-                                )
-                                .changed();
-                        });
-                    }
-                    SourceType::Lpp => {
-                        ui.horizontal(|ui| {
-                            ui.label("Fuel:");
-                            if ui.selectable_label(!p.lpp_fuel_gd, "Sn (13.5)").clicked() {
-                                p.lpp_fuel_gd = false;
-                                p.wavelength_nm = 13.5;
-                                changed = true;
-                            }
-                            if ui.selectable_label(p.lpp_fuel_gd, "Gd (6.7)").clicked() {
-                                p.lpp_fuel_gd = true;
-                                p.wavelength_nm = 6.7;
-                                changed = true;
-                            }
-                        });
-                    }
-                    SourceType::Synchrotron => {
-                        ui.horizontal(|ui| {
-                            ui.label("E_ring (GeV):");
-                            changed |= ui
-                                .add(
-                                    egui::Slider::new(&mut p.electron_energy_gev, 0.2..=3.0)
-                                        .step_by(0.002),
-                                )
-                                .changed();
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("\u{03bb}_u (mm):");
-                            changed |= ui
-                                .add(
-                                    egui::Slider::new(&mut p.undulator_period_mm, 5.0..=50.0)
-                                        .step_by(0.5),
-                                )
-                                .changed();
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("K:");
-                            changed |= ui
-                                .add(egui::Slider::new(&mut p.undulator_k, 0.3..=3.0).step_by(0.01))
-                                .changed();
-                        });
-                    }
-                    SourceType::Hhg => {
-                        ui.horizontal(|ui| {
-                            ui.label("Harmonic q:");
-                            let mut q = p.hhg_harmonic as f64;
-                            if ui
-                                .add(egui::Slider::new(&mut q, 11.0..=71.0).step_by(2.0))
-                                .changed()
-                            {
-                                // Keep it odd.
-                                let q = q.round() as usize;
-                                p.hhg_harmonic = if q.is_multiple_of(2) { q + 1 } else { q };
-                                changed = true;
-                            }
-                        });
-                        ui.label("Ne gas, 800 nm driver, 4e14 W/cm\u{00b2}");
-                    }
-                    SourceType::Xfel => {
-                        ui.horizontal(|ui| {
-                            ui.label("Mode:");
-                            if ui.selectable_label(!p.xfel_seeded, "SASE").clicked() {
-                                p.xfel_seeded = false;
-                                changed = true;
-                            }
-                            if ui.selectable_label(p.xfel_seeded, "Seeded").clicked() {
-                                p.xfel_seeded = true;
-                                changed = true;
-                            }
-                        });
-                    }
-                    SourceType::Vuv => {}
-                }
-
-                if p.effective_wavelength_nm() < 50.0 {
-                    ui.label("Optics: Schwarzschild reflective (auto — no lens below 50 nm)");
-                }
             });
-
-        egui::CollapsingHeader::new("Optics")
-            .default_open(true)
-            .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label("NA:");
-                    changed |= ui
-                        .add(egui::Slider::new(&mut p.na, 0.3..=0.95).step_by(0.01))
-                        .changed();
+        egui::CentralPanel::default().show(ctx, |ui| {
+            self.draw_tab_bar(ui);
+            ui.separator();
+            egui::ScrollArea::vertical()
+                .auto_shrink([false, false])
+                .show(ui, |ui| match self.tab {
+                    Tab::Aerial => self.view_aerial(ui),
+                    Tab::CrossSection => self.view_cross_section(ui),
+                    Tab::ProcessWindow => self.view_process_window(ui),
+                    Tab::Volume => self.view_volume(ui),
+                    Tab::Liga => self.view_liga(ui),
+                    Tab::Source => self.view_source(ui),
                 });
-            });
-
-        egui::CollapsingHeader::new("Mask")
-            .default_open(true)
-            .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label("CD (nm):");
-                    changed |= ui
-                        .add(egui::Slider::new(&mut p.cd_nm, 20.0..=200.0).step_by(1.0))
-                        .changed();
-                });
-                ui.horizontal(|ui| {
-                    ui.label("Pitch (nm):");
-                    changed |= ui
-                        .add(egui::Slider::new(&mut p.pitch_nm, 40.0..=500.0).step_by(5.0))
-                        .changed();
-                });
-            });
-
-        egui::CollapsingHeader::new("Process")
-            .default_open(true)
-            .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label("Focus (nm):");
-                    changed |= ui
-                        .add(egui::Slider::new(&mut p.focus_nm, -500.0..=500.0).step_by(5.0))
-                        .changed();
-                });
-            });
-
-        ui.separator();
-
-        ui.horizontal(|ui| {
-            ui.label("Grid:");
-            let sizes = [64usize, 128, 256, 512, 1024];
-            for &s in &sizes {
-                if ui
-                    .selectable_label(p.grid_size == s, format!("{}", s))
-                    .clicked()
-                {
-                    p.grid_size = s;
-                    changed = true;
-                }
-            }
         });
-
-        if changed {
-            self.state.mark_dirty();
-        }
+        self.handle_screenshot(ctx);
     }
-
-    fn draw_status(&self, ui: &mut egui::Ui) {
-        ui.horizontal(|ui| {
-            let is_computing = *self.state.computing.lock().unwrap();
-            if is_computing {
-                ui.spinner();
-                ui.label("Computing...");
-            } else if let Some(ref result) = *self.state.result.lock().unwrap() {
-                ui.label(format!(
-                    "Grid: {}x{} | Kernels: {} | {:.1}ms | Contrast: {:.4} | I: [{:.4}, {:.4}]",
-                    self.state.params.grid_size,
-                    self.state.params.grid_size,
-                    result.num_kernels,
-                    result.compute_ms,
-                    result.contrast,
-                    result.i_min,
-                    result.i_max,
-                ));
-            }
-        });
-    }
-
-    fn draw_visualization(&mut self, ui: &mut egui::Ui) {
-        // Show error message in red if engine creation failed
-        if let Some(ref err) = *self.state.error_message.lock().unwrap() {
-            ui.centered_and_justified(|ui| {
-                ui.colored_label(egui::Color32::RED, format!("Error: {}", err));
-            });
-            return;
-        }
-
-        let has_result = self.state.result.lock().unwrap().is_some();
-        if !has_result {
-            ui.centered_and_justified(|ui| {
-                ui.label("Initializing simulation...");
-            });
-            return;
-        }
-
-        // Tab selector (no lock held, so &mut self is fine)
-        ui.horizontal(|ui| {
-            ui.selectable_value(&mut self.show_cross_section, false, "Aerial Image");
-            ui.selectable_value(&mut self.show_cross_section, true, "Cross-Section");
-        });
-        ui.separator();
-
-        let result_lock = self.state.result.lock().unwrap();
-        let result = result_lock.as_ref().unwrap();
-
-        if self.show_cross_section {
-            self.draw_cross_section_inner(ui, result);
-        } else {
-            self.draw_aerial_image_inner(ui, result);
-        }
-    }
-
-    fn draw_aerial_image_inner(&self, ui: &mut egui::Ui, result: &SimResult) {
-        let n = result.intensity.ncols();
-        let size = [n, n];
-
-        // Convert intensity to grayscale pixels (inferno-like colormap)
-        let mut pixels = vec![egui::Color32::BLACK; n * n];
-        let range = result.i_max - result.i_min;
-        if range > 1e-15 {
-            for i in 0..n {
-                for j in 0..n {
-                    let val = (result.intensity[[i, j]] - result.i_min) / range;
-                    let val = val.clamp(0.0, 1.0);
-                    pixels[i * n + j] = inferno_color(val);
-                }
-            }
-        }
-
-        let image = egui::ColorImage { size, pixels };
-        let texture = ui
-            .ctx()
-            .load_texture("aerial", image, egui::TextureOptions::NEAREST);
-
-        let available = ui.available_size();
-        let img_size = available.min_elem().min(600.0);
-        ui.centered_and_justified(|ui| {
-            ui.add(
-                egui::Image::from_texture(&texture).fit_to_exact_size(egui::Vec2::splat(img_size)),
-            );
-        });
-    }
-
-    fn draw_cross_section_inner(&self, ui: &mut egui::Ui, result: &SimResult) {
-        let points: PlotPoints = result
-            .cross_section_x
-            .iter()
-            .zip(result.cross_section_i.iter())
-            .map(|(&x, &i)| [x, i])
-            .collect();
-
-        let line = Line::new(points)
-            .color(egui::Color32::from_rgb(50, 120, 255))
-            .width(2.0);
-
-        Plot::new("cross_section")
-            .x_axis_label("x (nm)")
-            .y_axis_label("Intensity")
-            .show(ui, |plot_ui| {
-                plot_ui.line(line);
-            });
-    }
-}
-
-/// Simple inferno-like colormap: black -> purple -> orange -> yellow
-fn inferno_color(t: f64) -> egui::Color32 {
-    let t = t.clamp(0.0, 1.0) as f32;
-    let r;
-    let g;
-    let b;
-
-    if t < 0.25 {
-        let s = t / 0.25;
-        r = (s * 80.0) as u8;
-        g = 0;
-        b = (s * 120.0) as u8;
-    } else if t < 0.5 {
-        let s = (t - 0.25) / 0.25;
-        r = (80.0 + s * 140.0) as u8;
-        g = (s * 30.0) as u8;
-        b = (120.0 - s * 70.0) as u8;
-    } else if t < 0.75 {
-        let s = (t - 0.5) / 0.25;
-        r = (220.0 + s * 35.0) as u8;
-        g = (30.0 + s * 130.0) as u8;
-        b = (50.0 - s * 50.0) as u8;
-    } else {
-        let s = (t - 0.75) / 0.25;
-        r = 255;
-        g = (160.0 + s * 95.0) as u8;
-        b = (s * 100.0) as u8;
-    }
-
-    egui::Color32::from_rgb(r, g, b)
 }

@@ -18,7 +18,8 @@
 # The exposed intensity is mapped to photo-active-compound (PAC) via Dill
 # kinetics — m = exp(−C·dose·I) for single-photon, exp(−C·dose·I²) for two-
 # photon — and the reported fill fraction is the volume with m below the
-# development threshold (the fraction that clears).
+# development threshold (the fraction that clears): 0.625 for this run (PAC
+# 0.135–0.999).
 #
 # Reference: Campbell et al., "Fabrication of photonic crystals for the visible
 #            spectrum by holographic lithography," Nature 404, 53 (2000).
@@ -33,11 +34,11 @@
 wavelength_nm = 266.0
 
 [optics]
-na = 0.4        # unused by interference recording; present for the shared schema
+na = 0.4        # unused by interference recording (ignored; may be omitted)
 
 [mask]
 cd_nm    = 100.0    # unused (there is no mask in interference lithography)
-pitch_nm = 300.0
+pitch_nm = 320.0    # unused; 4 × 320 nm = the 1.28 µm field (commensurate)
 
 [grid]
 size     = 128      # lateral array

@@ -164,7 +164,7 @@ class TestSimulationEngine:
         source = huv.SourceConfig.f2_laser()
         optics = huv.OpticsConfig()
         mask = huv.MaskConfig.line_space(65.0, 180.0)
-        grid = huv.GridConfig(size=64, pixel_nm=4.0)
+        grid = mask.commensurate_grid(size=64, target_pixel_nm=4.0)
         engine = huv.SimulationEngine(source, optics, mask, grid=grid, max_kernels=10)
         # Test that getters work
         assert engine.source.wavelength_nm > 0
@@ -175,7 +175,7 @@ class TestSimulationEngine:
         source = huv.SourceConfig.f2_laser()
         optics = huv.OpticsConfig()
         mask = huv.MaskConfig.line_space(65.0, 180.0)
-        grid = huv.GridConfig(size=64, pixel_nm=4.0)
+        grid = mask.commensurate_grid(size=64, target_pixel_nm=4.0)
         engine = huv.SimulationEngine(source, optics, mask, grid=grid, max_kernels=10)
         assert engine.num_kernels() <= 10
         assert engine.num_kernels() > 0
@@ -184,7 +184,7 @@ class TestSimulationEngine:
         source = huv.SourceConfig.f2_laser()
         optics = huv.OpticsConfig()
         mask = huv.MaskConfig.line_space(65.0, 180.0)
-        grid = huv.GridConfig(size=64, pixel_nm=4.0)
+        grid = mask.commensurate_grid(size=64, target_pixel_nm=4.0)
         engine = huv.SimulationEngine(source, optics, mask, grid=grid, max_kernels=10)
         r = repr(engine)
         assert 'SimulationEngine' in r
@@ -195,7 +195,7 @@ class TestAerialImageResult:
         source = huv.SourceConfig.f2_laser()
         optics = huv.OpticsConfig()
         mask = huv.MaskConfig.line_space(65.0, 180.0)
-        grid = huv.GridConfig(size=128, pixel_nm=2.0)
+        grid = mask.commensurate_grid(size=128, target_pixel_nm=2.0)
         engine = huv.SimulationEngine(source, optics, mask, grid=grid, max_kernels=10)
         result = engine.compute_aerial_image(focus_nm=0.0)
         nils = result.nils(threshold=0.3)
@@ -207,7 +207,7 @@ class TestAerialImageResult:
         source = huv.SourceConfig.f2_laser()
         optics = huv.OpticsConfig()
         mask = huv.MaskConfig.line_space(65.0, 180.0)
-        grid = huv.GridConfig(size=64, pixel_nm=4.0)
+        grid = mask.commensurate_grid(size=64, target_pixel_nm=4.0)
         engine = huv.SimulationEngine(source, optics, mask, grid=grid, max_kernels=10)
         result = engine.compute_aerial_image(focus_nm=0.0)
         c = result.image_contrast()
@@ -217,7 +217,7 @@ class TestAerialImageResult:
         source = huv.SourceConfig.f2_laser()
         optics = huv.OpticsConfig()
         mask = huv.MaskConfig.line_space(65.0, 180.0)
-        grid = huv.GridConfig(size=64, pixel_nm=4.0)
+        grid = mask.commensurate_grid(size=64, target_pixel_nm=4.0)
         engine = huv.SimulationEngine(source, optics, mask, grid=grid, max_kernels=10)
         result = engine.compute_aerial_image(focus_nm=0.0)
         x = np.asarray(result.x_nm)
