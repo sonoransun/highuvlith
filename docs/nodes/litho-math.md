@@ -4,29 +4,9 @@ description: "Worked lithography arithmetic for every generation: k₁ = HP·NA/
 
 # Lithography arithmetic
 
-<p class="huv-lead">Why could one metal layer of a "7 nm"-class chip take four litho-etch passes on an immersion scanner but only one on an EUV scanner? Four short formulas decide which tool prints which layer: resolution, the k₁ factor, depth of focus and photon counting. This page runs them for each generation in this tour, using published scanner specifications and roadmap targets, and ends with overlay and edge-placement budgets; two calculators let you try your own numbers, and the engine examples at the end check the imaging part with a real partially coherent image calculation.</p>
+<p class="huv-lead">Why could one metal layer of a "7 nm"-class chip take four litho-etch passes on an immersion scanner but only one on an EUV scanner? Four short formulas answer that: resolution, k₁, depth of focus and photon counting, run here for every generation.</p>
 
-Everything here is back-of-the-envelope: no polarization, resist blur, mask 3D effects or
-process control. highuvlith can check the imaging part with a real partially coherent
-image calculation (Hopkins/SOCS, ✅ Implemented, see the [pipeline](../pipeline.md#stage-4--aerial-image)) and
-the photon statistics with its stochastic module (see
-[research modules](../research-modules.md)). The examples at the end show how.
-
-## Resolution and the k₁ factor
-
-For a dense grating of lines and spaces with half-pitch HP and pitch $p = 2 \mathrm{HP}$:
-
-```math
-\mathrm{HP} = k_1 \frac{\lambda}{\mathrm{NA}}
-\qquad\Longleftrightarrow\qquad
-k_1 = \frac{p}{2} \cdot \frac{\mathrm{NA}}{\lambda}
-```
-
-λ is the exposure wavelength (in vacuum) and NA the numerical aperture of the projection lens on
-the wafer side. The k₁ factor collects everything else (illumination shape, mask type, resist,
-process control) into one "difficulty" number. Lower k₁ means harder lithography.
-
-The calculator below is a 🔶 teaching toy on the closed form (the Rayleigh and depth-of-focus
+The calculator is a 🔶 teaching toy on the closed form (the Rayleigh and depth-of-focus
 formulas of this page, the same ones as the [playground](../playground/index.md)); the engine
 examples at the end of the page image real gratings. Pick a wavelength preset, then vary NA
 and the process factors.
@@ -42,6 +22,31 @@ and the process factors.
 <div class="huv-calc" data-huv-calc="rayleigh">
 <noscript>This calculator needs JavaScript. The formulas on this page give the same numbers by hand.</noscript>
 </div>
+
+Everything here is back-of-the-envelope, on published scanner specifications and roadmap
+targets: no polarization, resist blur, mask 3D effects or process control. highuvlith can check
+the imaging part with a real partially coherent image calculation
+(Hopkins/SOCS, ✅ Implemented, see the [pipeline](../pipeline.md#stage-4--aerial-image)) and
+the photon statistics with its stochastic module (see
+[research modules](../research-modules.md)); the examples at the end show how. A second
+calculator under "Counting photons" does the photon arithmetic, and the page ends with overlay
+and edge-placement budgets.
+
+## Resolution and the k₁ factor
+
+For a dense grating of lines and spaces with half-pitch HP and pitch $p = 2 \mathrm{HP}$:
+
+```math
+\mathrm{HP} = k_1 \frac{\lambda}{\mathrm{NA}}
+\qquad\Longleftrightarrow\qquad
+k_1 = \frac{p}{2} \cdot \frac{\mathrm{NA}}{\lambda}
+```
+
+λ is the exposure wavelength (in vacuum) and NA the numerical aperture of the projection lens on
+the wafer side. The k₁ factor collects everything else (illumination shape, mask type, resist,
+process control) into one "difficulty" number. Lower k₁ means harder lithography. The
+calculator at the top of the page runs this formula, with the depth-of-focus one from a later
+section.
 
 ### The floor: k₁ = 0.25
 
@@ -251,10 +256,12 @@ at 193 nm and 91.8 eV at 13.5 nm. Since 1 mJ/cm² = 10⁻¹⁷ J/nm², the photo
 per unit dose is
 
 ```math
-n = \frac{10^{-17}\ \mathrm{J\ nm^{-2}}}{E_\text{ph}}
-= 9.72\ \mathrm{nm^{-2}}\ \text{at 193 nm},
+\begin{aligned}
+n &= \frac{10^{-17}\ \mathrm{J\ nm^{-2}}}{E_\text{ph}} \\
+  &= 9.72\ \mathrm{nm^{-2}}\ \text{at 193 nm},
 \qquad 0.680\ \mathrm{nm^{-2}}\ \text{at 13.5 nm}
 \qquad(\text{per mJ/cm}^2).
+\end{aligned}
 ```
 
 At the same dose, EUV delivers **14.3× fewer photons** than ArF, simply because each photon

@@ -238,5 +238,6 @@ row's headline, or a glyph in a no-badge trailer is an error. Nobody edits anoth
 * `reference/make_matrix_map.py` draws one tile per matrix row (`--svg-only` is what the nightly regenerates;
   the README PNG pair is platform dependent); `--check` asserts tile count = rows and counts = legend.
 * `history/make_history_figures.py --table`, `future/check_readiness.py --table` and `make_all.py --tables`
-  print the other marker tables as column-0 GFM; page groups paste the printed text, `--write` is the
+  print the other marker tables as column-0 GFM (the readiness ladder led by `<!-- huv-table: stack -->`, like the
+  legend, so its four columns stack on phones); page groups paste the printed text, `--write` is the
   integrator's and the nightly's.

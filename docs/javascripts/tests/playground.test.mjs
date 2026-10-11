@@ -101,6 +101,25 @@ test("every widget mounts, hides its fallback figure and builds its card, plot a
   assert.equal(f.rayleigh.root.querySelector(".huv-tile__value").textContent, "62.3 nm", "R = 0.3·193/0.93");
 });
 
+test("wide preset tables carry the kit's phone stacking: .huv-stack and data-label on every cell", () => {
+  const f = mounted(load(), ["rayleigh", "shotnoise", "aerial"]);
+  for (const name of ["rayleigh", "shotnoise"]) {
+    const table = f[name].root.querySelector("table.huv-calc__table");
+    assert.ok(table.classList.contains("huv-stack"), name + " stacks below 45em (extra.css)");
+    const headers = table.querySelectorAll("thead th").map((th) => th.textContent);
+    assert.ok(headers.length > 4, name + " is wider than a phone column");
+    const rows = table.querySelectorAll("tbody tr");
+    assert.ok(rows.length >= 7, name + " lists every preset");
+    for (const tr of rows) {
+      assert.equal(tr.children.length, headers.length);
+      assert.equal(tr.children[0].tagName, "TH");
+      tr.children.slice(1).forEach((td, i) => assert.equal(td.getAttribute("data-label"), headers[i + 1], name + ": every td is labelled by its header"));
+    }
+  }
+  const aerial = f.aerial.root.querySelector("table.huv-calc__table");
+  assert.equal(aerial.classList.contains("huv-stack"), false, "the three-column sample table stays a table");
+});
+
 test("the plots draw into the canvas and the pupil follows the sliders (D5: copies of the source at every order)", () => {
   const env = load();
   const f = mounted(env, ["aerial"]);

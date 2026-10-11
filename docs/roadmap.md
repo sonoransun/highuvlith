@@ -141,6 +141,77 @@ The source families state their assumptions inline. These refinements would repl
 
 - [ ] **Today:** the Python bindings cover imaging, sources, resist, volumetric, deep-layer, optimization, stochastic LER/LWR and research modules (see [python-api.md](./python-api.md)). **Missing:** a binding for ptychography (`ptychography.rs`, ePIE), which is reachable from Rust only. **Why:** it is the only research module without a Python entry point, so its reconstructions cannot be scripted or plotted from notebooks.
 
+## Documentation TODO
+
+The documentation redesign of October 2026 (new page anatomy, the scripted figure and animation set, the
+component kit) went through four rounds of automated review — whole-site QA at phone and desktop widths in
+light and dark, visual judges, an adversarial honesty check, a physics review of every new figure, a
+GitHub-rendered README review and an accessibility pass. Every build gate passes. The items below are what
+the last round left open, ordered by how much a reader notices them. None of them changes a capability claim.
+
+**Check first (fixed in the last round, not yet re-reviewed)**
+
+- Re-run the phone review on the pages whose display math was split into aligned rows (pipeline,
+  metrics-and-process-window, sources/lpp, processes/thin-film, future/index, playground) and on
+  nodes/litho-math, whose lead was shortened and calculator moved up.
+- Confirm the "scrolls" cue on wide code blocks now sits below the last line instead of over it.
+- Confirm the redrawn pupil-orders contrast strip and the synchrotron power-chain labels no longer collide.
+
+**Phone layout**
+
+- Stack the remaining wide tables: the capability-matrix audit log and the pipeline validation table
+  (add the `huv-table: stack` hint); the playground and litho-math calculator preset tables still overflow
+  their 646 px column.
+- Draw narrow twins for the figures that are unreadable at 358 px: the home "five generations" strip, the
+  nodes-section hero strip and the capability-matrix tile map.
+- Shorten the breadcrumb on the ten source pages nested four levels deep; it truncates on phones.
+- Make the motion toggle a 44 px touch target, or move it out of the copyright line.
+- The pipeline flowchart inside its collapsed block and the nodes decision tree still need sideways
+  scrolling on a phone; redraw them top-down.
+- Display equations still wider than the 688 px desktop column: one on pipeline (the resist rate) and one
+  on masks (the grating coefficient).
+
+**Figures**
+
+- Image weight: docs/assets/images is 41 MB against the design budget of 28 MB, and six figures sit above
+  the per-figure warning line; recompress or simplify the largest (SOCS anatomy, Talbot carpet, the source
+  landscapes, the GUI process-window capture) and make the size budget a gate.
+- Caption fixes: the HHG comb alt text (the engine keeps harmonics up to q = 63 for neon); the TE/TM
+  animation caption should name the source-sampling setting it depends on; the Talbot page's ATL panel uses
+  a 50 % grating while every other Talbot figure on the page uses 25 %; the inverse-Compton schematic
+  (1.72 MeV) and engine figure (1.73 MeV) on the same page differ in rounding; the history illumination
+  schematic's caption promises a Gaussian fill it does not draw.
+- The High-NA pupil crop on future/high-na-and-hyper-na reads as two small discs in a tall frame; recompose it.
+
+**Page consistency**
+
+- Six future and section-index pages still have an H1 that differs from their nav title.
+- Source family pages disagree on whether the TOML keys are an H2 or an H3, and five of them use a
+  different "Where next" footer; pick one form.
+- The processes/thin-film glance table quotes R = 0.258 "at 157.63 nm"; the engine's 0.258 is the value at
+  157.0 nm.
+- The capability matrix should log the LIGA headline grade change and the one readiness-ladder row that
+  moved against the documented mapping (Hyper-NA on nodes/angstrom-era).
+- One verified example on history/immersion-multipatterning was removed rather than moved; restore it or
+  record why.
+- The extra "Python API modules" entry in the Reference nav is not in the design's final tree; keep it and
+  link it from the Reference index, or fold it back into the Python API page.
+
+**Accessibility**
+
+- Raise the contrast of the readiness-rung pill outline, the "Show all" button border and the
+  Physics-Strip table header.
+- The reduced-motion rule for the lightbox fades loads before the lightbox stylesheet and has no effect;
+  raise its specificity or load order.
+- Lightbox slides show an empty alt text; pass the figure's alt to the slide.
+
+**Code change made during the redesign**
+
+- One physics fix landed alongside the documentation work: the Gaussian spectral-line sampler used a width
+  √2 too large (σ = FWHM/(2√ln 2) instead of FWHM/(2√(2 ln 2))). It is corrected, pinned by
+  `test_gaussian_line_sampler_fwhm`, and recorded in the capability matrix's audit log. Mention it
+  separately in the release notes.
+
 ## Explicit non-goals (for now)
 
 - **Rigorous mask 3D (EMF) simulation** — thick-mask topography, absorber shadowing and polarization-dependent order amplitudes are out of scope; the mask is a thin complex transmittance everywhere, and every page that touches masks says so.

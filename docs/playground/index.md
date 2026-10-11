@@ -39,8 +39,11 @@ R = k_1 \frac{\lambda}{\mathrm{NA}}, \qquad p_{\min} = 2R
 ```
 
 ```math
-\mathrm{DOF}_{\text{paraxial}} = k_2 \frac{\lambda}{\mathrm{NA}^2}, \qquad
-\mathrm{DOF}_{\text{exact}} = \frac{k_2 \lambda}{2n (1-\cos\theta)}, \quad \sin\theta = \frac{\mathrm{NA}}{n}
+\begin{aligned}
+\mathrm{DOF}_{\text{paraxial}} &= k_2 \frac{\lambda}{\mathrm{NA}^2}, \\
+\mathrm{DOF}_{\text{exact}} &= \frac{k_2 \lambda}{2n (1-\cos\theta)}, \\
+\sin\theta &= \frac{\mathrm{NA}}{n}
+\end{aligned}
 ```
 
 - **R** is the half-pitch of the densest printable lines and p<sub>min</sub> the matching
@@ -121,10 +124,10 @@ plot traces the photon count and its 1σ against feature size for every preset w
 </div>
 
 ```math
-E_{\text{ph}} = \frac{hc}{\lambda}, \qquad
-n = \frac{D}{E_{\text{ph}}}, \qquad
-N = n A f_{\text{abs}}, \qquad
-\frac{\sigma_N}{N} = \frac{1}{\sqrt{N}}
+\begin{aligned}
+E_{\text{ph}} &= \frac{hc}{\lambda}, \qquad n = \frac{D}{E_{\text{ph}}}, \\
+N &= n A f_{\text{abs}}, \qquad \frac{\sigma_N}{N} = \frac{1}{\sqrt{N}}
+\end{aligned}
 ```
 
 - hc = 1239.84193 eV·nm and 1 eV = 1.602176634 × 10⁻¹⁹ J (CODATA); a dose of
@@ -201,12 +204,18 @@ For opaque lines of width w on a clear background with period p, the mask's Four
 coefficients, the image and the defocus phase are
 
 ```math
-c_0 = 1 - \frac{w}{p}, \qquad c_m = -\frac{\sin(\pi m w/p)}{\pi m}\ \ (m \neq 0),
+\begin{aligned}
+c_0 &= 1 - \frac{w}{p}, \\
+c_m &= -\frac{\sin(\pi m w/p)}{\pi m}\ \ (m \neq 0),
+\end{aligned}
 ```
 
 ```math
-I(x) = \frac{1}{J}\sum_{j=1}^{J}\Bigl|\sum_{m: |f_{mj}| \le \mathrm{NA}/\lambda} c_m e^{i\phi_{mj}} e^{2\pi i m x/p}\Bigr|^2,
-\qquad f_{mj} = \frac{m}{p} + s_j \frac{\mathrm{NA}}{\lambda},
+\begin{aligned}
+I(x) &= \frac{1}{J}\sum_{j=1}^{J} |E_j(x)|^2, \\
+E_j(x) &= \sum_{m: |f_{mj}| \le \mathrm{NA}/\lambda} c_m e^{i\phi_{mj}} e^{2\pi i m x/p}, \\
+f_{mj} &= \frac{m}{p} + s_j \frac{\mathrm{NA}}{\lambda},
+\end{aligned}
 ```
 
 ```math

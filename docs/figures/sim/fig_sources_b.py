@@ -1077,8 +1077,12 @@ def _k53_tail(y: np.ndarray) -> np.ndarray:
     return out
 
 
-def _k53_integral_shape(y: np.ndarray) -> np.ndarray:
-    """S(y) = y ∫_y^∞ K_{5/3}(x) dx (the universal synchrotron shape)."""
+def bm_universal_shape(y: np.ndarray) -> np.ndarray:
+    """S(y) = y ∫_y^∞ K_{5/3}(x) dx (the universal bending-magnet shape; the engine's ``bm_universal_flux``).
+
+    Evaluated here in numpy; the betatron figure checks it against the engine's photon bins and the
+    synchrotron figure against the engine's flux and power per mrad of the LIGA bending magnet.
+    """
     return y * _k53_tail(y)
 
 
@@ -1098,10 +1102,10 @@ def betatron_spectrum_compute(fast: bool):
     ratio = y_bins[1:] / y_bins[:-1]
     assert np.allclose(ratio, ratio[0], rtol=1e-9), "log-spaced bins"
     assert 0.09 < y_bins[0] < 0.11 and 7.5 < y_bins[-1] < 8.2, "the [0.1, 8] E_c LIGA window"
-    s_bins = _k53_integral_shape(y_bins)
+    s_bins = bm_universal_shape(y_bins)
     assert np.allclose(w / w.sum(), s_bins / s_bins.sum(), rtol=3e-3), "engine photons per log bin ∝ S(y)"
     y = np.logspace(-6, math.log10(30.0), 900)
-    s = _k53_integral_shape(y)
+    s = bm_universal_shape(y)
     head = _k53_head_integral(y[0])
     total = head + np.trapezoid(s / y, y)
     assert abs(total - 5 * math.pi / 3) < 0.01, total  # ∫_0^∞ S/y dy = 5π/3

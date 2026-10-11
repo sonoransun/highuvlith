@@ -94,13 +94,20 @@ tone-explicit functions.
 For $I(x) = a - b\cos(2\pi x/p)$ the dark feature centred on $x = 0$ has
 
 ```math
-CD_\mathrm{dark}(t) = \frac{p}{\pi}\arccos\frac{a - t}{b},\qquad
-\left.\frac{dI}{dx}\right|_\mathrm{edge} = b\,\frac{2\pi}{p}\,\sin\frac{\pi\,CD}{p},
+\begin{aligned}
+CD_\mathrm{dark}(t) &= \frac{p}{\pi}\arccos\frac{a - t}{b}, \\
+\left.\frac{dI}{dx}\right|_\mathrm{edge} &= b\,\frac{2\pi}{p}\,\sin\frac{\pi\,CD}{p},
+\end{aligned}
 ```
 
 e.g. $a = 0.5$, $b = 0.4$, $p = 180$ nm, $t = 0.3$: CD = 60 nm (bright: 120 nm), NILS =
 2.418399 (bright: 4.836798). A two-beam image of an opaque line of width $w$,
-$I = (1 - w/p) - 2M\sin(\pi w/p)/\pi\cdot\cos(2\pi x/p)$ with $M = 0.8$, $t = 0.3$, gives
+
+```math
+I = \Bigl(1 - \frac{w}{p}\Bigr) - \frac{2M}{\pi}\sin\frac{\pi w}{p}\cos\frac{2\pi x}{p},
+```
+
+with $M = 0.8$, $t = 0.3$, gives
 CD(58 nm) = 28.9937 nm, CD(62 nm) = 37.7506 nm, so the central-difference MEEF at
 60 nm is 2.1892 (analytic derivative 2.1621). These numbers are computed independently
 with numpy and asserted in the unit tests.
@@ -142,8 +149,8 @@ I(x_\mathrm{edge}; z) = E_\mathrm{th} / d .
 A dark (opaque-line) feature narrows as dose rises; a bright (hole/space) feature
 widens. The legacy `ProcessWindow::compute(engine, mask, doses, focuses, cd_threshold,
 target, tol)` keeps its signature: `cd_threshold` is the intensity threshold at the
-**nominal dose**, the median of `doses`, i.e. $E_\mathrm{th} = $ `cd_threshold` $\cdot
-d_\mathrm{nom}$. Previously the dose was ignored and every row of the CD matrix was
+**nominal dose**, the median of `doses`, i.e. $E_\mathrm{th}$ = `cd_threshold` ·
+$d_\mathrm{nom}$. Previously the dose was ignored and every row of the CD matrix was
 identical. `compute_threshold_model` takes the resist explicitly; `from_profiles`
 (precomputed cross-sections) and `from_cd_matrix` (tabulated or measured
 focus–exposure matrices) are engine-free.
@@ -270,7 +277,14 @@ For the synthetic window $I(x; z) = a - b(z)\cos(2\pi x/p)$,
 $b(z) = b_0 e^{-((z - z_0)/s)^2}$ with $a = 0.5$, $b_0 = 0.45$, $z_0 = 40$ nm,
 $s = 150$ nm, $p = 180$ nm, $E_\mathrm{th} = 9$ mJ/cm² and a 60 nm ± 10 % spec,
 the in-spec condition is
-$a - b(z)\cos(\pi CD_\mathrm{lo}/p) \le E_\mathrm{th}/d \le a - b(z)\cos(\pi CD_\mathrm{hi}/p)$,
+
+```math
+\begin{aligned}
+E_\mathrm{th}/d &\ge a - b(z)\cos\frac{\pi\,CD_\mathrm{lo}}{p}, \\
+E_\mathrm{th}/d &\le a - b(z)\cos\frac{\pi\,CD_\mathrm{hi}}{p},
+\end{aligned}
+```
+
 which gives (numpy, asserted in the tests on a 10 nm focus grid):
 
 | Quantity | Closed form | Tolerance in test |

@@ -17,13 +17,15 @@ page, anchor``:
   ``docs/future/``), ``page``/``anchor`` the sub-page(s) the table links.
 
     python docs/figures/future/check_readiness.py            # validate the CSV + the pasted table
-    python docs/figures/future/check_readiness.py --table    # print the collapsed ladder table (column-0 GFM)
+    python docs/figures/future/check_readiness.py --table    # print the collapsed ladder table (column-0 GFM, led by the stack hint)
     python docs/figures/future/check_readiness.py --table --write   # replace it in docs/future/index.md (INT / nightly)
     python docs/figures/future/check_readiness.py --json     # the rows as JSON (diagnostic)
 
 The table lives in ``docs/future/index.md`` between ``<!-- readiness-table:start -->`` and
 ``<!-- readiness-table:end -->`` (inside ``<details markdown="1"><summary>The ladder as a
-table</summary>``, pasted by P4). With no flag the script validates the CSV (an error exits
+table</summary>``, pasted by P4). The rendering's first line is the ``<!-- huv-table: stack -->``
+hint (DESIGN §4.5): ``page_kit.py`` turns the 4-column table into cards on phones, and the
+comment is invisible on GitHub. With no flag the script validates the CSV (an error exits
 1) and compares the pasted block with the rendering; a page without the marker block is a
 printed note (tolerant, §9.0 rule 4), a block that differs is an error. Standard library +
 ``matrix_parse`` only, so ``make_all.py --check`` can run it as a subprocess anywhere.
@@ -48,6 +50,8 @@ REPO = HERE.parents[2]
 CSV = HERE / "readiness.csv"
 PAGE = REPO / "docs" / "future" / "index.md"
 START, END = "<!-- readiness-table:start -->", "<!-- readiness-table:end -->"
+#: The page-kit hint on the line before the table: 4 columns x 31 rows must stack on phones (DESIGN §4.5).
+TABLE_HINT = "<!-- huv-table: stack -->"
 
 RUNGS: tuple[str, ...] = tuple(tokens.RUNGS)
 #: The six families = the six sub-pages, in nav order (rows of the matrix figure).
@@ -162,12 +166,13 @@ def validate(rows: list[dict] | None = None) -> list[str]:
 
 
 def render_table(rows: list[dict] | None = None) -> str:
-    """The collapsed ladder table as column-0 GFM (DESIGN round-4 ruling 13c)."""
+    """The collapsed ladder table as column-0 GFM (DESIGN round-4 ruling 13c), led by
+    :data:`TABLE_HINT` so the site stacks it on phones (the hint is part of the marker block)."""
     rows = load() if rows is None else rows
     order = {r: i for i, r in enumerate(RUNGS)}
     forder = {f: i for i, f in enumerate(FAMILIES)}
     rows = sorted(rows, key=lambda r: (order[r["rung"]], forder[r["family"]]))
-    lines = ["| Technology | Readiness (Sep 2026) | highuvlith model | Page |", "|---|---|---|---|"]
+    lines = [TABLE_HINT, "| Technology | Readiness (Sep 2026) | highuvlith model | Page |", "|---|---|---|---|"]
     for r in rows:
         rung = f"**{r['rung']}**" + (f" ({r['qualifier']})" if r["qualifier"] else "")
         pages = []

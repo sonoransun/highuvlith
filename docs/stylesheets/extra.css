@@ -69,21 +69,15 @@
 
 /* 2. Section hue */
 
-/* Bound by :has() to the hidden marker; without :has() the simulator cyan stays. */
-.md-content__inner:has(> .huv-section[data-huv-section="home"]) { --huv-section: var(--huv-hue-home); }
-.md-content__inner:has(> .huv-section[data-huv-section="history"]) { --huv-section: var(--huv-hue-history); }
-.md-content__inner:has(> .huv-section[data-huv-section="nodes"]) { --huv-section: var(--huv-hue-nodes); }
-.md-content__inner:has(> .huv-section[data-huv-section="future"]) { --huv-section: var(--huv-hue-future); }
-.md-content__inner:has(> .huv-section[data-huv-section="simulator"]) { --huv-section: var(--huv-hue-simulator); }
-.md-content__inner:has(> .huv-section[data-huv-section="reference"]) { --huv-section: var(--huv-hue-reference); }
-
-/* The active section tab carries the hue as a 2 px underline. */
-.md-tabs__item--active .md-tabs__link { box-shadow: inset 0 -0.1rem var(--huv-cyan-300); }
-body:has(.huv-section[data-huv-section="home"]) .md-tabs__item--active .md-tabs__link { box-shadow: inset 0 -0.1rem var(--huv-violet-300); }
-body:has(.huv-section[data-huv-section="history"]) .md-tabs__item--active .md-tabs__link { box-shadow: inset 0 -0.1rem #e3b341; }
-body:has(.huv-section[data-huv-section="nodes"]) .md-tabs__item--active .md-tabs__link { box-shadow: inset 0 -0.1rem #2dd4bf; }
-body:has(.huv-section[data-huv-section="future"]) .md-tabs__item--active .md-tabs__link { box-shadow: inset 0 -0.1rem #a78bfa; }
-body:has(.huv-section[data-huv-section="reference"]) .md-tabs__item--active .md-tabs__link { box-shadow: inset 0 -0.1rem #94a3b8; }
+/* Bound by :has() to the hidden marker (overrides/main.html); without :has() the simulator cyan stays.
+   The active section tab carries the hue as a 2 px underline, in the dark-surface value. */
+body:has(.huv-section[data-huv-section="home"]) { --huv-section: var(--huv-hue-home); --huv-tab-hue: var(--huv-violet-300); }
+body:has(.huv-section[data-huv-section="history"]) { --huv-section: var(--huv-hue-history); --huv-tab-hue: #e3b341; }
+body:has(.huv-section[data-huv-section="nodes"]) { --huv-section: var(--huv-hue-nodes); --huv-tab-hue: #2dd4bf; }
+body:has(.huv-section[data-huv-section="future"]) { --huv-section: var(--huv-hue-future); --huv-tab-hue: #a78bfa; }
+body:has(.huv-section[data-huv-section="simulator"]) { --huv-section: var(--huv-hue-simulator); }
+body:has(.huv-section[data-huv-section="reference"]) { --huv-section: var(--huv-hue-reference); --huv-tab-hue: #94a3b8; }
+.md-tabs__item--active .md-tabs__link { box-shadow: inset 0 -0.1rem var(--huv-tab-hue, var(--huv-cyan-300)); }
 
 /* 3. Header, typography, rhythm */
 
@@ -576,7 +570,7 @@ html .md-typeset .md-typeset__table table[class*="huv-"] { display: table; width
 .md-typeset div.arithmatex { overflow-x: auto; overflow-y: hidden; max-width: 100%; padding: 0.2em 0; }
 .md-typeset span.arithmatex.huv-math-scroll { display: inline-block; max-width: 100%; overflow-x: auto; overflow-y: hidden; vertical-align: middle; }
 .md-typeset [data-huv-overflow="true"] { position: relative; }
-.md-typeset [data-huv-overflow="true"]:not([data-huv-scrolled]) { mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent); -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent); }
+.md-typeset [data-huv-overflow="true"]:not([data-huv-scrolled]) { mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent); }
 
 .md-typeset [data-huv-overflow="true"]:not([data-huv-scrolled])::after {
   content: "scrolls →";
@@ -594,6 +588,7 @@ html .md-typeset .md-typeset__table table[class*="huv-"] { display: table; width
   pointer-events: none;
 }
 
+.md-typeset pre > code[data-huv-overflow="true"] { padding-bottom: 1.5rem; }
 .md-typeset pre > code[data-huv-overflow="true"]:not([data-huv-scrolled])::after { top: auto; bottom: 0; }
 
 .md-typeset .huv-diagram {
@@ -702,7 +697,7 @@ html .md-typeset .md-typeset__table table[class*="huv-"] { display: table; width
 }
 
 .md-typeset .huv-calc__message[hidden] { display: none; }
-.md-typeset .huv-calc table.huv-calc__table { display: table; width: 100%; margin: 0 0 0.8rem; font-size: 0.66rem; font-variant-numeric: tabular-nums; border-collapse: collapse; }
+.md-typeset .huv-calc table.huv-calc__table { width: 100%; margin: 0 0 0.8rem; font-size: 0.66rem; font-variant-numeric: tabular-nums; border-collapse: collapse; }
 .md-typeset .huv-calc .huv-calc__table :is(th, td) { padding: 0.35em 0.5em; border-bottom: var(--huv-hairline) solid var(--md-default-fg-color--lightest); text-align: right; white-space: nowrap; }
 .md-typeset .huv-calc .huv-calc__table thead th { white-space: normal; vertical-align: bottom; font-weight: 700; color: var(--md-default-fg-color--light); background: none; }
 .md-typeset .huv-calc .huv-calc__table :is(th, td):first-child { text-align: left; }
@@ -733,6 +728,10 @@ html .md-typeset .md-typeset__table table[class*="huv-"] { display: table; width
 @media screen and (max-width: 44.9375em) {
   .huv-calc fieldset { display: flex; flex-direction: column; }
   .huv-calc fieldset > :is(.huv-legend, .huv-plot, .huv-calc__row, :is(.huv-plot, .huv-calc__row) + .huv-field__hint) { order: -1; }
+  /* Stacked calculator tables (playground.js adds .huv-stack): three label/value pairs a line. */
+  .md-typeset .huv-calc .huv-stack tr { display: grid; grid-template-columns: repeat(3, 1fr); }
+  .md-typeset .huv-calc .huv-stack th { grid-column: 1 / -1; }
+  .md-typeset .huv-calc .huv-stack :is(th, td) { border: 0; text-align: left; white-space: normal; }
 }
 
 .md-typeset .huv-sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
@@ -782,7 +781,7 @@ html[data-huv-motion="paused"] .huv-anim * { animation-play-state: paused !impor
 
 @media print {
   .md-header::after, .md-copyright .huv-motion, .huv-matrix-filter, .md-typeset [data-huv-overflow="true"]::after, .md-typeset .huv-calc__controls, .md-typeset .huv-tooltip { display: none !important; }
-  .md-typeset [data-huv-overflow="true"] { mask-image: none; -webkit-mask-image: none; }
+  .md-typeset [data-huv-overflow="true"] { mask-image: none; }
   .md-typeset .huv-diagram, .md-typeset div.arithmatex, .md-typeset .md-typeset__scrollwrap { overflow: visible; }
   .md-typeset .huv-diagram > .mermaid { min-width: 0 !important; max-width: 100%; }
   .md-typeset :is(figure, table, pre, details, .admonition, .huv-diagram, .huv-calc) { break-inside: avoid; }

@@ -46,6 +46,10 @@ rustc-ice-*.txt
 /.env/
 /env/
 /site-packages/
+# Extra venvs (the docs toolchain lives in its own venv: mkdocs.yml suggests .venv-docs)
+.venv-*/
+/venv-*/
+.direnv/
 .python-version
 .Python
 
@@ -81,6 +85,9 @@ __pypackages__/
 */.ipynb_checkpoints/*
 profile_default/
 ipython_config.py
+# Executed copies written by `jupyter nbconvert --execute --to notebook` (CI runs the
+# notebooks in place without storing outputs; these copies are scratch)
+*.nbconvert.ipynb
 .jupyter/
 
 # Scientific / numerical scratch data
@@ -91,6 +98,10 @@ ipython_config.py
 *.pkl
 *.pickle
 *.joblib
+*.zarr/
+*.parquet
+*.feather
+*.mat
 
 # ============================================================
 # PyO3 / maturin native extension
@@ -121,6 +132,14 @@ ipython_config.py
 .coverage.*
 coverage.xml
 htmlcov/
+# Property-based / benchmark / CI-report scratch
+.hypothesis/
+.benchmarks/
+junit*.xml
+test-results/
+.dmypy.json
+dmypy.json
+.pyright/
 
 # ============================================================
 # Profiling
@@ -145,6 +164,9 @@ samply.json*
 
 # Heaptrack
 *.heaptrack
+*.cpuprofile
+*.speedscope.json
+*.trace/
 
 # ============================================================
 # Generated assets (CLI image output, demo videos)
@@ -158,6 +180,8 @@ examples/*.avi
 examples/*.mkv
 examples/*.gif
 examples/out/
+# Demo frame dumps and the demo's intermediate output
+examples/demo_*
 
 # The figure registry's diagnostic export (make_all.py / check_figures.py --export-registry);
 # nothing reads it and nothing commits it — page_kit.py reads image sizes from the assets
@@ -194,6 +218,18 @@ pnpm-lock.yaml
 /docs/.doctrees/
 # MkDocs
 /site/
+/site-*/
+# Material for MkDocs plugin caches (social cards, privacy) if ever enabled
+/.cache/
+# Figure generators' caches and smoke-test output (docs/figures/sim/.gitignore also
+# covers its own; this catches every generator directory)
+docs/figures/**/_cache/
+docs/figures/**/_fast/
+# Headless-Chrome QA reports and screenshots (scripts/qa_site.mjs --out ...)
+/qa/
+qa-report.md
+# lychee link-checker cache
+.lycheecache
 # mdBook
 /book/
 
@@ -229,6 +265,9 @@ nbproject/
 *~
 Session.vim
 .netrwhist
+# VS Code local history extension / multi-root workspaces
+.history/
+*.code-workspace
 # ctags / etags
 tags
 TAGS
@@ -297,6 +336,12 @@ ehthumbs.db
 credentials.json
 secrets.toml
 auth.json
+.envrc
+.netrc
+.pypirc
+*.keystore
+id_rsa*
+id_ed25519*
 # Blanket config.json — intentionally aggressive; rename a real, committed
 # config to something non-ambiguous (e.g. app.config.json) rather than
 # loosening this rule.
@@ -337,3 +382,15 @@ CVS/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+nohup.out
+
+# ============================================================
+# Local-only files of the maintainer's checkout
+# ============================================================
+
+# The repository-root CLAUDE.md in the maintainer's working copy is a ~59 MB tar
+# snapshot of the tree, not project instructions, and up.sh is the local publish
+# script that strips both before copying to the published tree. Neither belongs in
+# the repository. (If a real CLAUDE.md is ever wanted, remove this rule first.)
+/CLAUDE.md
+/up.sh

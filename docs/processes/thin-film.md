@@ -75,26 +75,31 @@ flowchart LR
 With the Snell invariant $s = n_0\sin\theta_0$, every medium $j$ (index $n_j = n + ik$, $k \ge 0$) has the normal wave-vector component, in units of $k_0 = 2\pi/\lambda$,
 
 ```math
-q_j = \sqrt{n_j^2 - s^2},\qquad \operatorname{Im} q_j \ge 0\ \ (\operatorname{Re} q_j \ge 0\ \text{if}\ \operatorname{Im} q_j = 0),
+\begin{aligned}
+q_j &= \sqrt{n_j^2 - s^2}, \\
+\operatorname{Im} q_j &\ge 0\ \ (\operatorname{Re} q_j \ge 0\ \text{if}\ \operatorname{Im} q_j = 0),
+\end{aligned}
 ```
 
 the branch on which the field decays (or propagates forward) into the medium. Writing everything with $q_j$ rather than $\cos\theta_j = \sqrt{1 - (s/n_j)^2}$ keeps the solution valid for absorbing media at any angle, including X-ray grazing incidence. The tilted admittances and layer matrices (physics convention, fields $e^{i(kz-\omega t)}$) are
 
 ```math
-\eta_j^{TE} = q_j,\qquad \eta_j^{TM} = \frac{n_j^2}{q_j},\qquad
-M_j = \begin{pmatrix} \cos\delta_j & -i\sin\delta_j/\eta_j \\ -i\,\eta_j \sin\delta_j & \cos\delta_j \end{pmatrix},
-\qquad \delta_j = k_0\,q_j\,d_j .
+\begin{aligned}
+\eta_j^{TE} &= q_j,\qquad \eta_j^{TM} = \frac{n_j^2}{q_j}, \\
+M_j &= \begin{pmatrix} \cos\delta_j & -i\sin\delta_j/\eta_j \\ -i\,\eta_j \sin\delta_j & \cos\delta_j \end{pmatrix}, \\
+\delta_j &= k_0\,q_j\,d_j .
+\end{aligned}
 ```
 
 This is the complex conjugate of Macleod's $e^{i(\omega t - kz)}$ form (which needs $N = n - ik$). The stack matrix is the ordered product $M = \prod_j M_j$ (top to bottom), and the amplitude coefficients follow from the superstrate/substrate admittances $\eta_0, \eta_s$ exactly as coded in `FilmStack::solve`:
 
 ```math
-r = \frac{\eta_0 m_{00} + \eta_0\eta_s m_{01} - m_{10} - \eta_s m_{11}}
-         {\eta_0 m_{00} + \eta_0\eta_s m_{01} + m_{10} + \eta_s m_{11}},
-\qquad
-t = \frac{2\eta_0}{\text{(same denominator)}},
-\qquad
-T = \frac{\operatorname{Re}\eta_s}{\operatorname{Re}\eta_0}\,|t|^2 .
+\begin{aligned}
+r &= \frac{\eta_0 m_{00} + \eta_0\eta_s m_{01} - m_{10} - \eta_s m_{11}}
+          {\eta_0 m_{00} + \eta_0\eta_s m_{01} + m_{10} + \eta_s m_{11}}, \\
+t &= \frac{2\eta_0}{\text{(same denominator)}}, \\
+T &= \frac{\operatorname{Re}\eta_s}{\operatorname{Re}\eta_0}\,|t|^2 .
+\end{aligned}
 ```
 
 `reflectance_at_angle` returns $|r|^2$ for TE or TM and `transmittance_at_angle` returns $T$; `Unpolarized` is the mean of the two (both for reflectance and for `intensity_profile`, pinned by `test_intensity_profile_unpolarized_is_te_tm_mean`). `amplitude_coefficients` returns the complex $(r, t)$ for TE or TM (the TM values are ratios of tangential E fields — the admittance convention, which differs by a sign from the Fresnel $r_p$; the reflectance is the same). TM reflectance vanishes at Brewster's angle $\theta_B = \arctan(n_s/n_0)$ for a lossless substrate (`test_brewster_angle`) — panel (c) of the engine figure above.
@@ -113,6 +118,7 @@ Sweeping resist thickness through `reflectance` traces the swing curve; the quar
 
 The module deliberately ships **two** in-film intensity calculators:
 
+<!-- huv-table: stack -->
 | Method | What it does | Accuracy | Use it for |
 |---|---|---|---|
 | `FilmStack::intensity_profile` | Propagates the exact tangential fields: $U_0 = 1 + r$, $V_0 = \eta_0(1 - r)$ at the stack top, then downward through each layer with the **inverse** layer matrix (det = 1), plus a partial-thickness matrix inside the containing layer. Above the stack it returns the superstrate standing wave $\lvert e^{-ik_z z} + r e^{ik_z z}\rvert^2$; below it, $\lvert U_\mathrm{bottom}\rvert^2 e^{2 \mathrm{Im}(k_{z,s}) \Delta z}$ (substrate Beer–Lambert). | Exact for TE and for any polarization at normal incidence; oblique TM returns the tangential intensity $\lvert U\rvert^2$ (documented approximation — the longitudinal E-component is dropped). | Quantitative work: volumetric exposure, swing curves, dose coupling. |

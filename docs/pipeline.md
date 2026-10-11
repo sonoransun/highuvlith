@@ -58,20 +58,11 @@ graph LR
 | Stage | Grade | Dominant approximation | Details page |
 |---|---|---|---|
 | 1 · Source sampling | ✅ Implemented | adaptive rotated lattice (≤ 0.04 σ, ≳ 200 cells, area-weighted edges); residual contrast error ≲ 0.003 partially coherent, ≲ 0.02 at σ ≈ 0.05; Gaussian–Schell coherence → σ heuristic for beam sources | [Stage 1](#stage-1--source) · [Sources](sources/index.md) |
-| 2 · Optics pupil | ✅ Implemented | scalar pupil; exact plane-wave defocus phase in the image-space medium (n = 1 dry, the immersion index otherwise) | [Stage 2](#stage-2--optics) · [Optical systems](optics.md) |
-| 2 · EUV projection optics | 🔶 Simplified | isotropic wafer-side pupil, obscuration size assumed, no anamorphic magnification, no mask 3-D | [Optical systems](optics.md#euv-scanner-projection-optics) |
-| 2 · Immersion optics | ✅ Implemented | scalar pupil with the medium's defocus phase; polarization via vector mode | [Immersion](optics.md#immersion) |
+| 2 · Optics pupil | ✅ Implemented (🔶 EUV projection optics) | scalar pupil; exact plane-wave defocus phase in the image-space medium (n = 1 dry, the immersion index otherwise); the EUV projection optics are an isotropic wafer-side pupil | [Stage 2](#stage-2--optics) · [Optical systems](optics.md) |
 | 3 · Mask spectrum | ✅ Implemented (🔶 mask model) | exact closed-form thin-mask spectrum on a periodic, commensurate field; Kirchhoff, no mask 3-D | [Stage 3](#stage-3--mask) · [Masks](masks.md) |
-| 4 · TCC / SOCS image | ✅ Implemented | exact factorized TCC; truncation reported as captured energy; randomized eigensolver above the dense limits | [Stage 4](#stage-4--aerial-image) |
-| 4 · Defocus | ✅ Implemented | in the pupil per source point (`Exact`); the legacy `KernelPhase` 🔶 kept for comparison | [Defocus](#defocus--inside-the-pupil-per-source-point) |
-| 4 · Per-wavelength imaging | ✅ Implemented | `compute_multiwavelength` rebuilds the TCC at every spectral sample | [Spectral imaging](#spectral-imaging) |
-| 4 · Narrow-band polychromatic | 🔶 Simplified | `compute_polychromatic`: focus shift per sample, TCC at the centre λ | [Spectral imaging](#spectral-imaging) |
-| 4 · Vector imaging | ✅ Implemented | engine plumbing over `optics::vector` (thin mask, ideal lens, no multiple film reflections) | [Vector imaging](vector-imaging.md) |
-| 4 · Image normalization | ✅ Implemented | relative intensity (÷ exact clear field); absolute available; dark field stays absolute | [Normalization](#image-normalization-relative-intensity) |
-| 4 · Flare | 🔶 Simplified | uniform zeroth-order fraction of the mean intensity | [Flare](#flare) |
+| 4 · Aerial image | ✅ Implemented (🔶 flare, narrow-band polychromatic) | exact factorized TCC with truncation reported as captured energy; defocus in the pupil per source point; per-wavelength TCCs; flare a uniform fraction of the mean intensity | [Stage 4](#stage-4--aerial-image) |
 | 5 · Thin film | ✅ Implemented | 1-D stratified transfer matrix; oblique-TM in-film intensity is the tangential field | [Thin film](processes/thin-film.md) |
-| 6 · Resist (2-D) | 🔶 Simplified | depth-averaged dose; centre-row vertical develop | [Resist models](processes/resist-models.md) |
-| 6 · Resist (volumetric) | 🔶 Simplified | separable I_aer × S(z); lateral-mean bleaching; 3-D development ✅ | [Volumetric exposure](processes/volumetric-exposure.md) |
+| 6 · Resist | 🔶 Simplified (✅ 3-D development) | depth-averaged dose and centre-row develop (2-D path) or separable I_aer × S(z) with 3-D development (volumetric path) | [Stage 6](#stage-6--resist) · [Resist models](processes/resist-models.md) |
 | 7 · Metrics | ✅ Implemented | sub-pixel crossings; the process window 🔶 is a constant-threshold resist | [Metrics & process window](metrics-and-process-window.md) |
 
 **Same thing elsewhere:** Python `SimulationEngine(source, optics, mask, grid=…)` · CLI `highuvlith simulate --config examples/sim.toml` · TOML `[source] [optics] [mask] [grid] [process]` · GUI Aerial tab · physics → [Optical systems](optics.md)
@@ -112,6 +103,13 @@ Point counts: σ = 0.7 disk ≈ 1180 points, σ = 1 ≈ 2250, annulus 0.5–0.9 
 
 **✅ Implemented** — scalar pupils with the exact defocus phase; the EUV projection optics are 🔶 Simplified.
 
+<!-- huv-table: stack -->
+
+| Variant | Grade | Dominant approximation | Details |
+|---|---|---|---|
+| EUV projection optics | 🔶 Simplified | isotropic wafer-side pupil, obscuration size assumed, no anamorphic magnification, no mask 3-D | [Optical systems](optics.md#euv-scanner-projection-optics) |
+| Immersion optics | ✅ Implemented | scalar pupil with the medium's defocus phase; polarization via vector mode | [Immersion](optics.md#immersion) |
+
 The optic contributes a complex pupil `P(fx, fy; z, λ)`: magnitude is transmission (apodization, obscuration, mirror reflectivity), phase carries Zernike aberrations plus defocus. The defocus phase is the exact plane-wave (angular-spectrum) form $\Phi_z(\rho) = (2\pi n/\lambda) z (1 - \sqrt{1 - (\mathrm{NA}\rho/n)^2})$ in the image-space medium of index $n$ (1 dry; water $n$ = 1.437 for the 193i immersion preset, which allows NA 1.35) in every optic; the paraxial $\pi z \mathrm{NA}^2 \rho^2/(n\lambda)$ remains available via `paraxial_defocus = true`. EUV scanner projection optics (NA 0.33, and NA 0.55 with a central obscuration) are available alongside the Schwarzschild objective and the zone plate, and reflective optics can optionally carry an angle-dependent multilayer pupil, which under clear-field normalization appears as pupil apodization and phase rather than as a dose change. The engine keeps its own copy of the optics (`OpticalSystem::clone_box`) because it re-evaluates the pupil at every new focus plane and wavelength. The four implementations, the defocus-phase plot and the refractive-below-110-nm honesty rule are on the [optics page](optics.md).
 
 ## Stage 3 — Mask
@@ -126,19 +124,37 @@ The engine consumes a mask only through its spectrum: `AerialImageEngine::comput
 
 **✅ Implemented** — Hopkins imaging with an exactly factorized TCC, scalar and vector.
 
+<!-- huv-table: stack -->
+
+| Variant | Grade | Dominant approximation | Details |
+|---|---|---|---|
+| TCC / SOCS image | ✅ Implemented | exact factorized TCC; truncation reported as captured energy; randomized eigensolver above the dense limits | [Abbe / Hopkins](#abbe--hopkins-imaging-with-a-factorized-tcc) |
+| Defocus | ✅ Implemented | in the pupil per source point (`Exact`); the legacy `KernelPhase` 🔶 kept for comparison | [Defocus](#defocus--inside-the-pupil-per-source-point) |
+| Per-wavelength imaging | ✅ Implemented | `compute_multiwavelength` rebuilds the TCC at every spectral sample | [Spectral imaging](#spectral-imaging) |
+| Narrow-band polychromatic | 🔶 Simplified | `compute_polychromatic`: focus shift per sample, TCC at the centre λ | [Spectral imaging](#spectral-imaging) |
+| Vector imaging | ✅ Implemented | engine plumbing over `optics::vector` (thin mask, ideal lens, no multiple film reflections) | [Vector imaging](vector-imaging.md) |
+| Image normalization | ✅ Implemented | relative intensity (÷ exact clear field); absolute available; dark field stays absolute | [Normalization](#image-normalization-relative-intensity) |
+| Flare | 🔶 Simplified | uniform zeroth-order fraction of the mean intensity | [Flare](#flare) |
+
 ### Abbe / Hopkins imaging with a factorized TCC
 
 For the sampled source (points $\mathbf s$ in units of $f_c = \mathrm{NA}/\lambda$, weights $w_s$, $\sum w_s = 1$) the image is the incoherent sum of coherent images (Abbe),
 
 ```math
-I(\mathbf x) \;=\; \sum_{s} w_s \left| \mathcal{F}^{-1}\!\left[ P\!\left(\tfrac{\mathbf f}{f_c} + \mathbf s;\, z, \lambda\right) M(\mathbf f) \right](\mathbf x) \right|^2 ,
+\begin{aligned}
+I(\mathbf x) &= \sum_{s} w_s\, |E_s(\mathbf x)|^2 , \\
+E_s(\mathbf x) &= \mathcal{F}^{-1}\!\left[ P\!\left(\tfrac{\mathbf f}{f_c} {+} \mathbf s; z, \lambda\right) M(\mathbf f) \right](\mathbf x) ,
+\end{aligned}
 ```
 
 equivalently Hopkins' form with the Transmission Cross-Coefficient
 
 ```math
-\mathrm{TCC}(\mathbf f_1, \mathbf f_2) \;=\; \sum_{s} w_s\, P(\mathbf f_1 + \mathbf s)\, P^{*}(\mathbf f_2 + \mathbf s) \;=\; (A A^{H})_{\mathbf f_1 \mathbf f_2},
-\qquad A[\mathbf f, s] = \sqrt{w_s}\, P(\mathbf f + \mathbf s;\, z, \lambda).
+\begin{aligned}
+\mathrm{TCC}(\mathbf f_1, \mathbf f_2) &= \sum_{s} w_s P(\mathbf f_1{+}\mathbf s) P^{*}(\mathbf f_2{+}\mathbf s) \\
+&= (A A^{H})_{\mathbf f_1 \mathbf f_2}, \\
+A[\mathbf f, s] &= \sqrt{w_s}\, P(\mathbf f + \mathbf s;\, z, \lambda).
+\end{aligned}
 ```
 
 The engine never forms the TCC entry by entry: it assembles the factor $A$ — one column per source point (in vector mode, `columns_per_source_point` columns per point, filled by `optics::vector::field_columns`) — in parallel, so `TCC = A·Aᴴ` holds exactly. The figure in the Physics Strip above shows every ingredient for the canonical run: the sampled source points, the exact mask orders, the first four kernels and the partial sums converging on the image.
@@ -212,7 +228,7 @@ The same through-focus sweep, run for a conventional fill and a matched dipole o
 
 ### Spectral imaging
 
-- **`compute_multiwavelength(mask, z) → Result`** — exact incoherent per-wavelength sum: at every spectral sample $\lambda_i$ the kernels are rebuilt with cutoff $\mathrm{NA}/\lambda_i$ (the optics' `cutoff_frequency(λ_i)`), source points at $\sigma \mathrm{NA}/\lambda_i$, the pupil evaluated at $\lambda_i$, and focus $z + $ `optics.chromatic_defocus(λ_i − λ₀)`; $I = \sum_i w_i I_i$, then flare. This is the honest path for broad or multi-line spectra (HHG harmonic combs, un-monochromatized beamlines). Two widely separated lines reproduce the weighted sum of two single-line engines to 1e-12.
+- **`compute_multiwavelength(mask, z) → Result`** — exact incoherent per-wavelength sum: at every spectral sample $\lambda_i$ the kernels are rebuilt with cutoff $\mathrm{NA}/\lambda_i$ (the optics' `cutoff_frequency(λ_i)`), source points at $\sigma \mathrm{NA}/\lambda_i$, the pupil evaluated at $\lambda_i$, and focus $z$ + `optics.chromatic_defocus(λ_i − λ₀)`; $I = \sum_i w_i I_i$, then flare. This is the honest path for broad or multi-line spectra (HHG harmonic combs, un-monochromatized beamlines). Two widely separated lines reproduce the weighted sum of two single-line engines to 1e-12.
 - **`compute_polychromatic(mask, z, source, optics)`** — the narrow-band approximation 🔶, kept for compatibility: center-wavelength kernels, focus shifted by `chromatic_defocus` per sample. Valid for Δλ/λ ≪ 1 (excimer, FEL, monochromatized sources); for the F2 laser it agrees with the exact per-λ sum to < 1e-4.
 
 <figure markdown="span">
@@ -228,7 +244,11 @@ The same through-focus sweep, run for a conventional fill and a matched dipole o
 Aerial images are reported as **relative intensity** by default (`ImageNormalization::ClearField`): the SOCS sum is divided by the exact clear-field intensity of the same illumination, optics, wavelength and focus plane,
 
 ```math
-I_{\text{rel}}(\mathbf x) = \frac{I(\mathbf x)}{I_{\text{clear}}}, \qquad I_{\text{clear}} = \mathrm{TCC}(0,0) = \sum_s \sum_{\text{cols}} |A(\mathbf f = 0; s)|^2 ,
+\begin{aligned}
+I_{\text{rel}}(\mathbf x) &= \frac{I(\mathbf x)}{I_{\text{clear}}}, \\
+I_{\text{clear}} &= \mathrm{TCC}(0,0) \\
+&= \sum_s \sum_{\text{cols}} |A(\mathbf f = 0; s)|^2 ,
+\end{aligned}
 ```
 
 computed from the DC row of $A$ (so it is exact even when the SOCS sum is truncated). A clear mask therefore images to 1 before flare for every pupil — apodized, obscured (Schwarzschild, High-NA EUV), zone-plate efficiency $\eta$, or vector with the radiometric factor on (where the raw clear field is ≈ 1.29 for a dipole at NA 0.9). For unapodized, unobscured scalar pupils with every source point inside the pupil, $I_{\text{clear}} = 1$ and nothing changes. Absolute radiometry stays available: `clear_field_intensity(z)` returns $I_{\text{clear}}$ and `ImageNormalization::Absolute` skips the division. Spectral sums normalize by $\sum_i w_i I_{\text{clear},i}$ (brighter-transmitting wavelengths weigh more). Dark-field configurations — the pupil blocks the zero order for essentially the whole source, $I_{\text{clear}} < 1$ % of the pupil's peak $|P|^2$ (e.g. near-coherent on-axis light through an obscured pupil) — have no meaningful relative intensity; they stay absolute, `kernel_diagnostics(…).normalized` is `false`, and the CLI prints a warning. The [playground's aerial toy](playground/index.md) uses the same clear-field convention.
@@ -282,11 +302,21 @@ The adaptive sampler costs ≈ 0.3 ms per engine; images from cached kernels are
 
 **🔶 Simplified** — two exposure paths, depth-averaged and volumetric; the 3-D development solvers are ✅ Implemented.
 
+<!-- huv-table: stack -->
+
+| Variant | Grade | Dominant approximation | Details |
+|---|---|---|---|
+| Resist (2-D) | 🔶 Simplified | depth-averaged dose; centre-row vertical develop | [Resist models](processes/resist-models.md) |
+| Resist (volumetric) | 🔶 Simplified | separable I_aer × S(z); lateral-mean bleaching; 3-D development ✅ | [Volumetric exposure](processes/volumetric-exposure.md) |
+
 The **depth-averaged 2-D path** ([resist models](processes/resist-models.md)) applies Dill exposure with a single Beer–Lambert coupling scalar (no z-resolved dose), separable-Gaussian PEB acid diffusion, and Mack (or threshold) development that etches only the centre row vertically — no lateral front, no sidewall profile:
 
 ```math
-m(x,y) = e^{-C \cdot \mathrm{dose} \cdot I_{\mathrm{eff}}}, \qquad
-R(m) = R_{\max}\frac{(a+1)(1-m)^n}{a + (1-m)^n} + R_{\min}, \quad a = \frac{n+1}{n-1}(1-m_{th})^n
+\begin{aligned}
+m(x,y) &= e^{-C \cdot \mathrm{dose} \cdot I_{\mathrm{eff}}}, \\
+R(m) &= R_{\max}\frac{(a{+}1)(1{-}m)^n}{a + (1{-}m)^n} + R_{\min}, \\
+a &= \frac{n+1}{n-1}(1-m_{th})^n
+\end{aligned}
 ```
 
 (with an explicit n → 1 singularity guard falling back to linear interpolation). The **volumetric path** ([volumetric exposure](processes/volumetric-exposure.md)) builds the full (x, y, z) latent image under a separable approximation, $I(x,y,z) = I_{\mathrm{aer}}(x,y; d_0 + z/n_r) \times S(z)$, where the lateral aerial image is refocused paraxially into the resist and $S(z)$ is the exact transfer-matrix `intensity_profile` — so standing waves are counted once, exactly; bleaching is split-step Dill with the laterally averaged PAC, and development is a per-column threshold, a 3-D fast-marching etch front or a level-set moving boundary, each with a frozen rate field during develop.

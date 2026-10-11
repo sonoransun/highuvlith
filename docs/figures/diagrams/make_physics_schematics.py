@@ -160,6 +160,7 @@ INV_LO, INV_HI = 1.0, 4.2  # the k₁ ruler is linear in 1/k₁ (the order spaci
 RX0, RX1 = 450, 860  # right column
 CUT_Y0, CUT_Y1 = 60, 196  # the 1-D cut panel
 CH_Y0, CH_Y1 = 300, 400  # the contrast chart
+CH_TOP = 1.2  # the chart's contrast range: the strip above c = 1 holds the dipole's label, clear of every line
 T_A = 5.0  # phase A ends (k₁ 1.0 → 0.28)
 T_LIMIT = 8.5  # the dipole reaches the 0.25 limit
 T_PAST = 9.0  # a hair past it (k₁ 0.24)
@@ -195,7 +196,7 @@ def ruler_x(inv: float) -> float:
 
 
 def chart_y(c: float) -> float:
-    return CH_Y1 - c * (CH_Y1 - CH_Y0)
+    return CH_Y1 - c / CH_TOP * (CH_Y1 - CH_Y0)
 
 
 def cut_points(toy: Toy, x0: float, x1: float, y_base: float, height: float, n: int = 17,
@@ -335,21 +336,27 @@ def draw_pupil_orders(theme: str) -> str:
             s.line(x, CH_Y1, x, CH_Y1 + 5, "axis", 1.0)
             s.text(x, CH_Y1 + 18, f"{k1:g}", size=K.SMALL, color="ink2")
         s.text(RX1, CH_Y1 + 34, "k₁ = (p/2)·NA/λ, axis linear in λ/p", size=K.SMALL, anchor="end", color="ink2")
-        # the three limits
-        for k1, label, y, anchor in ((0.5, "coherent cutoff 0.5: the +1 order on the rim", CH_Y0 - 38, "start"),
-                                     (1 / 3.4, "σ 0.7 cutoff 0.29: ±1 leave the support circle", CH_Y0 - 22, "end"),
-                                     (0.25, "two-beam limit 0.25", CH_Y0 - 6, "end")):
+        # the three limits: a dashed line each from the c = 1 gridline down to the axis, and one short caption
+        # each above the chart, centred on its line (the 0.25 one a row higher, with a leader tick down to the chart)
+        y_data_top = chart_y(1.0)
+        for k1, label, anchor, dx, y in ((0.5, "coherent cutoff 0.5", "middle", 0, CH_Y0 - 6),
+                                         (1 / 3.4, "σ 0.7 cutoff 0.29", "middle", 0, CH_Y0 - 6),
+                                         (0.25, "two-beam limit 0.25", "end", RX1 - 4 - ruler_x(4.0), CH_Y0 - 22)):
             x = ruler_x(1 / k1)
-            s.line(x, CH_Y0, x, CH_Y1, "ink2", 1.0, dash="4 3", opacity=0.7)
-            s.text(x + (4 if anchor == "start" else -4), y, label, size=K.SMALL, anchor=anchor, color="ink2")
-        # the two curves
+            s.line(x, y_data_top, x, CH_Y1, "ink2", 1.0, dash="4 3", opacity=0.7)
+            s.text(x + dx, y, label, size=K.SMALL, anchor=anchor, color="ink2")
+            if y < CH_Y0 - 6:
+                s.line(x, y + 4, x, y_data_top, "ink2", 1.0, opacity=0.7)
+        # the two curves; the dipole's label sits in the strip above c = 1, right over its flat line and left of
+        # the 0.25 leader, so it crosses neither curve nor cutoff line
         s.polyline([(round(ruler_x(inv)), round(chart_y(c))) for inv, c in conv_curve], "ink2", 1.8)
-        s.text(ruler_x(1.04), chart_y(0.70), "conventional σ 0.7", size=K.SMALL, anchor="start", color="ink2")
+        s.text(ruler_x(1.04), chart_y(0.66), "conventional σ 0.7", size=K.SMALL, anchor="start", color="ink2")
         s.polyline([(ruler_x(2.0), chart_y(dip_c)), (ruler_x(4.0), chart_y(dip_c)), (ruler_x(4.0), chart_y(0)),
                     (ruler_x(4.0 * SIGC_PAST), chart_y(0))], "brand:violet600", 1.8)
-        s.text(ruler_x(2.08), chart_y(0.78), "matched dipole: two beams, contrast stays", size=K.SMALL, anchor="start", color="brand:violet600")
-        # the cursor and the dot
-        s.add(f'<line x1="{K.fmt(ruler_x(INV_LO))}" y1="{CH_Y0}" x2="{K.fmt(ruler_x(INV_LO))}" y2="{CH_Y1}" '
+        s.text(ruler_x(4.0) - 7, y_data_top - 5, "matched dipole: two beams, contrast stays", size=K.SMALL, anchor="end",
+               color="brand:violet600")
+        # the cursor (over the data range only, so it never sweeps through the label strip) and the dot
+        s.add(f'<line x1="{K.fmt(ruler_x(INV_LO))}" y1="{K.fmt(y_data_top)}" x2="{K.fmt(ruler_x(INV_LO))}" y2="{CH_Y1}" '
               f'stroke="{s.c("brand:cyan700")}" stroke-width="1.2" class="cur"/>')
         s.add(f'<circle cx="0" cy="0" r="6" fill="{s.c("brand:cyan700")}" stroke="{s.c("surface")}" stroke-width="1.5" class="dot"/>')
 

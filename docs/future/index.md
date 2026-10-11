@@ -73,6 +73,7 @@ Every technology in this section sits on one rung of a seven-rung ladder, with t
 
 <!-- readiness-table:start -->
 
+<!-- huv-table: stack -->
 | Technology | Readiness (Sep 2026) | highuvlith model | Page |
 |---|---|---|---|
 | 0.33 NA EUV with tin LPP sources (250–600 W) | **In production** | ✅ [LPP source](../sources/lpp.md), 🔶 [EUV projection optics](../optics.md) | [High-NA](high-na-and-hyper-na.md#readiness-at-a-glance), [accelerators](accelerator-light-sources.md#readiness-at-a-glance) |
@@ -116,6 +117,7 @@ Every technology in this section sits on one rung of a seven-rung ladder, with t
 
 The two scales measure different things. **Readiness** describes the *technology*; the **grades** describe the *simulator's model* and come from the [capability matrix](../capability-matrix.md): ✅ Implemented (computed and validated), 🔶 Simplified (runs, with stated approximations), 🧪 Theoretical (runnable, but it models speculative physics), 🗺️ Planned (not in code). "Not modelled" means there is no code at all. A ✅ model of a source that does not exist is still a model of a source that does not exist.
 
+<!-- huv-table: stack -->
 | Rung | Definition | Label used before October 2026 |
 |---|---|---|
 | **In production** | running in volume manufacturing, per the company or credible reporting; "(selected layers)", "(niche)", "(reported)" as qualifiers | In production |
@@ -153,8 +155,10 @@ aperture NA, the smallest pitch is $\lambda/(2 \mathrm{NA})$. Written as the usu
 resolution equation [1, 2, 3]:
 
 ```math
-\mathrm{HP} = k_1\,\frac{\lambda}{\mathrm{NA}}, \qquad k_1 \ge 0.25 \ \text{(single exposure, dense lines)},
-\qquad \mathrm{DOF} = k_2\,\frac{\lambda}{\mathrm{NA}^2}.
+\begin{gathered}
+\mathrm{HP} = k_1\,\frac{\lambda}{\mathrm{NA}}, \qquad \mathrm{DOF} = k_2\,\frac{\lambda}{\mathrm{NA}^2}, \\
+k_1 \ge 0.25 \ \text{(single exposure, dense lines)}.
+\end{gathered}
 ```
 
 Production lives above the floor. ASML's resolution specifications imply $k_1 \approx 0.27$

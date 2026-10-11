@@ -85,9 +85,11 @@ The plasma emits broadband unresolved-transition-array radiation; the **multilay
 In-band power at intermediate focus follows the live power chain, where η₂π→IF (the `transport_efficiency` field) lumps collector solid angle, collector reflectance and debris / buffer-gas / spectral-purity losses, and f_étendue is the étendue-limited usable fraction:
 
 ```math
-P_\text{2π} = P_\text{drive}\,\mathrm{CE}, \qquad
-P_\text{IF} = P_\text{2π}\;\eta_{2\pi\to\text{IF}}\;f_\text{étendue}, \qquad
-E_\text{pulse} = \frac{P_\text{IF}}{f_\text{rep}}
+\begin{aligned}
+P_\text{2π} &= P_\text{drive}\,\mathrm{CE}, \\
+P_\text{IF} &= P_\text{2π}\;\eta_{2\pi\to\text{IF}}\;f_\text{étendue}, \\
+E_\text{pulse} &= \frac{P_\text{IF}}{f_\text{rep}}
+\end{aligned}
 ```
 
 For the NXE:3400B chain, 21.5 kW × 6 % = 1290 W into 2π sr; the presets use η₂π→IF = 250/1290 ≈ 0.194, **calibrated** so the chain lands on the published 250 W at IF (5 mJ per droplet at 50 kHz). A drive laser of wavelength λ_L cannot propagate beyond the plasma critical density and deposits its energy near it,
@@ -99,7 +101,10 @@ n_c = \frac{\varepsilon_0 m_e \omega_L^2}{e^2} = \frac{1.115\times10^{21}}{\lamb
 — ~100× lower for CO₂ light than for 1 µm, so the energy goes into a lower-density, optically thinner plasma and less of the Sn array is lost to opacity broadening, the standard explanation for the highest conversion efficiencies being CO₂-driven [1]. In the model the drive laser only sets the CE default at construction (`Co2` 6 %, reported; `SolidState1um` 3 %, reported laboratory class; `Thulium2um` 4.5 %, a projection) and the reported critical density; plasma physics itself is not simulated. Étendue (area × solid angle) is conserved, so the illuminator accepts only a source whose étendue fits its budget; for a small isotropic emitter of diameter d collected over Ω:
 
 ```math
-G_\text{src} = \frac{\pi d^2}{4}\,\Omega, \qquad f_\text{étendue} = \min\!\left(1,\ \frac{G_\text{ill}}{G_\text{src}}\right)
+\begin{aligned}
+G_\text{src} &= \frac{\pi d^2}{4}\,\Omega, \\
+f_\text{étendue} &= \min\!\left(1,\ \frac{G_\text{ill}}{G_\text{src}}\right)
+\end{aligned}
 ```
 
 With the assumed NXE-like geometry (`LppGeometry::nxe_like()`: d = 200 µm, Ω = 5 sr, G_ill = 3.3 mm²·sr — a commonly quoted illuminator budget, but scanner-specific), G_src = 0.157 mm²·sr, a margin of 21, so the LPP loses nothing; a DPP-like 1 mm emitter would keep only 84 % — one reason larger discharge plasmas are harder to use ([DPP](dpp.md)).

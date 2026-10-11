@@ -6,7 +6,8 @@
  *   shown for print), ticks, niceStep, logTicks, SERIES (the --huv-series-1…8 fallbacks).
  * Markup: fieldset.huv-calc__fieldset > legend.huv-calc__title · form.huv-calc__controls · ul.huv-tiles ·
  *   p.huv-calc__message · ul.huv-legend · div.huv-plot > canvas + div.huv-tooltip · div.huv-calc__row >
- *   div.huv-pupil > svg.huv-pupil__svg (the D5 live pupil) · div.huv-calc__tablewrap > table.huv-calc__table.
+ *   div.huv-pupil > svg.huv-pupil__svg (the D5 live pupil) · div.huv-calc__tablewrap > table.huv-calc__table
+ *   (every td carries data-label="<th>"; more than four columns add .huv-stack, so phones get cards; extra.css).
  * Deep links ?calc=<widget>&preset=…&<param>=…: applied on mount, rewritten (non-default values) after input.
  *   rayleigh: preset lambda na n k1 k2 · shotnoise: preset lambda dose shape size fabs target · aerial: preset
  *   lambda n na sigma sigmain pitch cd z t coh (+ k1 read-only: pitch = 2·k1·λ/NA, duty cycle kept).
@@ -219,11 +220,13 @@
     };
   }
 
+  /* More than four columns cannot fit a phone column: those tables take the kit's .huv-stack
+     (one card per row below 45em, each td labelled by its header) instead of a sideways scroll. */
   function table(caption, headers) {
     var captionNode = el("caption", { className: "huv-sr-only", text: caption });
     var head = el("thead", null, [el("tr", null, headers.map(function (h) { return el("th", { scope: "col", text: h }); }))]);
     var body = el("tbody");
-    var node = el("table", { className: "huv-calc__table" }, [captionNode, head, body]);
+    var node = el("table", { className: "huv-calc__table" + (headers.length > 4 ? " huv-stack" : "") }, [captionNode, head, body]);
     return {
       node: el("div", { className: "huv-calc__tablewrap" }, [node]),
       caption: function (text) { captionNode.textContent = text; },
@@ -232,7 +235,7 @@
         rows.forEach(function (row) {
           var tr = el("tr", { "aria-current": row.current ? "true" : null });
           row.cells.forEach(function (cell, i) {
-            tr.appendChild(el(i === 0 ? "th" : "td", i === 0 ? { scope: "row", text: cell } : { text: cell }));
+            tr.appendChild(el(i === 0 ? "th" : "td", i === 0 ? { scope: "row", text: cell } : { "data-label": headers[i], text: cell }));
           });
           body.appendChild(tr);
         });

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import csv
 import math
+import re
 import sys
 import textwrap
 
@@ -413,7 +414,7 @@ def _all_chains() -> dict:
         "synchrotron", "Synchrotron", ROW_SYNC, rows,
         [_chain("compact EUV undulator (538 MeV, K = 1, N = 100, 200 mA)", 1, [ptot, pline, pcoh, None, None],
                 ["assumed", "assumed", "assumed", "assumed", "assumed"], "compact undulator"),
-         _chain("LIGA bending magnet, per mrad of horizontal acceptance", 2, [None, None, None, pmrad, pmono],
+         _chain("LIGA bending magnet", 2, [None, None, None, pmrad, pmono],
                 ["reported", "reported", "reported", "reported", "reported"], "bending magnet")],
         [f"× line fraction {_pct(lfrac)} (πα Q$_1$ (I/e) E$_γ$: N cancels)", f"× ζ = {zeta:.3f} ($ζ_x$ × $ζ_y$; real lattices are not matched)",
          "the bending-magnet rows are a different machine (KARA-class white beam); units W per mrad",
@@ -487,7 +488,22 @@ def _all_chains() -> dict:
 # ---- the draw helper ------------------------------------------------------------------------------
 
 _ROW_H_IN = (0.38, 0.085)  # family panel: row pitch = 0.38 + 0.085 × chains (inches); bars take 62 % of it
-_ROW_H_COMPACT = (0.21, 0.040)
+# the sheet: the same type sizes as the family panels (the page renders the sheet at column width, so smaller
+# type would land near 6 px), hence a pitch that holds a stack of end labels on the last row (6 × 10.5 px for LPP)
+_ROW_H_COMPACT = (0.26, 0.065)
+#: row labels on the sheet wrap at this many characters so the y-label zone stays ≈ 1.45 in per column
+_SHEET_WRAP = 22
+#: sheet-only titles for the two panels whose full title would run into the grade chip on a 2.4 in title line
+#: (the family panels keep the full title)
+_SHEET_TITLES = {"lpa-fel": "LPA-FEL", "noon": "Entangled-photon source"}
+_UNIT_RE = re.compile(r"(\d)\s+(mm|nm|µm|cm²|cm|mrad|kW|mW|W|s)(?!\w)")
+
+
+def _wrap_row_label(text: str, width: int = _SHEET_WRAP) -> str:
+    """A row label wrapped for the sheet; ``b = 1``, ``100 mm`` and ``per mrad`` stay on one line."""
+    keep = _UNIT_RE.sub(lambda m: f"{m.group(1)}\u00a0{m.group(2)}", text)
+    keep = keep.replace(" = ", "\u00a0=\u00a0").replace("per mrad", "per\u00a0mrad")
+    return textwrap.fill(keep, width).replace("\u00a0", " ")
 
 
 def _row_pitch(nchains: int, compact: bool) -> float:
@@ -501,7 +517,10 @@ def draw_waterfall(ax, panel: dict, th: S.Theme, *, compact: bool = False, xlim:
 
     Rows are the stages (top → bottom), one bar per chain and row; bar styles follow
     ``tokens.PROVENANCE``; the value label at every bar end is the number the code reports;
-    ``compact`` (the composite) drops the factor texts and labels only the last two rows.
+    ``compact`` (the composite sheet) drops the factor and plane texts and labels only the last
+    row (every row of a single-chain panel); its type sizes are the family panels' — the sheet is
+    rendered at column width on the page, where anything smaller is illegible — so long row
+    labels wrap at ``_SHEET_WRAP`` characters instead of shrinking.
     """
     rows, chains = panel["rows"], panel["chains"]
     n, nrows = len(chains), len(rows)
@@ -520,9 +539,9 @@ def draw_waterfall(ax, panel: dict, th: S.Theme, *, compact: bool = False, xlim:
     ax.tick_params(axis="y", length=0)
     if panel["hvm"]:
         ax.axvspan(*HVM_BAND_W, color=th.band, zorder=0, lw=0)
-        if not compact:
-            ax.text(math.sqrt(HVM_BAND_W[0] * HVM_BAND_W[1]), -(nrows - 1) - 0.58, "HVM need at IF\n250 W → 1 kW", ha="center",
-                    va="bottom", fontsize=S.SMALL_PT - 1, color=th.ink2, zorder=1)
+        if not compact:  # one line in the free strip above the top row's bars, where no value label can reach it
+            ax.text(math.sqrt(HVM_BAND_W[0] * HVM_BAND_W[1]), top - 0.03, "HVM need at IF: 250 W → 1 kW", ha="center",
+                    va="top", fontsize=S.SMALL_PT - 1, color=th.ink2, zorder=1)
     span = 0.72 if compact else 0.62
     pitch = span / n
     hbar = pitch * (0.82 if n > 1 else 0.6)
@@ -553,8 +572,7 @@ def draw_waterfall(ax, panel: dict, th: S.Theme, *, compact: bool = False, xlim:
             if not compact or i == nrows - 1 or n == 1:
                 items.append((x_label, yc, text))
         if items:
-            S.end_labels(ax, items, th, min_gap_px=(8.5 if compact else 10.5), dx_px=4,
-                         fontsize=(S.SMALL_PT - 1.5 if compact else S.SMALL_PT - 0.5))
+            S.end_labels(ax, items, th, min_gap_px=10.5, dx_px=4, fontsize=S.SMALL_PT - 0.5)
         if not compact:
             ax.text(0.0, y0 - 0.33, plane, transform=ax.get_yaxis_transform(), ha="right", va="center",
                     fontsize=S.SMALL_PT - 1.5, color=th.muted, clip_on=False)
@@ -565,7 +583,7 @@ def draw_waterfall(ax, panel: dict, th: S.Theme, *, compact: bool = False, xlim:
             ax.text(base * 1.25, -i - 0.5, wrapped, fontsize=S.SMALL_PT - 1.5, color=th.muted, va="center", ha="left",
                     zorder=4, clip_on=False, linespacing=1.15)
     ax.set_yticks([-i for i in range(nrows)])
-    ax.set_yticklabels([r[0] for r in rows], fontsize=(S.SMALL_PT - 1 if compact else S.SMALL_PT))
+    ax.set_yticklabels([_wrap_row_label(r[0]) if compact else r[0] for r in rows], fontsize=S.SMALL_PT)
     for lab in ax.get_yticklabels():
         lab.set_va("center" if compact else "bottom")
         if not compact:
@@ -574,12 +592,13 @@ def draw_waterfall(ax, panel: dict, th: S.Theme, *, compact: bool = False, xlim:
         # the stage name sits above its plane label: nudge the tick labels up by a few points
         for lab in ax.get_yticklabels():
             lab.set_transform(S._offset(ax, 0, 3.5, lab.get_transform()))
-    ax.set_title(panel["title"], fontsize=(S.SMALL_PT + 0.5 if compact else S.TITLE_PT), pad=(5 if compact else 9))
+    title = _SHEET_TITLES.get(panel["key"], panel["title"]) if compact else panel["title"]
+    ax.set_title(title, fontsize=(S.SMALL_PT + 0.5 if compact else S.TITLE_PT), pad=(5 if compact else 9))
     if chip:  # in the title line, right-aligned, never over a bar: a few points above the axes' top edge
         ax.figure.canvas.draw()
         px = ax.transAxes.transform((1.0, 1.0)) + np.array([0.0, (9.0 if compact else 11.0) * ax.figure.dpi / 72])
         _x, y_chip = ax.transData.inverted().transform(px)
-        S.chip(ax, _grade(panel["row"]), (xlim[1], y_chip), th, ha="right", va="center", size_pt=S.SMALL_PT * (0.85 if compact else 0.95))
+        S.chip(ax, _grade(panel["row"]), (xlim[1], y_chip), th, ha="right", va="center", size_pt=S.SMALL_PT * 0.95)
 
 
 def _prov_handles(th: S.Theme):
@@ -784,15 +803,22 @@ def composite_compute(fast: bool):  # noqa: ARG001
 
 
 def composite_draw(panels: dict, th: S.Theme):
-    title_in, gap_in = 0.34, 0.16
+    """The sheet: two columns of family panels at one text column's width (``S.FULL_WIDTH``), the
+    page's six clusters top to bottom, every panel on one shared log-power axis. Type is the
+    family panels': the page shows the sheet at column width, and DESIGN §4.6 makes the lightbox
+    the phone strategy, not the only place the sheet is legible."""
+    title_in, gap_in = 0.40, 0.20
     heights = {k: title_in + len(p["rows"]) * _row_pitch(len(p["chains"]), True) for k, p in panels.items()}
     col_h = [sum(heights[k] + gap_in for k in col) for col in _COMPOSITE_ORDER]
-    top_in, bottom_in = 0.25, 0.95
+    top_in, bottom_in = 0.25, 1.25
     fig_h = max(col_h) + top_in + bottom_in
-    fig_w = S.WIDE_WIDTH + 0.8
+    fig_w = S.FULL_WIDTH
+    # per column: a wrapped-label zone, the axes, then a gutter that also takes the left column's end labels
+    label_in, axes_in, gutter_in = 1.45, 2.4, 0.3
+    assert abs(2 * (label_in + axes_in) + gutter_in - fig_w) < 1e-9, "the two columns must fill FULL_WIDTH exactly"
+    left = (label_in / fig_w, (label_in + axes_in + gutter_in + label_in) / fig_w)
+    width = axes_in / fig_w
     fig = plt.figure(figsize=(fig_w, fig_h))
-    left = (0.165, 0.665)
-    width = 0.30
     xlim = (1e-14, 1e8)
     for c, col in enumerate(_COMPOSITE_ORDER):
         y = fig_h - top_in
@@ -802,15 +828,17 @@ def composite_draw(panels: dict, th: S.Theme):
             ax = fig.add_axes([left[c], y / fig_h, width, (h - title_in) / fig_h])
             draw_waterfall(ax, panels[k], th, compact=True, xlim=xlim)
             ax.set_xticks([1e-12, 1e-9, 1e-6, 1e-3, 1, 1e3, 1e6])
-            ax.tick_params(axis="x", labelsize=S.SMALL_PT - 1.5)
+            ax.tick_params(axis="x", labelsize=S.SMALL_PT - 0.5)
             if k == col[-1]:
-                ax.set_xlabel("power (W); the plane of each row is on the family page", fontsize=S.SMALL_PT - 1)
+                ax.set_xlabel("power (W)", fontsize=S.SMALL_PT)
             y -= gap_in
     handles, labels = _prov_handles(th)
-    fig.legend(handles, labels, loc="lower center", ncol=3, fontsize=S.SMALL_PT - 1, bbox_to_anchor=(0.5, 0.004),
+    fig.legend(handles, labels, loc="lower center", ncol=3, fontsize=S.SMALL_PT - 0.5, bbox_to_anchor=(0.5, 0.004),
                handlelength=1.4, columnspacing=1.2)
-    fig.text(0.5, (bottom_in - 0.35) / fig_h, "shaded band: HVM need at intermediate focus, 250 W → 1 kW (13.5 nm families); "
-             "chips: the family's capability-matrix grade", ha="center", fontsize=S.SMALL_PT - 1, color=th.ink2)
+    fig.text(0.5, (bottom_in - 0.60) / fig_h,
+             "shaded band: HVM need at intermediate focus, 250 W → 1 kW (13.5 nm families) · chips: the family's capability-matrix grade\n"
+             "each row's plane (laser output · into 2π sr · at intermediate focus · on the wafer) is named on the family page",
+             ha="center", va="center", fontsize=S.SMALL_PT - 0.5, color=th.ink2, linespacing=1.4)
     return fig
 
 
@@ -1153,21 +1181,32 @@ def synchrotron_compute(fast: bool):
     ring = {"ex": 10.0, "ey": 0.1, "zx": dq["coherent_fraction_x"], "zy": dq["coherent_fraction_y"], "z": dq["coherent_fraction"]}
     assert abs(ring["zx"] * ring["zy"] - ring["z"]) < 1e-9
     photon_emit = lam0 / (4 * math.pi)
-    assert abs(zeta_plane[np.argmin(abs(eps - 1.0))] - photon_emit / (1.0 + photon_emit)) < 2e-2, "ζ(ε) = (λ/4π)/(ε + λ/4π)"
-    # (d) the bending-magnet probe decides the panel: xray_spectrum() → S(E/E_c); None → central-cone flux per harmonic
+    z_unit = _dq(S_.synchrotron_undulator(emittance_x_nm_rad=1.0, emittance_y_nm_rad=1.0))["coherent_fraction_x"]
+    assert abs(z_unit - photon_emit / (1.0 + photon_emit)) < 1e-6, "ζ(ε) = (λ/4π)/(ε + λ/4π)"  # at ε = 1 exactly, in every mode
+    # (d) the LIGA white beam: the universal bending-magnet shape S(E/E_c) at the preset's critical energy, scaled to the
+    # engine's absolute flux at the 0.2 nm selection; integrated over all energies it must give back the engine's power
+    # per mrad, which the engine derives independently (e γ⁴ I / 6π ε₀ ρ)
+    from fig_sources_b import bm_universal_shape  # noqa: PLC0415  (the K_{5/3} integral the betatron figure checks against the engine)
+
     bm = S_.synchrotron_liga_bending_magnet()
-    spec = bm.xray_spectrum(50 if fast else 200)
-    assert spec is None, ("synchrotron_liga_bending_magnet().xray_spectrum() now returns data: draw the S(E/E_c) panel and "
-                          "update the caption, which says the harmonic fallback ran")
-    harm = []
-    for n in (1, 3, 5, 7, 9):
-        s = S_.synchrotron_undulator(harmonic=n)
-        d_ = _dq(s)
-        harm.append((n, float(s.wavelength_nm), d_["central_cone_flux"], d_["central_cone_power"]))
-    assert abs(harm[1][2] / harm[0][2] - dq["harmonic3_over_1"]) < 1e-9
+    db = _dq(bm)
+    ec, e_sel_ev, f_sel, p_mrad, p_mono = _need(db, "LIGA bending magnet", "critical_energy", "photon_energy",
+                                                "flux_per_mrad_at_selection", "power_per_mrad", "mono_power_per_mrad")
+    e_sel = e_sel_ev * 1e-3
+    y = np.logspace(-3, math.log10(30.0), 200 if fast else 600)
+    s_y = bm_universal_shape(y)
+    s_sel = float(bm_universal_shape(np.array([e_sel / ec]))[0])
+    flux = f_sel * s_y / s_sel  # photons/s/mrad/0.1 % BW, per mrad of horizontal angle, integrated over the vertical
+    kev_j = 1.602176634e-16
+    # per 0.1 % BW → per unit ln E is × 1000; power = ∫ 1000 F(E) E d(ln E) = 1000 (F_sel / S_sel) E_c ∫ S(y) dy
+    p_int = 1000.0 * f_sel / s_sel * ec * np.trapezoid(s_y, y) * kev_j
+    assert abs(p_int / p_mrad - 1) < 5e-3, (p_int, p_mrad, "the scaled S(E/E_c) does not integrate to the engine's power per mrad")
+    assert abs(f_sel * e_sel * kev_j / p_mono - 1) < 1e-6, "mono power ≠ selection flux × photon energy (0.1 % band)"
     return {"lam0": lam0, "fwhm_pm": fwhm_pm, "samples": samples, "ks": ks, "harmonics": harmonics, "eps": eps, "zeta": zeta_plane,
-            "ring": ring, "photon_emit": photon_emit, "harm": harm, "ec_kev": _dq(bm)["critical_energy"], "n_periods": n_periods,
-            "line_power": dq["central_cone_power"], "total_power": dq["total_undulator_power"]}
+            "ring": ring, "photon_emit": photon_emit, "n_periods": n_periods,
+            "line_power": dq["central_cone_power"], "total_power": dq["total_undulator_power"],
+            "bm": {"ec": ec, "e": y * ec, "flux": flux, "e_sel": e_sel, "f_sel": f_sel, "p_mrad": p_mrad, "p_int": p_int,
+                   "lam_sel_nm": float(bm.wavelength_nm)}}
 
 
 def synchrotron_draw(d, th: S.Theme):
@@ -1178,9 +1217,7 @@ def synchrotron_draw(d, th: S.Theme):
     dl = np.linspace(-300, 300, 1201)  # pm
     x = d["n_periods"] * dl * 1e-3 / d["lam0"]
     sinc2 = np.sinc(x) ** 2
-    gauss = np.exp(-4 * math.log(2) * (dl / (d["lam0"] * 1e3 / d["n_periods"])) ** 2)
     ax.plot(dl, sinc2, color=th.s(1), zorder=3, label=f"sinc²: FWHM {d['fwhm_pm']:.2f} pm")
-    ax.plot(dl, gauss, color=th.ink2, linewidth=S.HAIR_PT * 1.3, linestyle=(0, (4, 3)), zorder=2, label="former Gaussian, FWHM λ/(nN) = 135 pm")
     w = d["samples"]
     ax.vlines((w[:, 0] - d["lam0"]) * 1e3, 0, w[:, 1] / w[:, 1].max(), color=th.s(2), linewidth=S.LINE_PT * 1.2, zorder=4,
               label="the five samples spectrum() hands the engine")
@@ -1226,24 +1263,34 @@ def synchrotron_draw(d, th: S.Theme):
     cx.set_xlabel("geometric emittance ε (nm·rad)")
     cx.set_ylabel("coherent fraction")
     cx.set_title(f"(c) Coherent fraction at {d['lam0']:.1f} nm, matched beta")
-    # (d) central-cone flux per harmonic (the fallback panel)
-    S.style_axes(dx, th, grid="y")
+    # (d) the bending-magnet spectrum of the LIGA preset
+    b = d["bm"]
+    ec = b["ec"]
+    S.style_axes(dx, th, grid="both")
+    dx.set_xscale("log")
     dx.set_yscale("log")
-    ns = [h[0] for h in d["harm"]]
-    flux = np.array([h[2] for h in d["harm"]])
-    dx.vlines(ns, flux.min() / 30, flux, color=th.s(1), linewidth=S.LINE_PT * 1.6, zorder=3)
-    S.dot(dx, ns, flux, th.s(1), th, zorder=4)
-    for n, lam, f, p in d["harm"]:
-        dx.annotate(f"{lam:.2f} nm\n{f / flux[0]:.3g}", (n, f), xytext=(0, 9), textcoords="offset points", ha="center", va="bottom",
-                    fontsize=S.SMALL_PT - 1.5, color=th.ink2)
-    dx.set_xticks(ns)
-    dx.set_xlim(0, 10)
-    dx.set_ylim(flux.min() / 30, flux.max() * 40)
-    dx.set_xlabel("harmonic n at K = 1")
-    dx.set_ylabel("central-cone flux (photons/s/0.1 % BW)")
-    dx.set_title("(d) Central-cone flux per harmonic, 200 mA (fallback panel)")
-    dx.text(0.98, 0.97, f"bending magnet: xray_spectrum() returns None\nfor the LIGA preset ($E_c$ = {d['ec_kev']:.2f} keV), so this\npanel draws the undulator harmonics instead",
-            transform=dx.transAxes, ha="right", va="top", fontsize=S.SMALL_PT - 1.5, color=th.muted)
+    dx.axvspan(0.1 * ec, 8.0 * ec, color=th.band, zorder=0, lw=0)
+    dx.plot(b["e"], b["flux"], color=th.s(1), zorder=3)
+    S.dot(dx, [b["e_sel"]], [b["f_sel"]], th.s(2), th, zorder=4)
+    S.limit_line(dx, ec, th, f"$E_c$ = {ec:.2f} keV", where=0.03, side="right", va="bottom")
+    dx.annotate(f"{b['lam_sel_nm']:g} nm selection (engine, 200 mA):\n{b['f_sel'] / 1e12:.2f} × 10¹² photons/s/mrad/0.1 % BW",
+                (b["e_sel"], b["f_sel"]), xytext=(-9, 9), textcoords="offset points", ha="right", va="bottom",
+                fontsize=S.SMALL_PT - 1, color=th.ink2)
+    p_mono_mw = b["f_sel"] * b["e_sel"] * 1.602176634e-16 * 1e3
+    # the note stays left of the E_c line (axes fraction 0.63): short lines, nothing drawn through the dashes
+    dx.text(0.03, 0.05, f"shaded: the [0.1, 8] $E_c$ window the LIGA\nmodule samples\n"
+            f"curve: S(E/E$_c$), the K$_{{5/3}}$ integral\n"
+            f"evaluated here, scaled to the engine's\n"
+            f"selection flux ({p_mono_mw:.2f} mW/mrad in its\n"
+            f"0.1 % band); ∫ over all E = {b['p_int']:.1f} W/mrad,\n"
+            f"the engine's power_per_mrad\n"
+            f"(e γ⁴ I / 6π $ε_0$ ρ) = {b['p_mrad']:.1f} W/mrad",
+            transform=dx.transAxes, ha="left", va="bottom", fontsize=S.SMALL_PT - 1.5, color=th.muted, linespacing=1.25)
+    dx.set_xlim(0.03, 150)
+    dx.set_ylim(b["flux"].max() * 1e-4, b["flux"].max() * 12)
+    dx.set_xlabel("photon energy (keV)")
+    dx.set_ylabel("flux (photons/s/mrad/0.1 % BW)")
+    dx.set_title(f"(d) The LIGA white beam: bending magnet, $E_c$ = {ec:.2f} keV")
     return fig
 
 
@@ -1252,15 +1299,17 @@ register(FigureSpec(
     group="sources",
     compute=synchrotron_compute,
     draw=synchrotron_draw,
-    alt="Four synchrotron panels: the sampled weights on the sinc-squared undulator line, the harmonic factors F and Q "
-        "against K for harmonics 1, 3 and 5, the matched-beta coherent fraction against emittance with the compact-ring point "
-        "at 0.089, and the central-cone flux per odd harmonic at K = 1.",
-    caption="<strong>What the undulator model derives from the machine.</strong> (a) The on-axis sinc² line of the compact preset "
-            "(FWHM 119.65 pm, formerly a 135 pm Gaussian) and the five samples the engine images with; (b) F_n(K) and Q_n(K) "
+    alt="Four synchrotron panels: sample weights on the sinc-squared undulator line, harmonic factors F and Q against K "
+        "for n = 1, 3, 5, the matched-beta coherent fraction against emittance (compact ring at 0.089), and the LIGA "
+        "bending-magnet flux spectrum falling away above its 6.23 keV critical energy.",
+    caption="<strong>What the synchrotron model derives from the machine.</strong> (a) The on-axis sinc² line of the compact preset "
+            "(FWHM 119.65 pm) and the five samples the engine images with; (b) F_n(K) and Q_n(K) "
             "for n = 1, 3, 5 with the preset's K = 1 marked; (c) the per-plane coherent fraction (λ/4π)/(ε + λ/4π), an upper bound "
-            "with matched beta functions, giving ζ = 0.089 for the illustrative compact ring; (d) the bending-magnet "
-            "<code>xray_spectrum()</code> probe returned no data for the LIGA preset, so the fallback panel shows the central-cone "
-            "flux per odd harmonic at K = 1 (3rd and 5th at 16 % and 3 % of the fundamental). Flux values are filament-beam figures. "
+            "with matched beta functions, giving ζ = 0.089 for the illustrative compact ring; (d) the LIGA white beam: the "
+            "bending-magnet shape S(E/E<sub>c</sub>) at the preset's E<sub>c</sub> = 6.23 keV (2.5 GeV, 1.5 T), the K<sub>5/3</sub> "
+            "integral evaluated here and scaled to the engine's 8.0 × 10¹² photons/s/mrad/0.1 % BW at the 0.2 nm selection, which "
+            "integrates back to its 19.8 W/mrad; the band is the [0.1, 8] E<sub>c</sub> window the LIGA module samples. "
+            "Undulator flux values are filament-beam figures. "
             "<em>Model: Synchrotron (bending magnet / undulator) ✅ (🔶 coherence bound) · Machine-parameter physics layer ✅.</em>",
     pages=("sources/synchrotron.md",),
 ))
