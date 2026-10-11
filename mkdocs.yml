@@ -35,27 +35,22 @@ theme:
     edit: material/pencil
     view: material/eye
   palette:
-    # Follow the operating-system preference until the reader picks a scheme.
-    - media: "(prefers-color-scheme)"
+    # Dark by default: the first entry applies until the reader picks a scheme, and the
+    # toggle remembers the choice. No media queries, so the OS preference does not
+    # override the default (the light/dark figure pairs follow this attribute through
+    # their #gh-light-mode-only / #gh-dark-mode-only fragments, not the OS theme).
+    - scheme: slate
       primary: custom
       accent: custom
       toggle:
-        icon: material/brightness-auto
+        icon: material/weather-night
         name: Switch to light mode
-    - media: "(prefers-color-scheme: light)"
-      scheme: default
+    - scheme: default
       primary: custom
       accent: custom
       toggle:
         icon: material/weather-sunny
         name: Switch to dark mode
-    - media: "(prefers-color-scheme: dark)"
-      scheme: slate
-      primary: custom
-      accent: custom
-      toggle:
-        icon: material/weather-night
-        name: Switch to system preference
   features:
     - content.action.edit
     - content.action.view

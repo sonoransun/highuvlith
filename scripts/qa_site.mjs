@@ -112,6 +112,11 @@ async function runSite(o, report) {
         try {
           await page.navigate(url);
           await page.settle({ extra: o.settle });
+          // The site is dark by default and its palette ignores the OS preference, so the
+          // emulated prefers-color-scheme no longer picks the scheme: set Material's scheme
+          // attribute for the mode explicitly (light/print/phone = default, dark = slate).
+          await page.evaluate(`document.body.setAttribute("data-md-color-scheme", ${m.dark ? '"slate"' : '"default"'}); true`);
+          await page.settle({ extra: 150 });
           const probe = await page.evaluate(probeExpression({ path, mode }));
           const f = findingsFromProbe(probe, { path, mode, strict: o.strict });
           row.errors.push(...f.errors); row.warnings.push(...f.warnings); row.info.push(...f.info);
