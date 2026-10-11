@@ -4,47 +4,57 @@ description: "Why the limit of lithography is now counting statistics: photons, 
 
 # The stochastic frontier
 
-For most of lithography's history an aerial image could be treated as a smooth function:
-intensity in, dose out, a threshold, an edge. That continuum picture fails when the number of
-discrete events behind each edge becomes small. At the dimensions EUV prints today, a
-16 nm-wide line edge is written by a few thousand photons, of which only a fraction are
-absorbed, each one launching a short cascade of electrons and a handful of chemical reactions.
-Counting statistics — the same shot noise Schottky described in vacuum tubes in 1918 — now set
-line-edge roughness (LER), local CD variation, and, most expensively, rare *printing failures*:
-a contact that never opens, a line that bridges to its neighbour.
+<p class="huv-lead">For most of lithography's history an aerial image was a smooth function — intensity in, dose out, a threshold, an edge. That picture fails when the discrete events behind each edge become few: a 16 nm EUV line edge is written by a few thousand photons, of which only a fraction are absorbed, each launching a short cascade of electrons and a handful of reactions. Counting statistics now set roughness, local CD variation and rare printing failures; this page follows the chain from photon to edge, puts numbers on each link, and says which links the simulator models.</p>
 
-The industry's levers against this are few and each has a price. More dose means fewer
-wafers per hour; more absorbing resists change the chemistry; more source power moves the
-problem into a light source that is already the most complex part of the scanner. This page
-follows the chain from photon to edge, puts numbers on each link, and says precisely which
-links the highuvlith simulator models and which it does not.
+**Verdict (as of September 2026):** counting statistics, not optics, now set the practical resolution of EUV: metal-oxide and dry resists are in production, 500–600 W sources pay for dose, and no simulator — this one included — models the electron and molecular noise that sets the failure floor.
 
-!!! info "Scope"
-    The basic photon arithmetic for each node generation (incident photons per contact, the
-    14× gap between ArF and EUV) is worked in [Lithography arithmetic](../nodes/litho-math.md),
-    and today's stochastic defects and pellicles appear in
-    [7 nm and 5 nm](../nodes/7-and-5nm.md). This page is the forward-looking view: what happens
-    as half-pitch keeps shrinking, and what the proposed remedies cost.
+<figure markdown="span">
+
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-future-narrow-light.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-future-light.svg#gh-light-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the EUV → X-ray span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-future-narrow-dark.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-future-dark.svg#gh-dark-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the EUV → X-ray span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
+
+<figcaption><strong>You are here on the axis of light.</strong> The chapter's wavelengths and eras at full strength, the rest faded; years are first tool models in litho_tools.csv; the log axis is expanded above 100 nm. <em>Data chart from litho_tools.csv; no model badge.</em></figcaption>
+</figure>
+
+**Five limits:** [k₁ ≥ 0.25](index.md#diffraction-and-the-resolution-floor) · [photons ∝ λ³/NA²](index.md#photons-and-shot-noise) · [Z-factor](index.md#resolution-roughness-and-dose) · [electron blur](index.md#electron-blur) · [throughput](index.md#throughput-and-cost)
+
+The basic photon arithmetic for each node generation (incident photons per contact, the 14× gap between ArF and EUV) is worked in [Lithography arithmetic](../nodes/litho-math.md), and today's stochastic defects and pellicles appear in [7 nm and 5 nm](../nodes/7-and-5nm.md). This page is the forward-looking view: what happens as the half-pitch keeps shrinking, and what the proposed remedies cost.
 
 ## Readiness at a glance
 
-| Technology or effect | Readiness (as of Sep 2026) | highuvlith model |
+<!-- huv-table: stack -->
+| Technology or effect | Readiness (Sep 2026) | highuvlith model |
 |---|---|---|
-| Chemically amplified resists (CAR) at EUV doses of tens of mJ/cm² | In production | 🔶 Dill exposure plus a deterministic acid/quencher bake ([resist models](../processes/resist-models.md)); molecule-number noise not modeled |
-| Photon shot noise and pulse-to-pulse source dose jitter | In production (every EUV exposure) | ✅ Poisson photon counts and Gamma-distributed dose jitter feeding an LER/LWR Monte Carlo ([research modules](../research-modules.md)) |
-| Secondary-electron blur and electron "strings" | In production (physics of every EUV resist) | not modeled |
-| Spin-on metal-oxide resists (tin-oxo clusters) | In production (IRDS 2024: MOR "have started to be used in production" [19]; which fabs and layers is not public) | 🔶 generic Dill parameters and a representative EUV resist n,k ([materials](../materials.md)); no MOR chemistry |
-| Vapour-deposited "dry" metal-organic resist | In production (company-reported: DRAM tool of record, 2025) | not modeled |
-| Higher source power to pay for dose (500–600 W in production, 1 kW shown) | In production (500–600 W); Demonstrated in the lab (1 kW) | 🔶 dose-limited throughput model, `SourceConfig.wafer_throughput` ([sources](../sources/index.md)) |
-| Stochastic-failure predictors in OPC verification | Demonstrated in the lab | not modeled |
-| Single-digit half-pitch (5 nm) by EUV interference lithography | Demonstrated in the lab | ✅/🔶 multi-beam interference ([interference](../processes/interference-volumetric.md)); photon statistics ✅ |
-| Stochastic budgets at Hyper-NA or 6.x nm wavelength | Theoretical / speculative | ✅ photon arithmetic only |
+| Chemically amplified resists (CAR) at EUV doses | **In production** | 🔶 Dill exposure plus a deterministic acid/quencher bake ([resist models](../processes/resist-models.md)) |
+| Photon shot noise and pulse-to-pulse dose jitter | **In production** (every EUV exposure) | ✅ Poisson photon counts and Gamma-distributed jitter in an LER/LWR Monte Carlo (🔶 LER/LWR) ([research modules](../research-modules.md)) |
+| Secondary-electron blur and electron "strings" | **In production** (the physics of every EUV resist) | not modelled |
+| Spin-on metal-oxide resists (tin-oxo clusters) | **In production** (IRDS 2024; fabs and layers not public) | 🔶 generic Dill parameters and a representative EUV resist n, k ([materials](../materials.md)) |
+| Vapour-deposited "dry" metal-organic resist | **In production** (company-reported DRAM tool of record, 2025) | not modelled |
+| Higher source power to pay for dose | **In production** (500–600 W); **Demonstrated** (1 kW) | 🔶 dose-limited throughput, `SourceConfig.wafer_throughput` ([sources](../sources/index.md)) |
+| Stochastic-failure predictors in OPC verification | **Demonstrated** | not modelled |
+| 5 nm half-pitch by EUV interference lithography | **Demonstrated** | ✅ [multi-beam interference](../processes/interference-volumetric.md) (🔶 absorption, interfaces); ✅ photon statistics |
+| Stochastic budgets at Hyper-NA or 6.x nm | **Speculative** | ✅ photon arithmetic only |
 
-Badges follow the [capability matrix](../capability-matrix.md): ✅ Implemented,
-🔶 Simplified, 🧪 Theoretical, 🗺️ Planned. "Not modeled" means no code exists and none is
-planned yet.
+Rung words follow the [readiness ladder](index.md#readiness-ladder); chips are the simulator's grades from the [capability matrix](../capability-matrix.md). "Not modelled" means no code exists and none is planned yet.
 
-## 1. Counting photons
+<details markdown="1">
+<summary>Why these rungs</summary>
+
+| Technology or effect | Evidence for the rung | What the model leaves out |
+|---|---|---|
+| CAR at EUV doses | the production resist family at tens of mJ/cm² | molecule-number noise |
+| Shot noise and dose jitter | present in every EUV exposure; Schottky's 1918 shot noise | the Poisson draw is of incident, not absorbed, photons |
+| Secondary-electron blur | the radiation chemistry of every EUV resist [1, 2] | everything |
+| Spin-on metal-oxide resists | IRDS 2024: MOR "have started to be used in production" [19]; which fabs and layers is not public | no MOR chemistry |
+| Dry resist | Lam reports a leading memory manufacturer's "production tool of record for the most advanced DRAM processes" (January 2025) [24]; company statements | everything |
+| Higher source power | 500 W stated for the NXE:3800E; 600 W in production and 1 kW demonstrated per Reuters, February 2026 [21] | stage-speed limits; the overheads are illustrative defaults |
+| Failure predictors in OPC verification | imec's NOK metric and failure cliffs [14–17]; IBM's inspection work [18] | failure probabilities of any kind |
+| 5 nm by EUV interference | PSI, 2024 [25c] | the resist |
+| Hyper-NA / 6.x nm budgets | nothing exists to measure | all but the λ³/NA² arithmetic |
+
+</details>
+
+## Counting photons
 
 A dose $D$ is energy per area; the number of photons it contains depends on the photon
 energy $E_\gamma = hc/\lambda$:
@@ -74,26 +84,27 @@ nanometres. Raising NA shrinks the feature too, at the same dose, which is why H
 no escape from the counting problem.
 
 <figure markdown="span">
-  ![Log-log chart of photons incident on a half-pitch-squared area at 30 mJ/cm² versus half-pitch, with three straight lines for 193, 13.5 and 6.7 nm. Filled markers show ArF immersion at 38 nm (about 420,890 photons), EUV at NA 0.33 and 13 nm (about 3,446) and High-NA at 8 nm (about 1,305); hollow markers show a hypothetical Hyper-NA at 5.8 nm (about 676) and a hypothetical 6.7 nm system at 3.9 nm (about 154). A horizontal line marks 900 photons, where the 3-sigma Poisson noise is 10 percent.](../assets/images/future/photons-per-feature-light.svg#only-light){ width="860" }
-  ![Log-log chart of photons incident on a half-pitch-squared area at 30 mJ/cm² versus half-pitch, with three straight lines for 193, 13.5 and 6.7 nm. Filled markers show ArF immersion at 38 nm (about 420,890 photons), EUV at NA 0.33 and 13 nm (about 3,446) and High-NA at 8 nm (about 1,305); hollow markers show a hypothetical Hyper-NA at 5.8 nm (about 676) and a hypothetical 6.7 nm system at 3.9 nm (about 154). A horizontal line marks 900 photons, where the 3-sigma Poisson noise is 10 percent.](../assets/images/future/photons-per-feature-dark.svg#only-dark){ width="860" }
-  <figcaption>Incident photons per (half-pitch)² square at a fixed 30 mJ/cm². Lines are
-  arithmetic from CODATA constants. Filled markers use ASML's published resolution specs
-  (NXT:2000i 38 nm, NXE:3400C 13 nm, EXE:5000 8 nm); hollow markers are hypothetical systems
-  extrapolated at k₁ = 0.32, the k₁ implied by the two EUV specs. Own work, generated by
-  <code>docs/figures/future/make_future_figures.py</code>.</figcaption>
+
+![Photons incident on a (half-pitch)² square at 30 mJ/cm² versus half-pitch for 193, 13.5 and 6.7 nm light: about 420,890 at ArF immersion 38 nm, 3,446 at EUV 13 nm, 1,305 at High-NA 8 nm, and hypothetical 676 at 5.8 nm and 154 at 3.9 nm; a line at 900 photons marks 10 % three-sigma noise.](../assets/images/future/photons-per-feature-light.svg#gh-light-mode-only)
+![Photons incident on a (half-pitch)² square at 30 mJ/cm² versus half-pitch for 193, 13.5 and 6.7 nm light: about 420,890 at ArF immersion 38 nm, 3,446 at EUV 13 nm, 1,305 at High-NA 8 nm, and hypothetical 676 at 5.8 nm and 154 at 3.9 nm; a line at 900 photons marks 10 % three-sigma noise.](../assets/images/future/photons-per-feature-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>At fixed dose and k₁, photons per feature fall as λ³.</strong> Incident photons on a (half-pitch)² square at 30 mJ/cm²: filled points are ASML resolution specs (38, 13, 8 nm — about 420,890, 3,446 and 1,305 photons), hollow points hypothetical systems at k₁ = 0.32; the 900-photon line marks 10 % three-sigma noise, and the absorbed fraction depends on the resist. <em>Closed form; not the engine.</em></figcaption>
 </figure>
 
-??? info "Data behind the chart"
-    | System | λ (nm) | Half-pitch (nm) | Photons per (HP)² at 30 mJ/cm² | 3σ count noise |
-    |---|---|---|---|---|
-    | ArF immersion, NA 1.35 (vendor spec) | 193 | 38 | 420,890 | 0.46 % |
-    | EUV, NA 0.33 (vendor spec) | 13.5 | 13 | 3,446 | 5.1 % |
-    | High-NA EUV, NA 0.55 (vendor spec) | 13.5 | 8 | 1,305 | 8.3 % |
-    | Hyper-NA, NA 0.75 (hypothetical, k₁ 0.32) | 13.5 | 5.8 | 676 | 11.5 % |
-    | 6.7 nm, NA 0.55 (hypothetical, k₁ 0.32) | 6.7 | 3.9 | 154 | 24 % |
+<details markdown="1">
+<summary>Data behind the chart</summary>
 
-    Real doses are not fixed at 30 mJ/cm²: ASML quotes NXE:3400C throughput at 20 and
-    30 mJ/cm² and EXE:5000 throughput at 50 mJ/cm². The chart isolates the geometry.
+| System | λ (nm) | Half-pitch (nm) | Photons per (HP)² at 30 mJ/cm² | 3σ count noise |
+|---|---|---|---|---|
+| ArF immersion, NA 1.35 (vendor spec) | 193 | 38 | 420,890 | 0.46 % |
+| EUV, NA 0.33 (vendor spec) | 13.5 | 13 | 3,446 | 5.1 % |
+| High-NA EUV, NA 0.55 (vendor spec) | 13.5 | 8 | 1,305 | 8.3 % |
+| Hyper-NA, NA 0.75 (hypothetical, k₁ 0.32) | 13.5 | 5.8 | 676 | 11.5 % |
+| 6.7 nm, NA 0.55 (hypothetical, k₁ 0.32) | 6.7 | 3.9 | 154 | 24 % |
+
+Real doses are not fixed at 30 mJ/cm²: ASML quotes NXE:3400C throughput at 20 and 30 mJ/cm² and EXE:5000 throughput at 50 mJ/cm². The chart isolates the geometry.
+
+</details>
 
 ### Incident is not absorbed
 
@@ -105,9 +116,17 @@ times higher than conventional organic-based photoresists" [7]. With
 $f_\text{abs} = 1 - e^{-\alpha t}$, a threefold $\alpha$ (about 15 µm⁻¹) lifts the absorbed
 fraction of the same 35 nm film to about 41 %. At the High-NA half-pitch of 8 nm and
 30 mJ/cm² that is roughly 530 absorbed photons per (8 nm)² instead of about 210. The
-[first example](#try-it-in-highuvlith) reproduces these numbers.
+[first example](#absorbed-photons-per-feature-car-versus-metal-oxide) reproduces these numbers.
 
-## 2. From photons to electrons to acids
+<figure markdown="span">
+
+![Four panels for 20 nm contacts on a 40 nm grid at 13.5 nm, NA 0.33: the noiseless aerial image of 16 contacts, grainy Poisson photon maps at 30 and 60 mJ/cm², and histograms of photons per contact for both doses, whose 3-sigma spread doubling the dose narrows only by root two.](../assets/images/sim/site/site-contact-shot-noise-light.png#gh-light-mode-only)
+![Four panels for 20 nm contacts on a 40 nm grid at 13.5 nm, NA 0.33: the noiseless aerial image of 16 contacts, grainy Poisson photon maps at 30 and 60 mJ/cm², and histograms of photons per contact for both doses, whose 3-sigma spread doubling the dose narrows only by root two.](../assets/images/sim/site/site-contact-shot-noise-dark.png#gh-dark-mode-only)
+
+<figcaption><strong>Why EUV counts photons.</strong> 20 nm contacts on a 40 nm grid through the NA 0.33 preset (Sn LPP σ 0.9): the noiseless aerial image, Poisson-sampled incident-photon maps at 30 and 60 mJ/cm² from the source's <code>photon_density_per_mj_cm2</code>, and the per-contact count histograms with their 3σ spread — the page's shot-noise example, drawn. Incident photons only: thin mask, no resist absorption, no secondary electrons or acid diffusion; the noisy maps are photon counts, not printed contacts or defects. <em>Model: Hopkins imaging ✅ · EUV projection optics 🔶 · photon shot noise ✅ (Poisson) · LER/LWR 🔶 (not shown).</em></figcaption>
+</figure>
+
+## From photons to electrons to acids
 
 A 92 eV photon does not do chemistry directly. It ionizes the resist, and the ejected
 photoelectron (carrying most of the photon's energy) sheds it in a cascade of lower-energy
@@ -127,24 +146,19 @@ photoelectron track running from a pattern edge into a dark region, raise the pr
 stochastic defects in the range that matters for manufacturing, typically 10⁻⁴ down to
 ~10⁻¹² [4].
 
-```mermaid
-flowchart LR
-    SRC["Source pulses<br/>energy jitter<br/><i>modeled: Gamma jitter</i>"] -.-> PH
-    PH["EUV photons<br/>≈ 92 eV each<br/><i>modeled: Poisson counts</i>"] --> PE["Photoelectron<br/>+ secondary electrons<br/><i>not modeled</i>"]
-    PE --> AC["Acid generation (CAR)<br/>or tin-organic scission (MOR)<br/><i>mean-field Dill only</i>"]
-    AC --> PEB["Bake: acid diffusion,<br/>quencher, deprotection<br/><i>mean-field reaction-diffusion</i>"]
-    PEB --> DEV["Development<br/>→ edge position<br/><i>modeled: threshold / Mack,<br/>fast marching, level set</i>"]
-    classDef random stroke-width:3px
-    classDef absent stroke-dasharray: 6 4
-    class SRC,PH random
-    class PE absent
-```
+The table marks where randomness enters and what highuvlith does with each link: two links are stochastic in the simulator, one is absent, and the rest are deterministic (mean-field) models of steps that are random in reality.
 
-The diagram marks where randomness enters and what highuvlith does with each link: thick
-borders are stochastic in the simulator, dashed is absent, the rest are deterministic
-(mean-field) models of steps that are random in reality.
+<!-- huv-table: stack -->
+| Cause | Effect | In highuvlith |
+|---|---|---|
+| Source pulses: energy jitter | the dose varies pulse to pulse | ✅ Implemented — Gamma-distributed jitter per realization |
+| EUV photons, about 92 eV each | Poisson counts per feature | ✅ Implemented — per-pixel Poisson sampling |
+| Photoelectron and secondary electrons | a few nanometres of blur; clustered events | not modelled |
+| Acid generation (CAR) or tin-organic scission (MOR) | countable reaction sites | 🔶 Simplified — mean-field Dill exposure only |
+| Bake: acid diffusion, quencher, deprotection | noise averaged, image blurred | 🔶 Simplified — mean-field reaction–diffusion |
+| Development → edge position | LER, CD, failures | 🔶 Simplified — threshold or Mack rate law (✅ fast-marching and level-set solvers) |
 
-## 3. Chemical stochastics
+## Chemical stochastics
 
 In a chemically amplified resist the light generates acid, and the acid, during the
 post-exposure bake, catalyses many deprotection reactions while diffusing and being
@@ -166,7 +180,7 @@ chemistry does not rely on acid diffusion — Inpria describes its materials as 
 acid-diffusion mechanism of conventional resists [22]. The randomness of which clusters react
 remains.
 
-## 4. The resolution–LER–sensitivity trade-off
+## The resolution–LER–sensitivity trade-off
 
 The trade-off is usually summarized by the Z-factor of Wallow and co-workers [9],
 
@@ -207,7 +221,7 @@ Relative roughness stays near 10 % of the half-pitch throughout, so by the $\mat
 argument the absorbed-dose requirement keeps climbing. The same tables list "LER < 1 nm" among
 the key challenges for both 0.55 NA and ≥ 0.75 NA EUV [19].
 
-## 5. When roughness becomes failure
+## When roughness becomes failure
 
 Roughness degrades performance; failures destroy chips. A missing contact or a microbridge
 between lines leaves no CD to measure, so imec introduced a separate failure metric ("NOK",
@@ -221,6 +235,8 @@ The required failure rate is set by the number of features. With something like 
 a chip, Brunner and co-authors argued that per-via failure probabilities of order 10⁻¹² are
 needed [13]. That is where Poisson statistics become unforgiving.
 
+**A feature whose events fall to half their mean fails, and 10⁻¹²-class failure rates need well over a hundred events in each critical volume.**
+
 !!! note "A toy model of a stochastic failure"
     Suppose a feature fails whenever it receives fewer than half of its mean number of
     effective events $\mu$ (absorbed photons, or acids, in its critical volume). The exact
@@ -228,15 +244,23 @@ needed [13]. That is where Poisson statistics become unforgiving.
     $P(X \le \mu/2) = 2.4\times10^{-8}$ at $\mu = 100$, $2.4\times10^{-11}$ at $\mu = 144$ and
     $3.7\times10^{-15}$ at $\mu = 200$. A failure rate below 10⁻⁹ needs $\mu \gtrsim 122$
     events; below 10⁻¹², $\mu \gtrsim 166$. Compare the few hundred absorbed photons per
-    (8 nm)² in section 1, and remember that the critical volume at an edge is smaller than the
+    (8 nm)² under [Counting photons](#counting-photons), and remember that the critical volume at an edge is smaller than the
     whole feature. The threshold rule is invented for illustration; the arithmetic is exact.
+
+<figure markdown="span">
+
+![Exact Poisson probability that a feature collects at most half its mean count, on a log axis from 1 to 1e-15, versus the mean from 10 to 1000: 1e-9 needs a mean of about 122, 1e-12 about 166; vertical markers at 110, 209, 280 and 533 absorbed photons from the page's example.](../assets/images/future/poisson-floor-light.svg#gh-light-mode-only)
+![Exact Poisson probability that a feature collects at most half its mean count, on a log axis from 1 to 1e-15, versus the mean from 10 to 1000: 1e-9 needs a mean of about 122, 1e-12 about 166; vertical markers at 110, 209, 280 and 533 absorbed photons from the page's example.](../assets/images/future/poisson-floor-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>A feature whose events fall to half their mean fails.</strong> Exact Poisson P(X ≤ μ/2) against the mean count μ: a failure rate below 10⁻⁹ needs μ ≳ 122, below 10⁻¹² μ ≳ 166; the markers are the absorbed-photon counts of this page's first example (CAR 209 / MOR 533 at 8 nm, 110 / 280 at 5.8 nm). <em>Toy model: the critical volume at an edge is smaller than the feature. No model badge.</em></figcaption>
+</figure>
 
 A metrology vendor, Fractilia, argues in a white paper that high-volume manufacturing stalls
 several nanometres above the half-pitch the scanner can resolve, because of stochastics — a
 "stochastics resolution gap" [26]. It is vendor material, not peer-reviewed, but the argument
 is the one above: resolution is no longer set by optics alone.
 
-## 6. Dose, throughput and money
+## Dose, throughput and money
 
 A scanner exposing a dose $D$ over an area $A$ with power $P_\text{wafer}$ at the wafer spends
 roughly
@@ -254,6 +278,14 @@ dose increase therefore costs about 21 % of the throughput. Extrapolating the sa
 fit (our arithmetic, not an ASML figure) gives about 96 wafers per hour at 50 mJ/cm² and 84 at
 60 mJ/cm².
 
+<figure markdown="span">
+
+![Wafers per hour versus resist dose for a 250 W tin source, a 1 kW SSMB projection and an ERL free-electron laser shared by 16 scanners; the tin source falls from about 154 to 103 wafers per hour between 30 and 100 mJ/cm2 while the others stay near the overhead-limited ceiling.](../assets/images/sim/site/site-wph-vs-dose-light.png#gh-light-mode-only)
+![Wafers per hour versus resist dose for a 250 W tin source, a 1 kW SSMB projection and an ERL free-electron laser shared by 16 scanners; the tin source falls from about 154 to 103 wafers per hour between 30 and 100 mJ/cm2 while the others stay near the overhead-limited ceiling.](../assets/images/sim/site/site-wph-vs-dose-dark.png#gh-dark-mode-only)
+
+<figcaption><strong>Power becomes throughput.</strong> <code>wafer_throughput()</code> with its defaults (ten mirrors at 0.70, mask 0.65, 84 fields, 0.1 s per field and 10 s per wafer) swept over dose — the accelerator page's example; the ERL curve spreads one source over 16 scanners by multiplying each wafer's exposure time by 16, the page's back-of-envelope sharing, not a feature of the code. SSMB and ERL powers are projections. <em>Model: dose-limited throughput 🔶.</em></figcaption>
+</figure>
+
 Poisson statistics make the return on dose poor: doubling the dose reduces relative photon
 noise only by $\sqrt 2$. The lever that does not cost throughput is source power, and it is
 moving. ASML's NXE:3800E specification assumes a 500 W source; Reuters reported in February
@@ -264,6 +296,16 @@ decade instead of 220 today [21]. The dose that chipmakers choose is an economic
 between that power and the stochastic failure rate they can tolerate; the physics of that
 trade is on the [accelerator light sources](accelerator-light-sources.md) page.
 
+<figure markdown="span">
+
+![Log-power waterfall from 250 W at intermediate focus through ten mirrors at 0.70 and a 0.65 mask to 4.6 W on the wafer, the 1 kW target drawn hollow beside it, and the time budget per wafer at 30 mJ/cm²: 5.0 s of exposure plus 18.4 s of overheads give 154 wafers per hour, 183 at 1 kW.](../assets/images/sim/site-watts-waterfall-light.png#gh-light-mode-only)
+![Log-power waterfall from 250 W at intermediate focus through ten mirrors at 0.70 and a 0.65 mask to 4.6 W on the wafer, the 1 kW target drawn hollow beside it, and the time budget per wafer at 30 mJ/cm²: 5.0 s of exposure plus 18.4 s of overheads give 154 wafers per hour, 183 at 1 kW.](../assets/images/sim/site-watts-waterfall-dark.png#gh-dark-mode-only)
+
+<figcaption><strong>From the source to wafers per hour.</strong> 250 W at intermediate focus × 0.70¹⁰ × 0.65 leaves 4.6 W on the wafer; a 300 mm wafer at 30 mJ/cm² needs 21.6 J, so the dose-limited scan of 84 fields takes 5.0 s, and the model's 0.1 s per field and 10 s per wafer overheads make it 154 wafers per hour. Model assumptions, not a vendor optical budget; 1 kW is the stated target, drawn hollow: it buys 183 wph, because the overheads cap the model near 196. <em>Model: Dose-limited wafer throughput 🔶.</em></figcaption>
+</figure>
+
+**Dose buys statistics at a square-root rate and costs throughput linearly; doubling it cuts photon noise by 29 % and takes roughly a third off the throughput.**
+
 !!! warning "Myth: more dose fixes stochastics"
     Dose buys statistics at a square-root rate and costs throughput linearly. Doubling the
     dose on an NXE:3400C-class tool would take roughly a third off its throughput — 34 % from
@@ -273,13 +315,13 @@ trade is on the [accelerator light sources](accelerator-light-sources.md) page.
     contributions, and failure floors, untouched. Resist absorption, blur and pattern design
     matter as much as dose.
 
-## 7. New resists and processes
+## New resists and processes
 
 **Metal-oxide resists.** Inpria was founded in 2007 as a spin-out from Oregon State
 University's chemistry department and makes EUV resists from organometallic clusters with a
 tin-oxide core [22]. JSR agreed to acquire it in September 2021 and closed the deal on
 8 November 2021; in August 2022 Inpria announced co-development of a metal-oxide resist with
-SK hynix for next-generation DRAM [22]. The physics case is the one in sections 1 and 4:
+SK hynix for next-generation DRAM [22]. The physics case is the one under [Counting photons](#counting-photons) and [the trade-off](#the-resolutionlersensitivity-trade-off):
 roughly three times the absorption of an organic resist [7]. The IRDS 2024 lithography
 chapter calls metal-oxide resists the biggest competitor to CAR and states that they "have
 started to be used in production" [19]; it does not say where or on which layers.
@@ -304,7 +346,7 @@ Mack proposes treating lithography and etch together — lithography minimizing 
 roughness, etch removing high-frequency roughness — instead of chasing the 3σ LER of each step
 separately [12].
 
-## 8. What highuvlith models, and what it does not
+## What highuvlith models, and what it does not
 
 The simulator's stochastic module
 ([`stochastic.rs`](../../crates/highuvlith-core/src/stochastic.rs), described under
@@ -331,102 +373,106 @@ dose-limited throughput model are the handles, as below.
 
 ## Try it in highuvlith
 
-!!! example "Try it in highuvlith: absorbed photons per feature, CAR versus metal-oxide"
-    Incident photons per (half-pitch)² at 30 mJ/cm² from the Sn LPP preset's wavelength, then
-    the fraction a 35 nm film absorbs for an organic-like (5 µm⁻¹) and a tin-like (15 µm⁻¹)
-    resist. The 5.8 nm row is the hypothetical Hyper-NA point from the chart.
+### Absorbed photons per feature, CAR versus metal-oxide
 
-    <!-- verify-example -->
-    ```python
-    import math
-    import highuvlith as huv
+Incident photons per (half-pitch)² at 30 mJ/cm² from the Sn LPP preset's wavelength, then
+the fraction a 35 nm film absorbs for an organic-like (5 µm⁻¹) and a tin-like (15 µm⁻¹)
+resist. The 5.8 nm row is the hypothetical Hyper-NA point from the chart.
 
-    euv = huv.SourceConfig.lpp_sn_13nm5(0.9)
-    e_photon_j = 1239.84193 / euv.wavelength_nm * 1.602176634e-19
-    per_nm2 = 30.0 * 1e-17 / e_photon_j            # incident photons/nm² at 30 mJ/cm²
-    film_um = 0.035                                # 35 nm resist film
-    for label, hp in [("NA 0.33, 13 nm", 13.0), ("NA 0.55, 8 nm", 8.0), ("NA 0.75?, 5.8 nm", 5.8)]:
-        for resist, alpha in [("CAR ~5/um", 5.0), ("MOR ~15/um", 15.0)]:
-            n = per_nm2 * hp**2 * (1 - math.exp(-alpha * film_um))
-            print(f"{label:17s} {resist:11s} {n:6.0f} absorbed   3-sigma {300 / math.sqrt(n):5.1f} %")
+<!-- verify-example -->
+```python
+import math
+import highuvlith as huv
+
+euv = huv.SourceConfig.lpp_sn_13nm5(0.9)
+e_photon_j = 1239.84193 / euv.wavelength_nm * 1.602176634e-19
+per_nm2 = 30.0 * 1e-17 / e_photon_j            # incident photons/nm² at 30 mJ/cm²
+film_um = 0.035                                # 35 nm resist film
+for label, hp in [("NA 0.33, 13 nm", 13.0), ("NA 0.55, 8 nm", 8.0), ("NA 0.75?, 5.8 nm", 5.8)]:
+    for resist, alpha in [("CAR ~5/um", 5.0), ("MOR ~15/um", 15.0)]:
+        n = per_nm2 * hp**2 * (1 - math.exp(-alpha * film_um))
+        print(f"{label:17s} {resist:11s} {n:6.0f} absorbed   3-sigma {300 / math.sqrt(n):5.1f} %")
+```
+
+???+ success "Output"
+
+    ```text
+    NA 0.33, 13 nm    CAR ~5/um      553 absorbed   3-sigma  12.8 %
+    NA 0.33, 13 nm    MOR ~15/um    1407 absorbed   3-sigma   8.0 %
+    NA 0.55, 8 nm     CAR ~5/um      209 absorbed   3-sigma  20.7 %
+    NA 0.55, 8 nm     MOR ~15/um     533 absorbed   3-sigma  13.0 %
+    NA 0.75?, 5.8 nm  CAR ~5/um      110 absorbed   3-sigma  28.6 %
+    NA 0.75?, 5.8 nm  MOR ~15/um     280 absorbed   3-sigma  17.9 %
     ```
 
-    ??? success "Output"
+Expect roughly 550 and 1,400 absorbed photons at 13 nm, 210 and 530 at 8 nm, and 110 and 280
+at 5.8 nm. These are counts per (HP)² square, not LER: blur and the image slope decide how
+much of this noise reaches the edge.
 
-        ```text
-        NA 0.33, 13 nm    CAR ~5/um      553 absorbed   3-sigma  12.8 %
-        NA 0.33, 13 nm    MOR ~15/um    1407 absorbed   3-sigma   8.0 %
-        NA 0.55, 8 nm     CAR ~5/um      209 absorbed   3-sigma  20.7 %
-        NA 0.55, 8 nm     MOR ~15/um     533 absorbed   3-sigma  13.0 %
-        NA 0.75?, 5.8 nm  CAR ~5/um      110 absorbed   3-sigma  28.6 %
-        NA 0.75?, 5.8 nm  MOR ~15/um     280 absorbed   3-sigma  17.9 %
-        ```
+### What dose costs in wafers per hour
 
-    Expect roughly 550 and 1,400 absorbed photons at 13 nm, 210 and 530 at 8 nm, and 110 and 280
-    at 5.8 nm. These are counts per (HP)² square, not LER: blur and the image slope decide how
-    much of this noise reaches the edge.
+The dose-limited throughput model (🔶, illustrative scanner assumptions: ten 70 % mirrors,
+65 % mask reflectance, 26 × 33 mm fields, fixed overheads) applied to the Sn LPP preset's
+~250 W at intermediate focus.
 
-!!! example "Try it in highuvlith: what dose costs in wafers per hour"
-    The dose-limited throughput model (🔶, illustrative scanner assumptions: ten 70 % mirrors,
-    65 % mask reflectance, 26 × 33 mm fields, fixed overheads) applied to the Sn LPP preset's
-    ~250 W at intermediate focus.
+<!-- verify-example -->
+```python
+import highuvlith as huv
 
-    <!-- verify-example -->
-    ```python
-    import highuvlith as huv
+src = huv.SourceConfig.lpp_sn_13nm5(0.9)
+for dose in (20.0, 30.0, 60.0):
+    r = src.wafer_throughput(dose_mj_cm2=dose, cd_nm=16.0)
+    print(f"{dose:4.0f} mJ/cm2: {r['wafers_per_hour']:6.1f} wafers/h, "
+          f"{r['photons_per_cd_square']:6.0f} photons per (16 nm)^2, "
+          f"1-sigma count noise {100 * r['relative_shot_noise']:.2f} %")
+```
 
-    src = huv.SourceConfig.lpp_sn_13nm5(0.9)
-    for dose in (20.0, 30.0, 60.0):
-        r = src.wafer_throughput(dose_mj_cm2=dose, cd_nm=16.0)
-        print(f"{dose:4.0f} mJ/cm2: {r['wafers_per_hour']:6.1f} wafers/h, "
-              f"{r['photons_per_cd_square']:6.0f} photons per (16 nm)^2, "
-              f"1-sigma count noise {100 * r['relative_shot_noise']:.2f} %")
+???+ success "Output"
+
+    ```text
+      20 mJ/cm2:  165.7 wafers/h,   3480 photons per (16 nm)^2, 1-sigma count noise 1.70 %
+      30 mJ/cm2:  153.9 wafers/h,   5219 photons per (16 nm)^2, 1-sigma count noise 1.38 %
+      60 mJ/cm2:  126.8 wafers/h,  10439 photons per (16 nm)^2, 1-sigma count noise 0.98 %
     ```
 
-    ??? success "Output"
+The model gives about 165, 154 and 126 wafers per hour. It is less dose-sensitive than
+ASML's NXE:3400C specification (170 → 135 between 20 and 30 mJ/cm²) because its default
+overheads dominate and it has no stage-speed limit — try `max_scan_speed_mm_s=...` or larger
+`field_overhead_s` to explore.
 
-        ```text
-          20 mJ/cm2:  165.7 wafers/h,   3480 photons per (16 nm)^2, 1-sigma count noise 1.70 %
-          30 mJ/cm2:  153.9 wafers/h,   5219 photons per (16 nm)^2, 1-sigma count noise 1.38 %
-          60 mJ/cm2:  126.8 wafers/h,  10439 photons per (16 nm)^2, 1-sigma count noise 0.98 %
-        ```
+### Pulse jitter averages out, power does not
 
-    The model gives about 165, 154 and 126 wafers per hour. It is less dose-sensitive than
-    ASML's NXE:3400C specification (170 → 135 between 20 and 30 mJ/cm²) because its default
-    overheads dominate and it has no stage-speed limit — try `max_scan_speed_mm_s=...` or larger
-    `field_overhead_s` to explore.
+Each exposure point integrates many source pulses, so single-pulse energy jitter averages
+down by √N. The Sn discharge-plasma preset assumes 5 % jitter per pulse; the FLASH-like SASE
+preset derives about 57 % from its mode count.
 
-!!! example "Try it in highuvlith: pulse jitter averages out, power does not"
-    Each exposure point integrates many source pulses, so single-pulse energy jitter averages
-    down by √N. The Sn discharge-plasma preset assumes 5 % jitter per pulse; the FLASH-like SASE
-    preset derives about 57 % from its mode count.
+<!-- verify-example -->
+```python
+import highuvlith as huv
 
-    <!-- verify-example -->
-    ```python
-    import highuvlith as huv
+sources = {"Sn DPP (5 % per pulse, assumed)": huv.SourceConfig.dpp_sn_13nm5(0.9),
+           "FLASH-like SASE FEL": huv.SourceConfig.xfel_flash_13nm5()}
+for name, src in sources.items():
+    r = src.wafer_throughput(dose_mj_cm2=30.0)
+    n, rms = r["pulses_per_point"], src.shot_to_shot_rms
+    print(f"{name:32s} {rms:5.3f} per pulse, {n:7.0f} pulses/point "
+          f"-> {rms / n**0.5:.4f} per exposure, {r['wafers_per_hour']:7.2f} wafers/h")
+```
 
-    sources = {"Sn DPP (5 % per pulse, assumed)": huv.SourceConfig.dpp_sn_13nm5(0.9),
-               "FLASH-like SASE FEL": huv.SourceConfig.xfel_flash_13nm5()}
-    for name, src in sources.items():
-        r = src.wafer_throughput(dose_mj_cm2=30.0)
-        n, rms = r["pulses_per_point"], src.shot_to_shot_rms
-        print(f"{name:32s} {rms:5.3f} per pulse, {n:7.0f} pulses/point "
-              f"-> {rms / n**0.5:.4f} per exposure, {r['wafers_per_hour']:7.2f} wafers/h")
+???+ success "Output"
+
+    ```text
+    Sn DPP (5 % per pulse, assumed)  0.050 per pulse,      49 pulses/point -> 0.0071 per exposure,   65.78 wafers/h
+    FLASH-like SASE FEL              0.570 per pulse,    8496 pulses/point -> 0.0062 per exposure,    0.29 wafers/h
     ```
 
-    ??? success "Output"
-
-        ```text
-        Sn DPP (5 % per pulse, assumed)  0.050 per pulse,      49 pulses/point -> 0.0071 per exposure,   65.78 wafers/h
-        FLASH-like SASE FEL              0.570 per pulse,    8496 pulses/point -> 0.0062 per exposure,    0.29 wafers/h
-        ```
-
-    Both end up well below 1 % dose noise per exposure point (about 180 and 8,500 pulses per
-    point). The FEL preset's problem is not jitter but power: at its 0.1 W the model manages
-    about 0.3 wafers per hour.
+Both end up well below 1 % dose noise per exposure point (about 180 and 8,500 pulses per
+point). The FEL preset's problem is not jitter but power: at its 0.1 W the model manages
+about 0.3 wafers per hour.
 
 ## Key takeaways
 
+- **The verdict:** counting statistics, not optics, set the practical resolution of EUV, and no simulator — this one included — models the electron and molecular noise behind the failure floor.
 - At fixed dose and $k_1$, photons per feature scale as $\lambda^3/\mathrm{NA}^2$. EUV at the
   High-NA half-pitch delivers about 1,300 incident photons per (8 nm)² at 30 mJ/cm², and only
   a fraction of those are absorbed.
@@ -440,8 +486,11 @@ dose-limited throughput model are the handles, as below.
   effective events in each critical volume.
 - Dose costs throughput linearly and buys statistics only as √dose; higher-absorbing resists and
   more source power are the levers being pulled.
-- highuvlith models photon counting and source dose jitter stochastically (✅), resist chemistry
-  deterministically (🔶), and electrons, molecular noise and failure rates not at all.
+- highuvlith models photon counting and source dose jitter stochastically, resist chemistry
+  deterministically (a simplified, mean-field model), and electrons, molecular noise and
+  failure rates not at all; the table above carries the grades.
+
+**Where next:** ← [Accelerator light sources](accelerator-light-sources.md) · [Alternatives to projection](alternative-patterning.md) → · Related: [Lithography arithmetic](../nodes/litho-math.md) · [7 nm and 5 nm](../nodes/7-and-5nm.md) · [resist models](../processes/resist-models.md) · [research modules](../research-modules.md) · [capability matrix](../capability-matrix.md)
 
 ## References and further reading
 
@@ -534,8 +583,3 @@ dose-limited throughput model are the handles, as below.
     [doi:10.1039/D4NR01332H](https://doi.org/10.1039/D4NR01332H).
 26. Fractilia, "Closing the stochastics resolution gap" (white paper, vendor material),
     linked from [fractilia.com](https://www.fractilia.com/).
-
-Related pages: [Lithography arithmetic](../nodes/litho-math.md) ·
-[7 nm and 5 nm](../nodes/7-and-5nm.md) · [High-NA and Hyper-NA](high-na-and-hyper-na.md) ·
-[Beyond EUV](beyond-euv.md) · [Accelerator light sources](accelerator-light-sources.md) ·
-[Resist models](../processes/resist-models.md) · [Capability matrix](../capability-matrix.md)

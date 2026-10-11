@@ -1,4 +1,7 @@
-{#- Theme overrides for the highuvlith site (theme.custom_dir in mkdocs.yml). -#}
+{#- Theme overrides for the highuvlith site (theme.custom_dir in mkdocs.yml):
+    * extrahead: og:/twitter link-preview metadata from the page's `description:`;
+    * content: one inert marker naming the page's top-level section, so the stylesheet can
+      bind the section hue (DESIGN §4.2) without a hook and instant navigation stays safe. -#}
 {% extends "base.html" %}
 
 {% block extrahead %}
@@ -22,4 +25,15 @@
   <meta property="og:url" content="{{ page.canonical_url }}">
   {%- endif %}
   <meta name="twitter:card" content="summary">
+{% endblock %}
+
+{% block content %}
+  {#- page.ancestors is nearest-first (mkdocs/structure/__init__.py), so [-1] is the top-level
+      section; top-level pages have no ancestors: the home page is "Home", the Playground falls
+      through .get()'s default to "simulator" by design (DESIGN §4.2). -#}
+  {%- set huv_root = page.ancestors[-1].title if page.ancestors else ("Home" if page.is_homepage else "") -%}
+  {%- set huv_map = {"Home": "home", "History": "history", "Process Nodes": "nodes", "The Future": "future",
+                     "Simulator": "simulator", "Reference": "reference", "Develop": "reference", "Playground": "simulator"} -%}
+  <span class="huv-section" data-huv-section="{{ huv_map.get(huv_root, 'simulator') }}" hidden></span>
+  {{ super() }}
 {% endblock %}

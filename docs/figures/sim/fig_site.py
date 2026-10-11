@@ -4,6 +4,10 @@ Requested by the site pages' authors (notes S1 §6b, S2 §6, S3 §5). Wherever a
 has a "Try it" example, the figure uses the same source, optics, mask and grid, so
 the numbers printed by the example and the curves agree. Outputs go to
 ``docs/assets/images/sim/site/``.
+
+Captions follow the DESIGN §4.6 grammar (a ``<strong>`` lead, ≤ 3 sentences, an
+``<em>Model: …</em>`` trailer whose labels resolve to capability-matrix rows through
+``SITE_ROWS``).
 """
 
 from __future__ import annotations
@@ -18,6 +22,28 @@ import style as S
 from common import FigureSpec, native, register
 
 HC = 1239.84193  # eV nm
+
+#: Caption labels of this file → the exact capability-matrix rows they abbreviate (DESIGN §5.0).
+SITE_ROWS = {
+    "Hopkins imaging": "Hopkins imaging (factorized TCC/SOCS)",
+    "immersion lithography": "Immersion lithography (193i)",
+    "EUV projection optics": "EUV scanner projection optics (NA 0.33 / High-NA 0.55)",
+    "Schwarzschild objective": "Schwarzschild reflective objective",
+    "vector imaging": "Vector (polarized) high-NA imaging",
+    "broadband imaging": "Broadband imaging (`compute_multiwavelength`)",
+    "narrow-band approximation": "Narrow-band polychromatic (`compute_polychromatic`)",
+    "refractive optics": "Refractive projection optics (dry)",
+    "multiple patterning": "Multiple patterning (LELE, SADP, SAQP)",
+    "LIGA depth dose": "LIGA / deep X-ray depth dose and exposure time",
+    "multi-beam interference": "Multi-beam interference / two-photon",
+    "Talbot / DTL": "Talbot / DTL / ATL proximity lithography",
+    "multilayer mirrors": "EUV/BEUV multilayer mirrors",
+    "laser-produced plasma": "Laser-produced plasma (Sn 13.5; Gd 6.7; Tb 6.5 nm)",
+    "dose-limited throughput": "Dose-limited wafer throughput",
+    "SSMB": "SSMB storage ring",
+    "quantum lithography": "Quantum lithography (N-photon / N00N)",
+    "LER/LWR": "LER/LWR Monte Carlo",
+}
 
 
 def _engine(huv, src, opt, mask, grid, **kw):
@@ -37,8 +63,10 @@ def _ls(huv, src, opt, pitch, cd=None, size=64, per=32, focus=0.0, **kw):
 
 
 def _site(name, compute, draw, alt, caption, pages, **kw):
+    extra = dict(kw.pop("extra", None) or {})
+    extra.setdefault("model_rows", SITE_ROWS)
     register(FigureSpec(name=name, group="site", subdir="site", compute=compute, draw=draw, alt=alt,
-                        caption=caption, pages=pages, **kw))
+                        caption=caption, pages=pages, extra=extra, **kw))
 
 
 def _legend(ax, th, labels, slots, **kw):
@@ -91,10 +119,10 @@ def eras_draw(rows, th):
 _site("site-eras-400nm-pitch", eras_compute, eras_draw,
       alt="Aerial-image cross-sections of 200 nm lines on a 400 nm pitch for a g-line, an i-line, a KrF and an ArF "
           "tool: the modulation deepens with each generation as k1 grows from 0.21 to 0.95.",
-      caption="The page's “one pitch through four eras” example as images: 200 nm lines and spaces through a "
-              "g-line (NA 0.45), i-line (NA 0.63), KrF (NA 0.68) and ArF (NA 0.92) tool, conventional σ 0.5, "
-              "default 2 % flare; two periods of the simulated field. Model: scalar Hopkins imaging ✅, thin "
-              "mask, no resist.",
+      caption="<strong>One pitch through four eras.</strong> 200 nm lines and spaces imaged through a g-line "
+              "(NA 0.45), i-line (NA 0.63), KrF (NA 0.68) and ArF (NA 0.92) tool with conventional σ 0.5 and "
+              "the default 2 % flare, two periods of the simulated field — the page's example as images. "
+              "<em>Model: Hopkins imaging ✅ (thin mask, no resist).</em>",
       pages=("history/index.md",))
 
 
@@ -127,10 +155,10 @@ def steppers_draw(rows, th):
 _site("site-steppers-1600nm-pitch", steppers_compute, steppers_draw,
       alt="Cross-sections of 800 nm lines on a 1.6 micrometre pitch through three stepper lenses; the edges sharpen "
           "from the 1978 g-line tool to the 1994 i-line tool.",
-      caption="The projection-era example as images: 800 nm lines on a 1.6 µm pitch through the GCA DSW 4800 "
-              "(g-line, NA 0.28), Nikon NSR-1505G4D (g-line, NA 0.45) and NSR-2205i11D (i-line, NA 0.63), "
-              "σ 0.5, default 2 % flare. Model: scalar Hopkins imaging ✅ (ideal lenses: the tools' real "
-              "aberrations and illuminators are not modelled).",
+      caption="<strong>Three stepper generations on one 1.6 µm pitch.</strong> 800 nm lines through the GCA DSW"
+              " 4800 (g-line, NA 0.28), Nikon NSR-1505G4D (g-line, NA 0.45) and NSR-2205i11D (i-line, NA 0.63),"
+              " σ 0.5, default 2 % flare — the projection-era example as images. <em>Model: Hopkins imaging ✅ "
+              "(ideal lenses: the tools' real aberrations and illuminators are not modelled).</em>",
       pages=("history/projection-era.md",))
 
 
@@ -171,11 +199,11 @@ def krf_sigma_draw(d, th):
 _site("site-krf-sigma-sweep", krf_sigma_compute, krf_sigma_draw,
       alt="Contrast of 90 nm lines on a 180 nm pitch at KrF NA 0.8 versus the illumination sigma: zero until sigma "
           "about 0.72, where the first diffraction orders start to enter the pupil, then rising.",
-      caption="Why larger σ helps a k<sub>1</sub> ≈ 0.29 grating (the page's σ-sweep example; dots = the four "
-              "values it prints; default adaptive source sampling throughout). Below σ = λ/(p·NA) − 1 ≈ 0.72 no source point can put a first diffraction "
-              "order through the pupil and the image is flat; above it the off-axis part of the fill forms "
-              "two-beam images. Conventional fill only; default 2 % flare. Model: scalar Hopkins imaging ✅, "
-              "illumination pupil fills ✅.",
+      caption="<strong>Why a larger σ helps a k<sub>1</sub> ≈ 0.29 grating.</strong> The page's σ-sweep example"
+              " swept continuously (dots: the four values it prints; default adaptive source sampling): below σ"
+              " = λ/(p·NA) − 1 ≈ 0.72 no source point can put a first diffraction order through the pupil and "
+              "the image is flat, above it the off-axis part of the fill forms two-beam images. Conventional "
+              "fill only; default 2 % flare. <em>Model: Hopkins imaging ✅ · illumination pupil fills ✅.</em>",
       pages=("history/excimer-duv.md",))
 
 
@@ -218,14 +246,14 @@ _site("site-f2-bandwidth", f2_bw_compute, f2_bw_draw,
       alt="Contrast of 100 nm lines at 157 nm versus laser bandwidth from 0.1 to 5 picometres: it falls as the "
           "bandwidth grows because the single-material lens focuses each wavelength at a different depth; the "
           "exact per-wavelength and the narrow-band calculations lie on top of each other.",
-      caption="Why a single lens material makes bandwidth matter (the page's bandwidth example, swept). Each "
-              "spectral sample (7 per line) is focused at a different depth by the default chromatic "
-              "coefficient of a CaF<sub>2</sub> lens at 157 nm, so contrast falls with FWHM. The exact path "
-              "(<code>compute_multiwavelength</code>) and the narrow-band approximation "
-              "(<code>compute_polychromatic</code>) agree at Δλ/λ ~ 10<sup>−5</sup>. Default 2 % flare. Models: "
-              "broadband imaging ✅, narrow-band approximation 🔶, refractive optics ✅ (linear axial "
-              "chromatic coefficient).",
-      pages=("history/157nm-detour.md",))
+      caption="<strong>Why a single lens material makes bandwidth matter.</strong> The page's bandwidth "
+              "example, swept: each of the 7 spectral samples per line is focused at a different depth by the "
+              "default chromatic coefficient of a CaF<sub>2</sub> lens at 157 nm, so contrast falls with FWHM; "
+              "the exact path (<code>compute_multiwavelength</code>) and the narrow-band approximation "
+              "(<code>compute_polychromatic</code>) agree at Δλ/λ ~ 10<sup>−5</sup>. Default 2 % flare. "
+              "<em>Model: broadband imaging ✅ · narrow-band approximation 🔶 · refractive optics ✅ (linear axial"
+              " chromatic coefficient).</em>",
+      pages=("history/157nm-detour.md", "sources/vuv-excimer.md"))
 
 
 WHY_IMM = (("F₂ 157.63 nm, dry NA 0.85", "f2_laser", "dry", 0.85),
@@ -265,12 +293,14 @@ _site("site-why-immersion", why_imm_compute, why_imm_draw,
       alt="Contrast versus half-pitch for a dry 157 nm lens at NA 0.85, a dry 193 nm lens at NA 0.93 and 193 nm "
           "water immersion at NA 1.35: immersion keeps imaging down to about 38 nm half-pitch, the dry 157 nm lens "
           "only to about 49 nm and dry 193 nm to about 55 nm.",
-      caption="The comparison that ended the 157 nm programme, across half-pitch: conventional σ 0.9, default "
-              "2 % flare, two-period commensurate fields. Dotted lines mark each tool's k<sub>1</sub> = 0.25 "
-              "half-pitch; with σ 0.9 the image vanishes slightly above it, at λ/(2NA·1.9). The dashed line is "
-              "the 45 nm example on the page. Models: scalar Hopkins imaging ✅, immersion optics ✅ (water "
-              "n = 1.437; no polarization in this chart).",
-      pages=("history/157nm-detour.md", "history/immersion-multipatterning.md"))
+      caption="<strong>The comparison that ended the 157 nm programme.</strong> Contrast of 1:1 lines against "
+              "half-pitch for a dry 157 nm lens at NA 0.85, a dry 193 nm lens at NA 0.93 and 193 nm water "
+              "immersion at NA 1.35 — conventional σ 0.9, default 2 % flare, two-period commensurate fields, "
+              "scalar model; dotted lines mark each tool's k<sub>1</sub> = 0.25 half-pitch (with σ 0.9 the "
+              "image vanishes slightly above it, at λ/(2NA·1.9)) and the dashed line the 45 nm example. "
+              "<em>Model: Hopkins imaging ✅ · immersion lithography ✅ (water n = 1.437; no polarization in this"
+              " chart).</em>",
+      pages=("history/157nm-detour.md", "index.md", "nodes/90-to-28nm.md"))
 
 
 def pol193_compute(fast):
@@ -307,11 +337,12 @@ def pol193_draw(d, th):
 _site("site-193i-polarization", pol193_compute, pol193_draw,
       alt="Contrast versus pitch for 193 nm water immersion at NA 1.35 with TE, TM and unpolarized light: TE keeps "
           "the most contrast, TM the least, unpolarized lies between; the scalar model overestimates all but TE.",
-      caption="Polarization at NA 1.35 (water): dense 1:1 lines imaged with the vector model for TE, TM and "
-              "unpolarized illumination, against the scalar model. Near the resolution limit the two first "
-              "orders meet at steep angles, so TM light (field in the plane of incidence) interferes poorly; "
-              "production 193i tools use polarized illumination. Thin mask, ideal lens, image in water (no "
-              "resist film). Models: vector imaging ✅, immersion optics ✅.",
+      caption="<strong>Polarization decides the contrast at NA 1.35.</strong> Dense 1:1 lines in water imaged "
+              "with the vector model for TE, TM and unpolarized illumination against the scalar model "
+              "(conventional σ 0.9): near the resolution limit the two first orders meet at steep angles, so TM"
+              " light (field in the plane of incidence) interferes poorly — production 193i tools use polarized"
+              " illumination. Thin mask, ideal lens, image in water, no resist film. <em>Model: vector imaging "
+              "✅ · immersion lithography ✅.</em>",
       pages=("history/immersion-multipatterning.md",))
 
 
@@ -390,12 +421,12 @@ def lele_draw(d, th):
 _site("site-lele-pitch-split", lele_compute, lele_draw,
       alt="A 76 nm pitch grating gives a flat image in one dry ArF exposure, while each of two LELE exposures at 152 "
           "nm pitch is well modulated; thresholding each and taking the union prints all lines at 76 nm pitch.",
-      caption="Why pitch splitting works (the page's LELE example): one dry ArF exposure of a 76 nm pitch "
-              "(k<sub>1</sub> = 0.18) has no modulation, but each LELE exposure carries every other line at 152 nm "
-              "pitch. Each exposure is thresholded at the dose that prints 38 nm lines (dashed) and the two "
-              "printed patterns are united (bottom). Default 2 % flare; perfect overlay. Models: scalar imaging ✅, "
-              "multiple patterning 🔶 (constant-threshold resist, no etch).",
-      pages=("history/immersion-multipatterning.md",))
+      caption="<strong>Why pitch splitting works.</strong> One dry ArF exposure of a 76 nm pitch (k<sub>1</sub>"
+              " = 0.18) has no modulation, but each LELE exposure carries every other line at 152 nm pitch; "
+              "each is thresholded at the dose that prints 38 nm lines (dashed) and the two printed patterns "
+              "are united (bottom) — the page's LELE example. Default 2 % flare; perfect overlay. <em>Model: "
+              "Hopkins imaging ✅ · multiple patterning 🔶 (constant-threshold resist, no etch).</em>",
+      pages=("history/immersion-multipatterning.md", "research-modules.md"))
 
 
 def nxe_hna_compute(fast):
@@ -430,11 +461,13 @@ def nxe_hna_draw(d, th):
 _site("site-euv-nxe-vs-high-na", nxe_hna_compute, nxe_hna_draw,
       alt="Contrast versus pitch from 12 to 40 nm for 0.33 and 0.55 NA EUV optics with a tin plasma source: the "
           "0.33 NA curve reaches zero near 22 nm pitch, the 0.55 NA curve near 13 nm.",
-      caption="Resolution at 0.33 vs 0.55 NA through the simulator's EUV presets (Sn LPP, conventional σ 0.9, "
-              "two-period commensurate fields). Isotropic pupil — the anamorphic 4×/8× magnification is not "
-              "modelled — with a 0.2·NA central obscuration assumed for High-NA; thin mask (no mask-3D shadowing), "
-              "no flare. Models: scalar Hopkins imaging ✅, EUV projection optics 🔶.",
-      pages=("history/euv.md", "nodes/angstrom-era.md"))
+      caption="<strong>Resolution at NA 0.33 against NA 0.55.</strong> Contrast of 1:1 lines against pitch "
+              "through the simulator's EUV presets (Sn LPP, conventional σ 0.9, two-period commensurate "
+              "fields): isotropic pupil — the anamorphic 4×/8× magnification is not modelled — with a 0.2·NA "
+              "central obscuration assumed for High-NA; thin mask (no mask-3D shadowing), no flare. <em>Model: "
+              "Hopkins imaging ✅ · EUV projection optics 🔶 (obscuration assumed).</em>",
+      pages=("history/euv.md", "nodes/angstrom-era.md", "index.md", "README.md"),
+      extra={"width": {"README.md": 820}})  # README <picture> width (DESIGN §6.2; INT late-binding edit)
 
 
 def schw_compute(fast):
@@ -482,11 +515,11 @@ _site("site-schwarzschild-obscuration", schw_compute, schw_draw,
       alt="Image cross-sections of 30 nm lines through a 0.3 NA Schwarzschild objective with central obscuration "
           "0, 0.25 and 0.4, and contrast versus pitch for the three, showing the mid-pitch contrast lost to the "
           "obscuration.",
-      caption="13.5 nm through a Schwarzschild objective (the page's example: Sn LPP σ 0.5, NA 0.3, 30 nm lines "
-              "on 60 nm) for three central obscurations. Blocking the pupil centre removes some zero-order/first-"
-              "order pairs and changes contrast pitch by pitch; images are normalized to the clear field of the "
-              "same pupil. Default 3 % flare; scalar mirror reflectance. Model: Schwarzschild objective ✅ "
-              "(annular scalar pupil, no figure error).",
+      caption="<strong>13.5 nm through a Schwarzschild objective.</strong> The page's example (Sn LPP σ 0.5, NA"
+              " 0.3, 30 nm lines on 60 nm) for three central obscurations: blocking the pupil centre removes "
+              "some zero-order/first-order pairs and changes contrast pitch by pitch; images are normalized to "
+              "the clear field of the same pupil. Default 3 % flare; scalar mirror reflectance. <em>Model: "
+              "Schwarzschild objective ✅ (annular scalar pupil, no figure error).</em>",
       pages=("history/euv.md",))
 
 
@@ -530,10 +563,11 @@ _site("site-liga-critical-energy", liga_ec_compute, liga_ec_draw,
       alt="Depth-dose curves through 500 micrometres of PMMA for bending-magnet spectra with critical energies 3, "
           "6.23 and 10 keV and for 6.23 keV behind 20 micrometres of aluminium; softer spectra put far more dose "
           "at the top for the same 3 kJ/cm3 at the bottom.",
-      caption="The page's LIGA example as depth-dose curves: bending-magnet spectra of critical energy 3, 6.23 "
-              "and 10 keV (and 6.23 keV through a 20 µm Al filter) on 500 µm PMMA behind the default 20 µm Au / "
-              "2 µm Ti mask, each scaled so the bottom receives the 3 kJ/cm³ clearing dose. Model: LIGA depth "
-              "dose ✅ (NIST μ / μ<sub>en</sub>, collimated beam, no beamline mirrors).",
+      caption="<strong>Harder spectra expose 500 µm of PMMA more evenly.</strong> The page's LIGA example as "
+              "depth-dose curves: bending-magnet spectra of critical energy 3, 6.23 and 10 keV (and 6.23 keV "
+              "through a 20 µm Al filter) on 500 µm PMMA behind the default 20 µm Au / 2 µm Ti mask, each "
+              "scaled so the bottom receives the 3 kJ/cm³ clearing dose. <em>Model: LIGA depth dose ✅ (NIST μ /"
+              " μ<sub>en</sub>, collimated beam, no beamline mirrors).</em>",
       pages=("history/parallel-paths.md",))
 
 
@@ -589,13 +623,13 @@ _site("site-interference-and-talbot", interf_talbot_compute, interf_talbot_draw,
       alt="Left: a two-beam interference pattern recorded as a photoactive-compound map with a 193 nm fringe "
           "period. Middle: the Talbot carpet behind a 1 micrometre grating lit at 193 nm. Right: the displacement-"
           "Talbot image, which has half the grating period.",
-      caption="Lensless patterning at 193 nm. (a) The page's two-beam example (30° half-angle in air, resist "
-              "n = 1.7): fringe period λ/(2 sin θ) = 193 nm, shown as the Dill photoactive compound (PAC) through "
-              "depth; at the example's default dose the PAC only falls from 1.00 to 0.92 (colour scale stretched). "
-              "(b) Self-imaging behind a 1 µm binary amplitude grating, exact angular-spectrum propagation; "
-              "(c) averaging over a scanned gap (DTL) gives a stationary image at half the period. Models: "
-              "multi-beam interference ✅/🔶 (per-beam scalar absorption, no substrate reflection); Talbot/DTL 🔶 "
-              "(scalar thin mask, coherent normal illumination).",
+      caption="<strong>Lensless patterning at 193 nm.</strong> (a) The page's two-beam example (30° half-angle "
+              "in air, resist n = 1.7): a 193 nm fringe period shown as the Dill photoactive compound (PAC) "
+              "through depth — at the example's default dose the PAC only falls from 1.00 to 0.92, so the "
+              "colour scale is stretched; (b) self-imaging behind a 1 µm binary amplitude grating by exact "
+              "angular-spectrum propagation; (c) averaging over a scanned gap (DTL) gives a stationary image at"
+              " half the period. <em>Model: multi-beam interference ✅ (per-beam scalar absorption, no substrate"
+              " reflection) · Talbot / DTL 🔶 (scalar thin mask, coherent normal illumination).</em>",
       pages=("history/parallel-paths.md",))
 
 
@@ -652,66 +686,16 @@ _site("site-k1-contrast-vs-pitch-oai", oai_compute, oai_draw,
       alt="Contrast versus pitch on 193 nm immersion, 0.33 NA EUV and 0.55 NA EUV for conventional and dipole "
           "illumination; the dipole keeps contrast down to close to the k1 = 0.25 pitch on each tool, the "
           "conventional source loses it well before.",
-      caption="Companion to the k<sub>1</sub>-versus-pitch chart: dense 1:1 lines on the page's three tools "
-              "(193i: 193 nm, water NA 1.35; EUV: Sn LPP through the NA 0.33 and 0.55 presets), conventional "
-              "σ 0.9 against an x-dipole whose poles sit at σ 0.75. The dipole puts all its light where a two-beam "
-              "image forms and keeps contrast to just above the k<sub>1</sub> = 0.25 pitch (dashed); the "
-              "conventional disc fades out near λ/(NA·1.9). On the High-NA preset the dipole's contrast falls again above "
-              "≈ 22 nm pitch, where first orders from the poles start to land in the assumed 0.2·NA central "
-              "obscuration. Thin mask, isotropic pupils (High-NA obscuration "
-              "0.2·NA assumed, no anamorphic optics), no resist. Models: scalar Hopkins imaging ✅, illumination "
-              "pupil fills ✅ (two-pole dipole), EUV projection optics 🔶, immersion ✅.",
+      caption="<strong>Dense lines on three tools, conventional against dipole.</strong> 1:1 lines on 193i "
+              "(water NA 1.35), EUV NA 0.33 and High-NA 0.55 (Sn LPP presets): conventional σ 0.9 against an "
+              "x-dipole with poles at σ 0.75 — the dipole puts its light where a two-beam image forms and keeps"
+              " contrast to just above the k<sub>1</sub> = 0.25 pitch (dashed), while the conventional disc "
+              "fades near λ/(NA·1.9); on the High-NA preset the dipole's contrast falls again above ≈ 22 nm "
+              "pitch, where the poles' first orders land in the assumed 0.2·NA obscuration. Thin mask, "
+              "isotropic pupils (no anamorphic optics), no resist. <em>Model: Hopkins imaging ✅ · illumination "
+              "pupil fills ✅ (two-pole dipole) · EUV projection optics 🔶 (obscuration assumed) · immersion "
+              "lithography ✅.</em>",
       pages=("nodes/litho-math.md",), requires=("illumination",))
-
-
-def node_xs_compute(fast):
-    huv = native()
-    out = {"duv": [], "euv": []}
-    src193 = huv.SourceConfig.arf_laser(0.9)
-    for pitch in (80.0, 64.0):
-        mask = huv.MaskConfig.line_space(pitch / 2, pitch)
-        img = _engine(huv, src193, huv.OpticsConfig.immersion_193i(), mask,
-                      huv.GridConfig(64, pitch / 32)).compute_aerial_image(0.0)
-        x, p = _profile(img)
-        out["duv"].append({"label": f"193i NA 1.35, {pitch:.0f} nm pitch", "x": x / pitch, "p": p,
-                           "c": img.image_contrast()})
-    sn = huv.SourceConfig.lpp_sn_13nm5(0.9)
-    for label, opt in (("EUV NA 0.33, 24 nm pitch", huv.OpticsConfig.euv_nxe()),
-                       ("EUV NA 0.55, 24 nm pitch", huv.OpticsConfig.euv_high_na())):
-        mask = huv.MaskConfig.line_space(12.0, 24.0)
-        img = _engine(huv, sn, opt, mask, huv.GridConfig(64, 24.0 / 32)).compute_aerial_image(0.0)
-        x, p = _profile(img)
-        out["euv"].append({"label": label, "x": x / 24.0, "p": p, "c": img.image_contrast()})
-    return out
-
-
-def node_xs_draw(d, th):
-    fig, axes = plt.subplots(1, 2, figsize=(S.WIDE_WIDTH, 3.9), sharey=True, gridspec_kw={"wspace": 0.08})
-    for ax, key, title in ((axes[0], "duv", "(a) 193i, conventional σ 0.9"),
-                           (axes[1], "euv", "(b) Sn LPP 13.5 nm, σ 0.9, 24 nm pitch")):
-        S.style_axes(ax, th, grid="both")
-        for slot, r in enumerate(d[key], start=1):
-            ax.plot(r["x"], r["p"], color=th.s(slot), zorder=3)
-        ax.set_xlim(d[key][0]["x"][0], d[key][0]["x"][-1])
-        ax.set_xlabel("x / pitch")
-        ax.set_title(title)
-        _legend(ax, th, [f"{r['label']}: contrast {r['c']:.2f}" for r in d[key]], (1, 2), loc="upper center",
-                bbox_to_anchor=(0.5, -0.17), fontsize=S.SMALL_PT)
-    axes[0].set_ylim(0, None)
-    axes[0].set_ylabel("Relative intensity")
-    fig.subplots_adjust(bottom=0.32)
-    return fig
-
-
-_site("site-node-cross-sections", node_xs_compute, node_xs_draw,
-      alt="Aerial-image cross-sections: on 193 nm immersion an 80 nm pitch keeps only a faint modulation and a 64 nm "
-          "pitch none; at 24 nm pitch the 0.33 NA EUV image is weak while the 0.55 NA image is strongly modulated.",
-      caption="Where single exposure runs out, as images (two periods each, x in units of the pitch). (a) 193i "
-              "with a conventional σ 0.9 source: the 80 nm pitch is just above the λ/(NA·1.9) cut-off and keeps "
-              "little contrast, 64 nm has none. (b) 24 nm pitch on the 0.33 and 0.55 NA EUV presets. Production "
-              "uses dipole-like illumination near these limits (see the companion chart). Thin mask, no resist. "
-              "Models: scalar Hopkins imaging ✅, immersion ✅, EUV projection optics 🔶.",
-      pages=("nodes/3nm-and-2nm.md",))
 
 
 def dof_compute(fast):
@@ -756,12 +740,13 @@ _site("site-euv-depth-of-focus", dof_compute, dof_draw,
       alt="Contrast versus focus for 0.33 and 0.55 NA EUV: at the same 32 nm pitch the 0.55 NA image starts higher "
           "but fades faster with defocus; at equal k1 both start near 0.5 and the 0.55 NA image fades about three "
           "times faster.",
-      caption="The depth-of-focus price of 0.55 NA (Sn LPP, conventional σ 0.9). (a) The angstrom-era page's "
-              "example: a 32 nm pitch through the NXE and High-NA presets. (b) The High-NA page's example: "
-              "equal k<sub>1</sub> (32 nm at 0.33, 19.2 nm at 0.55) through ideal unobscured pupils. The engine "
-              "applies the exact non-paraxial defocus phase per source point; image in air, no resist, no mask-3D "
-              "best-focus shifts. Models: defocus / through-focus imaging ✅, EUV projection optics 🔶.",
-      pages=("nodes/angstrom-era.md", "future/high-na-and-hyper-na.md"))
+      caption="<strong>The depth-of-focus price of NA 0.55.</strong> Sn LPP, conventional σ 0.9: (a) the "
+              "angstrom-era example, a 32 nm pitch through the NXE and High-NA presets; (b) the High-NA page's "
+              "example, equal k<sub>1</sub> (32 nm at 0.33, 19.2 nm at 0.55) through ideal unobscured pupils. "
+              "The engine applies the exact non-paraxial defocus phase per source point; image in air, no "
+              "resist, no mask-3D best-focus shifts. <em>Model: defocus / through-focus imaging ✅ · EUV "
+              "projection optics 🔶.</em>",
+      pages=("nodes/angstrom-era.md", "future/high-na-and-hyper-na.md", "nodes/litho-math.md"))
 
 
 def sadp_compute(fast):
@@ -815,11 +800,12 @@ _site("site-sadp-saqp-pitch-walk", sadp_compute, sadp_draw,
       alt="Self-aligned double and quadruple patterning geometry: SADP pitch walk grows linearly with mandrel-width "
           "error, SAQP spaces split into different values when the mandrel width departs from 48 nm, and cartoons "
           "of the resulting lines.",
-      caption="Pitch walk from the page's SADP/SAQP example: <code>api.sadp(128, W, 32)</code> walk = |2W + 2t − P| "
-              "(zero at W = 32 nm) and the SAQP spaces from <code>api.saqp(128, W, 16, 16)</code>, uniform 16 nm at "
-              "W = 48 nm. (c) The line positions over one mandrel period. Model: multiple patterning 🔶 — SADP/SAQP "
-              "purely geometric (ideal conformal spacers, no deposition or etch physics).",
-      pages=("nodes/22-to-10nm.md",))
+      caption="<strong>Pitch walk from the SADP/SAQP example.</strong> <code>api.sadp(128, W, 32)</code> gives "
+              "walk = |2W + 2t − P| (zero at W = 32 nm) and <code>api.saqp(128, W, 16, 16)</code> the SAQP "
+              "spaces, uniform 16 nm at W = 48 nm; (c) the line positions over one mandrel period. <em>Model: "
+              "multiple patterning 🔶 (SADP/SAQP purely geometric: ideal conformal spacers, no deposition or "
+              "etch physics).</em>",
+      pages=("nodes/22-to-10nm.md", "research-modules.md"))
 
 
 # ===========================================================================
@@ -878,11 +864,12 @@ _site("site-mask-cone-reflectance", cone_compute, cone_draw,
       alt="Reflectance of an ideal molybdenum-silicon mask blank versus angle of incidence, with bars marking the "
           "range of angles each scanner design sends to the mask; at 0.55 NA with 4x reduction the range runs into "
           "the steep fall-off, with 8x it stays on the plateau.",
-      caption="Why the High-NA mask wants 8× in one direction (the High-NA page's example): reflectance of an "
-              "ideal 40-period Mo/Si blank at 13.5 nm, period tuned for the chief-ray angle (max(6°, cone "
-              "half-angle)), against the mask-side cone half-angle asin(NA/M). Bars show each design's cone and "
-              "the reflectance at its two edges. Ideal multilayer: no absorber, capping or roughness, and the "
-              "single worst ray — not a mask-3D calculation. Model: multilayer mirrors ✅.",
+      caption="<strong>Why the High-NA mask wants 8× in one direction.</strong> Reflectance of an ideal "
+              "40-period Mo/Si blank at 13.5 nm, period tuned for the chief-ray angle (max(6°, cone "
+              "half-angle)), against the mask-side cone half-angle asin(NA/M) — the High-NA page's example; "
+              "bars show each design's cone and the reflectance at its two edges. Ideal multilayer (no "
+              "absorber, capping or roughness) and the single worst ray, not a mask-3D calculation. <em>Model: "
+              "multilayer mirrors ✅.</em>",
       pages=("future/high-na-and-hyper-na.md",))
 
 
@@ -930,38 +917,43 @@ def beuv_draw(d, th):
 _site("site-beuv-20nm-pitch", beuv_compute, beuv_draw,
       alt="A 20 nm pitch grating through the same ideal NA 0.33 optics at 13.5 nm and at 6.7 nm: flat at 13.5 nm, "
           "well modulated at 6.7 nm; contrast versus pitch shows the cut-off halving with the wavelength.",
-      caption="The same optics at 13.5 nm and 6.7 nm (the Beyond-EUV page's example): Sn and Gd plasma presets "
-              "(conventional σ 0.9) through an ideal, unobscured NA 0.33 <code>euv_projection</code> pupil. No "
-              "BEUV projection lens exists; mirror reflectance, flare and mask-3D are not included, and the Gd "
-              "source power is a projection. Models: scalar Hopkins imaging ✅, EUV projection optics 🔶, Gd LPP "
-              "source 🧪 (power).",
+      caption="<strong>The same optics at 13.5 nm and 6.7 nm.</strong> Sn and Gd plasma presets (conventional σ"
+              " 0.9) through an ideal, unobscured NA 0.33 <code>euv_projection</code> pupil — the Beyond-EUV "
+              "page's example. No BEUV projection lens exists; mirror reflectance, flare and mask-3D are not "
+              "included, and the Gd source power is a projection. <em>Model: Hopkins imaging ✅ · EUV projection"
+              " optics 🔶 · laser-produced plasma ✅ (🧪 Gd in-band power, a projection).</em>",
       pages=("future/beyond-euv.md",))
 
 
-POWER_PRESETS = (
-    ("Sn LPP, NXE:3400B class", "lpp_sn_13nm5", (0.9,), "shipping"),
-    ("Sn LPP, NXE:3800E class", "lpp_sn_13nm5_500w", (0.9,), "shipping"),
-    ("Sn discharge plasma (at IF)", "dpp_sn_13nm5", (), "demonstrated"),
-    ("FLASH-like SASE FEL", "xfel_flash_13nm5", (), "demonstrated"),
-    ("FERMI-like seeded FEL", "xfel_fermi_seeded", (), "demonstrated"),
-    ("CW-SC linac FEL", "xfel_cw_sc_13nm5", (), "projection"),
-    ("ERL-FEL", "xfel_erl_13nm5", (), "projection"),
-    ("SSMB ring", "ssmb_euv_13nm5", (), "projection"),
-    ("compact undulator", "synchrotron_compact_euv", (), "demonstrated"),
-    ("ICS design point", "ics_compact_euv_13nm5", (), "projection"),
-    ("LPA-FEL target", "lpa_fel_bella_25nm", (0.7,), "projection"),
-    ("HHG, neon", "hhg_ne_13nm5", (), "demonstrated"),
-    ("soft-X-ray laser, Ag", "sxrl_ag_13nm9", (), "demonstrated"),
-    ("Smith–Purcell", "smith_purcell", (), "projection"),
+POWER_PRESETS = (  # label, factory, args, provenance class (tokens.PROVENANCE), the plane the power is quoted in
+    ("Sn LPP, NXE:3400B class", "lpp_sn_13nm5", (0.9,), "calibrated", "at IF"),
+    ("Sn LPP, NXE:3800E class", "lpp_sn_13nm5_500w", (0.9,), "reported", "at IF"),
+    ("Sn discharge plasma", "dpp_sn_13nm5", (), "reported", "at IF"),
+    ("FLASH-like SASE FEL", "xfel_flash_13nm5", (), "reported", "radiated"),
+    ("FERMI-like seeded FEL", "xfel_fermi_seeded", (), "reported", "radiated"),
+    ("CW-SC linac FEL", "xfel_cw_sc_13nm5", (), "projection", "radiated"),
+    ("ERL-FEL", "xfel_erl_13nm5", (), "projection", "radiated"),
+    ("SSMB ring", "ssmb_euv_13nm5", (), "projection", "radiated, coherent"),
+    ("compact undulator", "synchrotron_compact_euv", (), "reported", "central cone"),
+    ("ICS design point", "ics_compact_euv_13nm5", (), "projection", "collected"),
+    ("LPA-FEL target", "lpa_fel_bella_25nm", (0.7,), "projection", "radiated"),
+    ("HHG, neon", "hhg_ne_13nm5", (), "reported", "harmonic output"),
+    ("soft-X-ray laser, Ag", "sxrl_ag_13nm9", (), "reported", "laser output"),
+    ("Smith–Purcell", "smith_purcell", (), "projection", "emitted"),
 )
+POWER_LEGEND = (("calibrated", "calibrated to the published 250 W at IF (NXE:3400B chain)"),
+                ("reported", "anchored to a shipping or demonstrated machine class"),
+                ("projection", "projection or design point"))
 
 
 def power_compute(fast):
     huv = native()
     rows = []
-    for label, factory, args, status in POWER_PRESETS:
+    for label, factory, args, provenance, plane in POWER_PRESETS:
         src = getattr(huv.SourceConfig, factory)(*args)
-        rows.append({"label": label, "p": float(src.average_power_w), "lam": src.wavelength_nm, "status": status})
+        rows.append({"label": label, "p": float(src.average_power_w), "lam": src.wavelength_nm,
+                     "provenance": provenance, "plane": plane})
+    assert all(r["p"] > 0 for r in rows)
     return rows
 
 
@@ -969,27 +961,24 @@ def power_draw(rows, th):
     from common import fmt_si
 
     rows = sorted(rows, key=lambda r: r["p"])
-    fig, ax = plt.subplots(figsize=(S.FULL_WIDTH, 5.4))
+    fig, ax = plt.subplots(figsize=(S.FULL_WIDTH, 5.6))
     S.style_axes(ax, th, grid="x")
     y = np.arange(len(rows))
+    col = th.s(1)
     for i, r in enumerate(rows):
-        filled = r["status"] != "projection"
-        col = th.s(1) if filled else th.s(2)
-        ax.barh(i, r["p"], left=0, height=0.6, color=col if filled else "none", edgecolor=col,
-                linewidth=S.HAIR_PT * 1.5)
+        ax.barh(i, r["p"], left=1e-10, height=0.6, zorder=3, **S.provenance_style(r["provenance"], col, th))
         ax.text(r["p"] * 1.4, i, fmt_si(r["p"], "W"), va="center", color=th.ink2, fontsize=S.SMALL_PT)
     ax.set_xscale("log")
     ax.set_xlim(1e-10, 1e6)
     ax.set_yticks(y)
-    ax.set_yticklabels([f"{r['label']} ({r['lam']:.1f} nm)" for r in rows], fontsize=S.SMALL_PT)
+    ax.set_yticklabels([f"{r['label']} ({r['lam']:.1f} nm) · {r['plane']}" for r in rows], fontsize=S.SMALL_PT)
     ax.axvspan(250.0, 1000.0, color=th.band, zorder=0, lw=0)
-    ax.set_xlabel("average_power_w of the preset (W); shaded: 250 W – 1 kW")
+    ax.set_xlabel("average power (W), plane per family after each label; shaded: 250 W – 1 kW at IF")
     ax.set_title("Simulator source presets against the 250 W – 1 kW HVM band")
-    ax.legend([plt.Rectangle((0, 0), 1, 1, color=th.s(1)),
-               plt.Rectangle((0, 0), 1, 1, facecolor="none", edgecolor=th.s(2))],
-              ["anchored to a shipping or demonstrated machine", "projection / design point"], loc="upper center",
-              bbox_to_anchor=(0.4, -0.12), ncol=2, fontsize=S.SMALL_PT)
-    fig.subplots_adjust(bottom=0.18)
+    handles = [plt.Rectangle((0, 0), 1, 1, **S.provenance_style(kind, col, th)) for kind, _ in POWER_LEGEND]
+    ax.legend(handles, [lab for _, lab in POWER_LEGEND], loc="upper center", bbox_to_anchor=(0.42, -0.12), ncol=1,
+              fontsize=S.SMALL_PT)
+    fig.subplots_adjust(bottom=0.22)
     return fig
 
 
@@ -997,11 +986,14 @@ _site("site-preset-power-bars", power_compute, power_draw,
       alt="Horizontal log-scale bars of the average power reported by each EUV-range source preset, from below a "
           "nanowatt to above ten kilowatts, with the 250 W and 1 kW high-volume-manufacturing lines; only the tin "
           "plasma presets and the accelerator projections reach the band.",
-      caption="Every EUV-range source preset's <code>average_power_w</code> against the 250 W – 1 kW band "
-              "(250 W at IF on the NXE:3400B chain; 1 kW the stated target). Filled bars are anchored to a "
-              "shipping or demonstrated machine class, open bars are projections or design points (as labelled "
-              "in each preset's documentation). Powers are defined at different planes (IF, undulator exit, laser "
-              "output), so compare orders of magnitude. Source models range from ✅ to 🧪 — see each family page.",
+      caption="<strong>Every EUV-range source preset against the 250 W – 1 kW band.</strong> "
+              "<code>average_power_w</code> of each preset on a log axis with the plane its family quotes it in"
+              " (at IF for the plasma sources; radiated, collected or emitted power for the rest), so compare "
+              "orders of magnitude; the NXE:3400B chain is calibrated to the published 250 W at IF, filled bars"
+              " are anchored to a shipping or demonstrated machine class, hollow dashed bars are projections or"
+              " design points, as each preset's documentation labels them. <em>Data chart from the presets' "
+              "<code>average_power_w</code>; each family carries its own grade on its page. No model "
+              "badge.</em>",
       pages=("future/accelerator-light-sources.md",))
 
 
@@ -1045,11 +1037,11 @@ _site("site-ssmb-bunching", ssmb_compute, ssmb_draw,
       alt="Steady-state microbunching: coherent EUV power rising as the square of the bunching factor, reaching "
           "250 W near b = 0.073 and 1 kW near 0.146, and the microbunch length that bunching factor implies, a "
           "few nanometres.",
-      caption="What SSMB's kilowatt assumes (the accelerator page's example): coherent power of the "
-              "<code>ssmb()</code> model versus the bunching factor b at 13.5 nm, P ∝ b² for the 1 A, 100-period, "
-              "K = 1.6 radiator, and the rms microbunch length that b implies for a Gaussian bunch, "
-              "b = exp(−k²σ²/2). The 1 kW preset needs b ≈ 0.146 — nanometre microbunches on every turn, which "
-              "has not been demonstrated. Model: SSMB 🧪.",
+      caption="<strong>What SSMB's kilowatt assumes.</strong> Coherent power of the <code>ssmb()</code> model "
+              "against the bunching factor b at 13.5 nm, P ∝ b² for the 1 A, 100-period, K = 1.6 radiator, and "
+              "the rms microbunch length b implies for a Gaussian bunch, b = exp(−k²σ²/2) — the accelerator "
+              "page's example. The 1 kW preset needs b ≈ 0.146, nanometre microbunches on every turn, which has"
+              " not been demonstrated. <em>Model: SSMB 🧪.</em>",
       pages=("future/accelerator-light-sources.md",))
 
 
@@ -1089,12 +1081,12 @@ _site("site-wph-vs-dose", wph_compute, wph_draw,
       alt="Wafers per hour versus resist dose for a 250 W tin source, a 1 kW SSMB projection and an ERL free-"
           "electron laser shared by 16 scanners; the tin source falls from about 154 to 103 wafers per hour "
           "between 30 and 100 mJ/cm2 while the others stay near the overhead-limited ceiling.",
-      caption="Power becomes throughput (the accelerator page's example, swept over dose): "
-              "<code>wafer_throughput()</code> with its defaults (ten mirrors at 0.70, mask 0.65, 84 fields, 0.1 s "
-              "per field and 10 s per wafer). The ERL curve spreads one source over 16 scanners by multiplying "
-              "each wafer's exposure time by 16 — the page's back-of-envelope sharing, not a feature of the code. "
-              "Model: dose-limited throughput 🔶; SSMB and ERL powers are projections.",
-      pages=("future/accelerator-light-sources.md",))
+      caption="<strong>Power becomes throughput.</strong> <code>wafer_throughput()</code> with its defaults "
+              "(ten mirrors at 0.70, mask 0.65, 84 fields, 0.1 s per field and 10 s per wafer) swept over dose "
+              "— the accelerator page's example; the ERL curve spreads one source over 16 scanners by "
+              "multiplying each wafer's exposure time by 16, the page's back-of-envelope sharing, not a feature"
+              " of the code. SSMB and ERL powers are projections. <em>Model: dose-limited throughput 🔶.</em>",
+      pages=("future/accelerator-light-sources.md", "future/stochastic-frontier.md"))
 
 
 def quantum_compute(fast):
@@ -1140,12 +1132,12 @@ def quantum_draw(d, th):
 _site("site-quantum-i2-period", quantum_compute, quantum_draw,
       alt="Classical and two-photon (I squared) exposure profiles of a 240 nm pitch grating: the I squared profile "
           "is sharper, but its Fourier spectrum still peaks at the 240 nm period; no finer period appears.",
-      caption="Sharpening without a finer period (the quantum page's example): the classical aerial image "
-              "(F<sub>2</sub> 157.63 nm, NA 0.75, σ 0.7) and the N = 2 post-step I² at fidelity 1. Contrast rises, "
-              "but the dominant Fourier component of both images is the 240 nm mask period — the I² model is a "
-              "sharpening proxy, not λ/N resolution. Model: quantum lithography 🧪 (classical N-photon "
-              "absorption; the ideal N00N limit is a separate model).",
-      pages=("future/quantum-and-exotic.md",))
+      caption="<strong>Sharpening without a finer period.</strong> The classical aerial image (F<sub>2</sub> "
+              "157.63 nm, NA 0.75, σ 0.7) and the N = 2 post-step I² at fidelity 1 — the quantum page's "
+              "example: contrast rises, but the dominant Fourier component of both images is the 240 nm mask "
+              "period, so the I² model is a sharpening proxy, not λ/N resolution. <em>Model: quantum "
+              "lithography 🧪 (classical N-photon absorption; the ideal N00N limit is a separate model).</em>",
+      pages=("future/quantum-and-exotic.md", "research-modules.md"))
 
 
 def talbot_par_compute(fast):
@@ -1205,11 +1197,279 @@ _site("site-talbot-exact-vs-paraxial", talbot_par_compute, talbot_par_draw,
       alt="The Talbot carpet behind a 100 nm grating at 13.5 nm from exact propagation and its difference from "
           "the paraxial carpet, which is large in the fine structure carried by the "
           "higher orders; beside them the DTL image with half the period and the coherent row.",
-      caption="Talbot carpets of a 100 nm binary amplitude grating at 13.5 nm (the alternative-patterning page's "
-              "example), ±10 orders: (a) exact angular-spectrum propagation, (b) its difference from the paraxial "
-              "(Fresnel) carpet, both in units of the paraxial Talbot length 2p²/λ ≈ 1481 nm (dashed). With "
-              "p/λ ≈ 7 the higher orders dephase in the exact propagation, so the fine structure differs strongly "
-              "even though the 0/±1 self-image only moves to ≈ 1475 nm. (c) The "
-              "stationary DTL image at half the period. Model: Talbot / DTL 🔶 (scalar thin mask, coherent normal "
-              "illumination).",
-      pages=("future/alternative-patterning.md",))
+      caption="<strong>Exact against paraxial Talbot carpets.</strong> A 100 nm binary amplitude grating at "
+              "13.5 nm, ±10 orders — the alternative-patterning page's example: (a) exact angular-spectrum "
+              "propagation, (b) its difference from the paraxial (Fresnel) carpet, both in units of the "
+              "paraxial Talbot length 2p²/λ ≈ 1481 nm (dashed); with p/λ ≈ 7 the higher orders dephase in the "
+              "exact propagation, so the fine structure differs strongly even though the 0/±1 self-image only "
+              "moves to ≈ 1475 nm; (c) the stationary DTL image at half the period. <em>Model: Talbot / DTL 🔶 "
+              "(scalar thin mask, coherent normal illumination).</em>",
+      pages=("future/alternative-patterning.md", "processes/talbot.md"))
+
+
+# ===========================================================================
+# I10 · I11 — the stochastics and node cross-section figures of DESIGN §5.2
+# ===========================================================================
+
+SHOT_DOSES = (30.0, 60.0)  # mJ/cm², the page example's doses
+SHOT_DRAWS = 20_000  # per-contact Poisson draws, as the example
+SHOT_SEED = 0
+
+
+def shot_compute(fast):
+    huv = native()
+    src = huv.SourceConfig.lpp_sn_13nm5(0.9)
+    mask = huv.MaskConfig.contact_hole(20.0, 40.0, 40.0)  # 20 nm holes on a 40 nm grid
+    grid = huv.GridConfig(64, 1.25)  # the page's grid: an 80 nm field holding 2 × 2 holes
+    img = np.asarray(_engine(huv, src, huv.OpticsConfig.euv_nxe(), mask, grid).compute_aerial_image(0.0).intensity)
+    pixel = grid.pixel_nm
+    n_holes = round(grid.periods_in_field(40.0)) ** 2
+    per_nm2 = src.photon_density_per_mj_cm2
+    closed = 1e-17 / (HC / src.wavelength_nm * 1.602176634e-19)  # 1 mJ/cm² = 1e-17 J/nm² over hc/λ
+    assert abs(per_nm2 / closed - 1.0) < 1e-6, (per_nm2, closed)
+    hole = img > 0.5 * img.max()  # the example's "inside the holes" rule
+    tiled = np.tile(img, (2, 2))  # the field is one period of the lattice: 160 nm, 16 holes
+    rng = np.random.default_rng(SHOT_SEED)
+    out = {"image": tiled, "pixel": pixel, "field": 2 * grid.field_size_nm(), "per_nm2": per_nm2,
+           "wavelength": src.wavelength_nm, "doses": {}}
+    for dose in SHOT_DOSES:
+        mean_map = dose * per_nm2 * tiled * pixel ** 2
+        counts = rng.poisson(mean_map)
+        mean_hole = dose * per_nm2 * img[hole].sum() * pixel ** 2 / n_holes
+        draws = np.random.default_rng(SHOT_SEED).poisson(mean_hole, SHOT_DRAWS)
+        out["doses"][dose] = {"map": counts, "mean_hole": mean_hole, "draws": draws,
+                              "three_sigma_pct": 300.0 * draws.std() / draws.mean()}
+    a, b = out["doses"][SHOT_DOSES[0]], out["doses"][SHOT_DOSES[1]]
+    assert abs(b["mean_hole"] / a["mean_hole"] - SHOT_DOSES[1] / SHOT_DOSES[0]) < 1e-9
+    for dd in out["doses"].values():  # the Poisson sample reproduces its mean
+        assert abs(dd["draws"].mean() / dd["mean_hole"] - 1.0) < 0.02, dd["mean_hole"]
+    ratio = b["three_sigma_pct"] / a["three_sigma_pct"]  # doubling the dose buys only √2 in relative noise
+    assert abs(ratio - 1.0 / np.sqrt(SHOT_DOSES[1] / SHOT_DOSES[0])) < 0.1, ratio
+    return out
+
+
+def shot_draw(d, th):
+    fig = plt.figure(figsize=(S.WIDE_WIDTH + 0.6, 3.5))
+    gs = fig.add_gridspec(1, 5, width_ratios=[1, 1, 1.12, 0.14, 1.35], wspace=0.45)
+    cmap = S.field_cmap()
+    half = d["field"] / 2
+    ext = [-half, half, -half, half]
+    ax = fig.add_subplot(gs[0, 0])
+    im = ax.imshow(d["image"], origin="lower", extent=ext, cmap=cmap, vmin=0, vmax=float(d["image"].max()),
+                   interpolation="nearest")
+    S.image_axes(ax, th)
+    S.colorbar(fig, im, ax, th, "I / I$_{clear}$", fraction=0.046, pad=0.04)
+    ax.set_title("(a) aerial image, noiseless", fontsize=S.SMALL_PT + 0.5, loc="left")
+    ax.set_xlabel("x (nm)")
+    ax.set_ylabel("y (nm)")
+    vmax = float(max(dd["map"].max() for dd in d["doses"].values()))
+    for k, dose in enumerate(SHOT_DOSES):
+        axk = fig.add_subplot(gs[0, 1 + k])
+        imk = axk.imshow(d["doses"][dose]["map"], origin="lower", extent=ext, cmap=cmap, vmin=0, vmax=vmax,
+                         interpolation="nearest")
+        S.image_axes(axk, th)
+        axk.set_title(f"({'bc'[k]}) incident photons, {dose:.0f} mJ/cm²", fontsize=S.SMALL_PT + 0.5, loc="left")
+        axk.set_xlabel("x (nm)")
+        axk.tick_params(labelleft=False)
+        if k == 1:
+            S.colorbar(fig, imk, axk, th, "photons per pixel", fraction=0.046, pad=0.04)
+    axh = fig.add_subplot(gs[0, 4])
+    S.style_axes(axh, th, grid="y")
+    lo = min(dd["draws"].min() for dd in d["doses"].values())
+    hi = max(dd["draws"].max() for dd in d["doses"].values())
+    bins = np.linspace(lo, hi, 70)
+    for k, dose in enumerate(SHOT_DOSES):
+        dd = d["doses"][dose]
+        axh.hist(dd["draws"], bins=bins, color=th.s(1 + k), alpha=0.85, lw=0, zorder=3,
+                 label=f"{dose:.0f} mJ/cm²: {dd['mean_hole']:,.0f} per contact, 3σ = {dd['three_sigma_pct']:.1f} %")
+    axh.set_xlabel("incident photons per contact")
+    axh.set_ylabel(f"draws (of {SHOT_DRAWS:,})", labelpad=2)
+    axh.set_title("(d) photons per contact, Poisson", fontsize=S.SMALL_PT + 0.5, loc="left")
+    axh.legend(loc="upper center", bbox_to_anchor=(0.5, -0.28), fontsize=S.SMALL_PT, ncol=1)
+    fig.subplots_adjust(bottom=0.3, top=0.88, left=0.06, right=0.985)
+    fig.suptitle(f"20 nm contacts on a 40 nm grid — Sn LPP {d['wavelength']:.1f} nm, σ 0.9, NA 0.33; "
+                 f"{d['per_nm2']:.2f} photons/nm² per mJ/cm²; {d['pixel']:g} nm pixels", fontsize=S.TITLE_PT, y=0.99)
+    return fig
+
+
+_site("site-contact-shot-noise", shot_compute, shot_draw,
+      alt="Four panels for 20 nm contacts on a 40 nm grid at 13.5 nm, NA 0.33: the noiseless aerial image of 16"
+          " contacts, grainy Poisson photon maps at 30 and 60 mJ/cm², and histograms of photons per contact for"
+          " both doses, whose 3-sigma spread doubling the dose narrows only by root two."
+      ,
+      caption="<strong>Why EUV counts photons.</strong> 20 nm contacts on a 40 nm grid through the NA 0.33 preset "
+              "(Sn LPP σ 0.9): the noiseless aerial image, Poisson-sampled incident-photon maps at 30 and 60 mJ/cm² "
+              "from the source's <code>photon_density_per_mj_cm2</code>, and the per-contact count histograms with "
+              "their 3σ spread — the page's shot-noise example, drawn. Incident photons only: thin mask, no resist "
+              "absorption, no secondary electrons or acid diffusion; the noisy maps are photon counts, not printed "
+              "contacts or defects. <em>Model: Hopkins imaging ✅ · EUV projection optics 🔶 · photon shot noise ✅ "
+              "(Poisson) · LER/LWR 🔶 (not shown).</em>",
+      pages=("nodes/7-and-5nm.md", "future/stochastic-frontier.md"))
+
+
+XS193_CASES = (("single exposure, 80 nm pitch (1:1)", 40.0, 80.0),
+               ("single exposure, 64 nm pitch (1:1)", 32.0, 64.0),
+               ("one LELE mask, 128 nm pitch (1:3)", 32.0, 128.0))
+
+
+def xs193_compute(fast):
+    huv = native()
+    src = huv.SourceConfig.arf_laser(0.9)
+    opt = huv.OpticsConfig.immersion_193i()
+    na, sigma = 1.35, 0.9
+    rows = []
+    for label, cd, pitch in XS193_CASES:
+        img = _engine(huv, src, opt, huv.MaskConfig.line_space(cd, pitch),
+                      huv.GridConfig(128, pitch / 16)).compute_aerial_image(0.0)
+        x, p = _profile(img)
+        rows.append({"label": label, "cd": cd, "pitch": pitch, "x": x, "p": p, "c": img.image_contrast()})
+    cutoff = src.wavelength_nm / (na * (1 + sigma))  # the partially coherent pitch cut-off
+    pitches = np.arange(60.0, 140.01, 4.0 if fast else 1.0)
+    cvp = np.array([_ls(huv, src, opt, float(pp)) for pp in pitches])
+    c80, c64, c_lele = (r["c"] for r in rows)
+    assert c64 < 0.02, c64  # 64 nm pitch lies below λ/(NA(1+σ)): no modulation
+    assert c_lele > c80 > c64, (c_lele, c80, c64)
+    assert cvp[pitches < 0.98 * cutoff].max() < 0.02, "contrast below the cut-off pitch is not zero"
+    return {"rows": rows, "pitches": pitches, "cvp": cvp, "cutoff": cutoff, "lam": src.wavelength_nm}
+
+
+def xs193_draw(d, th):
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(S.WIDE_WIDTH, 4.0), gridspec_kw={"wspace": 0.25,
+                                                                                    "width_ratios": [1.25, 1]})
+    S.style_axes(ax, th, grid="both")
+    span = 128.0
+    for slot, r in enumerate(d["rows"], start=1):
+        sel = np.abs(r["x"]) <= span
+        ax.plot(r["x"][sel], r["p"][sel], color=th.s(slot), zorder=3)
+    ax.set_xlim(-span, span)
+    ax.set_ylim(0, None)
+    ax.set_xlabel("x (nm)")
+    ax.set_ylabel("Relative intensity (clear field = 1)")
+    ax.set_title("(a) 193i NA 1.35, conventional σ 0.9", fontsize=S.SMALL_PT + 1)
+    _legend(ax, th, [f"{r['label']}: contrast {r['c']:.2f}" for r in d["rows"]], (1, 2, 3), loc="upper center",
+            bbox_to_anchor=(0.5, -0.17), ncol=1, fontsize=S.SMALL_PT)
+    S.style_axes(ax2, th, grid="both")
+    ax2.plot(d["pitches"], d["cvp"], color=th.ink2, linewidth=S.LINE_PT * 0.9, zorder=2)
+    S.limit_line(ax2, d["cutoff"], th, f"λ/(NA(1+σ)) = {d['cutoff']:.0f} nm", where=0.97, side="right")
+    for slot, r in enumerate(d["rows"], start=1):
+        S.dot(ax2, [r["pitch"]], [r["c"]], th.s(slot), th, filled=(r["cd"] * 2 == r["pitch"]))
+    ax2.set_xlim(d["pitches"][0], d["pitches"][-1])
+    ax2.set_ylim(0, 1)
+    ax2.set_xlabel("Pitch (nm)")
+    ax2.set_ylabel("Aerial-image contrast")
+    ax2.set_title("(b) contrast vs pitch, 1:1 lines (hollow: 1:3 LELE mask)", fontsize=S.SMALL_PT + 1)
+    fig.subplots_adjust(bottom=0.33)
+    return fig
+
+
+_site("site-193i-cross-sections", xs193_compute, xs193_draw,
+      alt="Aerial-image cross-sections of 32 nm lines on 193 nm immersion at NA 1.35: one exposure of a 64 nm pitch "
+          "is flat, one LELE mask at 128 nm pitch is well modulated and a 1:1 80 nm pitch keeps little contrast; "
+          "beside them contrast versus pitch for 1:1 lines falls to zero at the 75 nm cut-off.",
+      caption="<strong>Where single-exposure 193i stops.</strong> Aerial-image cross-sections of 32 nm lines on "
+              "193 nm water immersion at NA 1.35 with conventional σ 0.9 — the page's example: one exposure of a "
+              "64 nm pitch has no modulation, one LELE mask at 128 nm pitch is well modulated, and a 1:1 80 nm pitch "
+              "just above the λ/(NA(1+σ)) cut-off keeps little; (b) contrast of 1:1 lines against pitch with the "
+              "same cut-off. Thin mask, scalar model, no resist, perfect overlay. <em>Model: Hopkins imaging ✅ · "
+              "immersion lithography ✅ · multiple patterning 🔶 (one LELE mask; no overlay cost shown).</em>",
+      pages=("nodes/22-to-10nm.md", "nodes/litho-math.md"))
+
+
+XS24_CASES = (("EUV 0.33, single exposure, 24 nm", "nxe", 24.0),
+              ("EUV 0.33, one LELE mask, 48 nm", "nxe", 48.0),
+              ("High-NA 0.55, single exposure, 24 nm", "hna", 24.0))
+
+
+def _runs(mask, period):
+    """Number of contiguous True runs in a periodic boolean row."""
+    m = np.asarray(mask, dtype=bool)
+    starts = m & ~np.roll(m, 1)
+    return int(starts.sum())
+
+
+def xs24_compute(fast):
+    huv = native()
+    src = huv.SourceConfig.lpp_sn_13nm5(0.9)
+    optics = {"nxe": huv.OpticsConfig.euv_nxe(), "hna": huv.OpticsConfig.euv_high_na()}
+    rows = []
+    for label, key, pitch in XS24_CASES:
+        img = _engine(huv, src, optics[key], huv.MaskConfig.line_space(12.0, pitch),
+                      huv.GridConfig(64, pitch / 16)).compute_aerial_image(0.0)
+        x, p = _profile(img)
+        rows.append({"label": label, "pitch": pitch, "x": x, "p": p, "c": img.image_contrast()})
+    c_single, c_lele, c_hna = (r["c"] for r in rows)
+    assert c_lele > c_single and c_hna > c_single, (c_single, c_lele, c_hna)
+    # the LELE pair on the 48 nm grid: mask B is mask A shifted by half the final pitch
+    grid = huv.GridConfig(64, 48.0 / 16)
+    lele = {"x": None}
+    for key, off in (("a", 0.0), ("b", 24.0)):
+        im = _engine(huv, src, optics["nxe"], huv.MaskConfig.line_space(12.0, 48.0, offset_nm=off),
+                     grid).compute_aerial_image(0.0)
+        x, p = _profile(im)
+        lele["x"] = x
+        lele[key] = p
+        lele["t_" + key] = _dts_threshold(x, p, 12.0, off, 48.0)
+    lele["printed"] = (lele["a"] < lele["t_a"]) | (lele["b"] < lele["t_b"])
+    n_a = _runs(lele["a"] < lele["t_a"], 48.0)
+    n_union = _runs(lele["printed"], 48.0)
+    assert n_union == 2 * n_a and n_a == round(grid.periods_in_field(48.0)), (n_a, n_union)
+    return {"rows": rows, "lele": lele, "lam": src.wavelength_nm}
+
+
+def xs24_draw(d, th):
+    fig = plt.figure(figsize=(S.WIDE_WIDTH, 4.3))
+    gs = fig.add_gridspec(2, 2, height_ratios=[3.2, 1], hspace=0.32, wspace=0.22)
+    ax = fig.add_subplot(gs[:, 0])
+    S.style_axes(ax, th, grid="both")
+    span = 48.0
+    for slot, r in enumerate(d["rows"], start=1):
+        sel = np.abs(r["x"]) <= span
+        ax.plot(r["x"][sel], r["p"][sel], color=th.s(slot), zorder=3)
+    ax.set_xlim(-span, span)
+    ax.set_ylim(0, None)
+    ax.set_xlabel("x (nm)")
+    ax.set_ylabel("Relative intensity (clear field = 1)")
+    ax.set_title("(a) 12 nm lines, Sn LPP σ 0.9", fontsize=S.SMALL_PT + 1)
+    _legend(ax, th, [f"{r['label']}: contrast {r['c']:.2f}" for r in d["rows"]], (1, 2, 3), loc="upper center",
+            bbox_to_anchor=(0.5, -0.2), ncol=1, fontsize=S.SMALL_PT)
+    L = d["lele"]
+    axb = fig.add_subplot(gs[0, 1])
+    S.style_axes(axb, th, grid="both")
+    x = L["x"]
+    sel = np.abs(x) <= span
+    axb.plot(x[sel], L["a"][sel], color=th.s(2), zorder=3)
+    axb.plot(x[sel], L["b"][sel], color=th.s(4), zorder=3)
+    for key, slot in (("t_a", 2), ("t_b", 4)):
+        axb.axhline(L[key], color=th.s(slot), linewidth=S.HAIR_PT, linestyle=(0, (3, 3)))
+    axb.set_xlim(-span, span)
+    axb.set_ylim(0, None)
+    axb.tick_params(labelbottom=False)
+    axb.set_ylabel("Relative intensity")
+    axb.set_title("(b) EUV LELE at NA 0.33: two 48 nm masks", fontsize=S.SMALL_PT + 1)
+    axb.legend([Line2D([], [], color=th.s(2)), Line2D([], [], color=th.s(4))],
+               ["mask A (48 nm pitch)", "mask B, shifted by 24 nm; dashed: each dose-to-size"],
+               loc="upper center", bbox_to_anchor=(0.5, -1.02), ncol=1, fontsize=S.SMALL_PT)
+    axc = fig.add_subplot(gs[1, 1], sharex=axb)
+    S.style_axes(axc, th, grid=None)
+    axc.fill_between(x[sel], 0, L["printed"][sel].astype(float), step="mid", color=th.ink2, linewidth=0)
+    axc.set_ylim(0, 1.05)
+    axc.set_yticks([])
+    axc.set_xlabel("x (nm)")
+    axc.set_title("printed union: 12 nm lines on a 24 nm pitch", fontsize=S.SMALL_PT + 0.5)
+    fig.subplots_adjust(bottom=0.34)
+    return fig
+
+
+_site("site-euv-24nm-cross-sections", xs24_compute, xs24_draw,
+      alt="Cross-sections of 12 nm lines at 13.5 nm: one NA 0.33 exposure of a 24 nm pitch is weak, one EUV "
+          "LELE mask at 48 nm pitch is well modulated and one NA 0.55 exposure resolves 24 nm; beside them the "
+          "two LELE masks thresholded at dose-to-size and their printed union at 24 nm pitch."
+      ,
+      caption="<strong>24 nm pitch: EUV single exposure, EUV LELE, or High-NA.</strong> Aerial-image cross-sections "
+              "of 12 nm lines (Sn LPP, conventional σ 0.9) — the page's example: one NA 0.33 exposure of the 24 nm "
+              "pitch is weak, one mask of an EUV LELE split at 48 nm pitch is well modulated, and one NA 0.55 "
+              "exposure resolves the 24 nm pitch; (b) the two LELE masks, each thresholded at its dose-to-size, "
+              "and their printed union at 24 nm pitch. Thin mask, no resist, isotropic pupils (0.2·NA obscuration "
+              "assumed for High-NA), perfect overlay. <em>Model: Hopkins imaging ✅ · EUV projection optics 🔶 "
+              "(obscuration assumed) · multiple patterning 🔶 (constant-threshold resist; no overlay cost).</em>",
+      pages=("nodes/3nm-and-2nm.md",))

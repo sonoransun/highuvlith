@@ -1,12 +1,14 @@
 # Data used by the figure scripts
 
-## `source_power_vs_wavelength.csv` (49 rows)
+## `source_power_vs_wavelength.csv` (51 rows)
 
 Published average powers of lithography-relevant light sources versus wavelength,
 compiled and fact-checked for this project on 2026-09-30. Every row carries its
 citation and a URL (DOIs resolved via doi.org / Crossref, publisher or company
 pages, EUV Litho workshop PDFs); `conversion_note` shows any arithmetic used
-(E_photon = 1239.84 / λ[nm] eV). Used by `fig_sources.py` (source landscape).
+(E_photon = 1239.84 / λ[nm] eV). Used by `fig_sources.py` (source landscape) and by
+`docs/figures/future/make_future_figures.py` (the two landscape charts of the Future
+section); it is the only copy of this dataset.
 
 Columns: `id, class, machine_or_paper, wavelength_nm, power_w_low, power_w_high,
 plane_or_definition, status, year, citation, url, conversion_note`.
@@ -25,6 +27,10 @@ Caveats that the chart reflects:
   per-tool design figure.
 - Status `PRODUCTION*` / `DEMONSTRATED*` are drawn as measured or shipping;
   `PROJECTED*` as projections or designs.
+- ids 50–51 are ERL-FEL design studies (Socol et al. 2011, 5 kW FEL output; xLight's 2026
+  public dual-ERL design, 38 kW at IF shared by up to 16 scanners), taken from the
+  references of `docs/future/accelerator-light-sources.md` and merged here on 2026-10-03
+  from the Future section's former copy of this file; both are `PROJECTED-DESIGN`.
 
 HVM requirement used for the band in the chart (13.5 nm, at IF, 2 % bandwidth):
 about 250 W (NXE:3400B, ≥ 125 wph at 20 mJ/cm²) rising to 500–600 W (NXE:3800E

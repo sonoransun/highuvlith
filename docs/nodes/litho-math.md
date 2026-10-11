@@ -2,18 +2,14 @@
 description: "Worked lithography arithmetic for every generation: k₁ = HP·NA/λ on ArF immersion, EUV and High-NA EUV, why one immersion exposure stops near 76–80 nm pitch, depth of focus, photons per contact, and overlay/EPE budgets."
 ---
 
-# Lithography arithmetic, node by node
+# Lithography arithmetic
 
-Why could one metal layer of a "7 nm"-class chip take four litho-etch passes on an immersion
-scanner but only one on an EUV scanner? Four short formulas decide which tool prints which
-layer: **resolution**, the **k₁ factor**, **depth of focus**, and **photon counting**. This page
-runs them for each generation in this tour, using published scanner specifications and
-roadmap targets, and ends with overlay and edge-placement budgets.
+<p class="huv-lead">Why could one metal layer of a "7 nm"-class chip take four litho-etch passes on an immersion scanner but only one on an EUV scanner? Four short formulas decide which tool prints which layer: resolution, the k₁ factor, depth of focus and photon counting. This page runs them for each generation in this tour, using published scanner specifications and roadmap targets, and ends with overlay and edge-placement budgets; two calculators let you try your own numbers, and the engine examples at the end check the imaging part with a real partially coherent image calculation.</p>
 
 Everything here is back-of-the-envelope: no polarization, resist blur, mask 3D effects or
 process control. highuvlith can check the imaging part with a real partially coherent
-image calculation (Hopkins/SOCS, ✅ Implemented, see the [pipeline](../pipeline.md)) and
-the photon statistics with its stochastic module (✅ Implemented, see
+image calculation (Hopkins/SOCS, ✅ Implemented, see the [pipeline](../pipeline.md#stage-4--aerial-image)) and
+the photon statistics with its stochastic module (see
 [research modules](../research-modules.md)). The examples at the end show how.
 
 ## Resolution and the k₁ factor
@@ -29,6 +25,23 @@ k_1 = \frac{p}{2} \cdot \frac{\mathrm{NA}}{\lambda}
 λ is the exposure wavelength (in vacuum) and NA the numerical aperture of the projection lens on
 the wafer side. The k₁ factor collects everything else (illumination shape, mask type, resist,
 process control) into one "difficulty" number. Lower k₁ means harder lithography.
+
+The calculator below is a 🔶 teaching toy on the closed form (the Rayleigh and depth-of-focus
+formulas of this page, the same ones as the [playground](../playground/index.md)); the engine
+examples at the end of the page image real gratings. Pick a wavelength preset, then vary NA
+and the process factors.
+
+<figure markdown="span">
+
+![Two charts against numerical aperture from 0.2 to 1.45: the half-pitch k₁λ/NA at k₁ = 0.3 and the depth of focus k₂λ/NA² at k₂ = 1 (paraxial dashed, exact solid) for KrF 248 nm, ArF 193 nm dry and in water and EUV 13.5 nm, the calculator's presets as dots; EUV at NA 0.33 gives 12.3 nm and 120 nm.](../assets/images/playground/playground-rayleigh-light.svg#gh-light-mode-only)
+![Two charts against numerical aperture from 0.2 to 1.45: the half-pitch k₁λ/NA at k₁ = 0.3 and the depth of focus k₂λ/NA² at k₂ = 1 (paraxial dashed, exact solid) for KrF 248 nm, ArF 193 nm dry and in water and EUV 13.5 nm, the calculator's presets as dots; EUV at NA 0.33 gives 12.3 nm and 120 nm.](../assets/images/playground/playground-rayleigh-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Resolution and depth of focus against NA.</strong> Half-pitch k₁λ/NA at k₁ = 0.3 (left) and depth of focus at k₂ = 1 (right: paraxial k₂λ/NA² dashed, the exact quarter-wave form solid, ending where NA reaches the index n) for KrF 248 nm, ArF 193 nm dry and in water (n 1.437) and EUV 13.5 nm; dots are the calculator's presets, hollow where the NA is illustrative. <em>Closed-form toy, same formulas as the calculator; not the engine. No model badge.</em></figcaption>
+</figure>
+
+<div class="huv-calc" data-huv-calc="rayleigh">
+<noscript>This calculator needs JavaScript. The formulas on this page give the same numbers by hand.</noscript>
+</div>
 
 ### The floor: k₁ = 0.25
 
@@ -46,25 +59,44 @@ p_\text{min} = \frac{\lambda}{2 \mathrm{NA}}
 k_1 \ge 0.25 .
 ```
 
-With a conventional (disc-shaped) source of partial coherence σ, the condition is
-$\lambda/p \le \mathrm{NA} (1+\sigma)$ instead. That is the formula to use for the
-examples below, which use conventional illumination.
-
 <figure markdown="span">
-  ![Three pupil diagrams: on-axis illumination leaves the first diffraction orders outside the pupil; dipole illumination puts the zeroth and minus-first orders inside; at the limit the two orders sit at opposite pupil edges, spaced 2 NA, which gives k1 = 0.25.](../assets/images/nodes/pupil-orders-light.svg#only-light){ width="760" }
-  ![Three pupil diagrams: on-axis illumination leaves the first diffraction orders outside the pupil; dipole illumination puts the zeroth and minus-first orders inside; at the limit the two orders sit at opposite pupil edges, spaced 2 NA, which gives k1 = 0.25.](../assets/images/nodes/pupil-orders-dark.svg#only-dark){ width="760" }
-  <figcaption>Where k₁ = 0.25 comes from: two-beam imaging with the zeroth and a first
-  diffraction order at opposite edges of the pupil. Schematic; pupil radius = NA.</figcaption>
+
+![Three pupil diagrams: on-axis illumination leaves the first diffraction orders outside the pupil; dipole illumination puts the zeroth and minus-first orders inside; at the limit the two orders sit at opposite pupil edges, spaced 2 NA, which gives k1 = 0.25.](../assets/images/nodes/pupil-orders-light.svg#gh-light-mode-only)
+![Three pupil diagrams: on-axis illumination leaves the first diffraction orders outside the pupil; dipole illumination puts the zeroth and minus-first orders inside; at the limit the two orders sit at opposite pupil edges, spaced 2 NA, which gives k1 = 0.25.](../assets/images/nodes/pupil-orders-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Where k₁ = 0.25 comes from.</strong> Two-beam imaging with the zeroth and a first diffraction order at opposite edges of the pupil; pupil radius = NA, orders spaced λ/p. <em>Closed form and geometry; not the engine. No model badge.</em></figcaption>
 </figure>
 
-Below k₁ = 0.25 no single exposure can image a dense grating, whatever the resist or the
-mask. Production stays above the floor, because image contrast, and with it the
-dose and focus latitude, shrinks towards zero as k₁ approaches 0.25.
+With a conventional (disc-shaped) source of partial coherence σ, the condition is
+$\lambda/p \le \mathrm{NA} (1+\sigma)$ instead. That is the formula to use for the
+examples below, which use conventional illumination. Below k₁ = 0.25 no single exposure can
+image a dense grating, whatever the resist or the mask. Production stays above the floor,
+because image contrast, and with it the dose and focus latitude, shrinks towards zero as k₁
+approaches 0.25. Watch the orders leave the pupil as the pitch shrinks, and check the
+closed-form limit against the engine's contrast curve:
+
+<figure markdown="span">
+
+![Animated pupil diagram: the orders of a 1:1 grating slide outward as k1 falls from 1.0 to 0.28 under a sigma 0.7 fill and the image contrast beneath drops to zero at k1 = 0.29; a matched dipole then keeps two-beam contrast down to the 0.25 limit, where pole and order sit on opposite rims.](../assets/images/diagrams/pupil-orders-anim-light.svg#gh-light-mode-only)
+![Animated pupil diagram: the orders of a 1:1 grating slide outward as k1 falls from 1.0 to 0.28 under a sigma 0.7 fill and the image contrast beneath drops to zero at k1 = 0.29; a matched dipole then keeps two-beam contrast down to the 0.25 limit, where pole and order sit on opposite rims.](../assets/images/diagrams/pupil-orders-anim-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Where the k₁ limits come from.</strong> Orders of a 1:1 grating sit at m/(2k₁) in pupil units; a conventional fill of radius σ keeps imaging until the ±1 orders leave the support circle at k₁ = 1/(2(1+σ)); a dipole at σ_c = λ/(2pNA) keeps two-beam imaging down to k₁ = 0.25, where pole and order sit on opposite rims. The contrast strip is the closed-form 1-D toy; the support circle is the engine's (1+σ)·NA/λ rule. <em>Closed form and geometry; not the engine. No model badge.</em></figcaption>
+</figure>
+
+<figure markdown="span">
+
+![Aerial-image contrast versus pitch for coherent, sigma 0.4 and sigma 0.8 illumination at 157.63 nm and NA 0.75; each curve drops to zero at its cutoff pitch lambda/(NA(1+sigma)).](../assets/images/sim/imaging-resolution-vs-pitch-light.png#gh-light-mode-only)
+![Aerial-image contrast versus pitch for coherent, sigma 0.4 and sigma 0.8 illumination at 157.63 nm and NA 0.75; each curve drops to zero at its cutoff pitch lambda/(NA(1+sigma)).](../assets/images/sim/imaging-resolution-vs-pitch-dark.png#gh-dark-mode-only)
+
+<figcaption><strong>Partial coherence moves the resolution limit from λ/NA to λ/(NA(1+σ)).</strong> Simulated contrast of 1:1 line/space gratings versus pitch (F<sub>2</sub> 157.63 nm, NA 0.75, conventional illumination, no flare): a coherent point source stops imaging at λ/NA = 210 nm, a partially coherent fill of radius σ keeps imaging down to λ/(NA(1+σ)). <em>Model: Hopkins imaging (factorized TCC/SOCS) ✅; thin mask, no flare.</em></figcaption>
+</figure>
 
 ### The scanners, in numbers
 
 The table uses the resolution figures ASML publishes for its current systems (retrieved
 September 2026). "k₁ at spec" is what those figures imply.
+
+<!-- huv-table: stack -->
 
 | System (example) | λ (nm) | NA | λ/NA (nm) | Vendor resolution (half-pitch) | k₁ at spec | Pitch at k₁ = 0.25 |
 |---|---|---|---|---|---|---|
@@ -81,12 +113,11 @@ so it is λ/NA that sets the pitch a single exposure can reach. And the jump fro
 immersion to EUV is a factor of 3.5 in λ/NA, far bigger than any earlier step.
 
 <figure markdown="span">
-  ![Line chart of required k1 against line/space pitch for ArF immersion at NA 1.35, EUV at NA 0.33 and High-NA EUV at NA 0.55. Each line rises linearly with pitch; the shaded band below k1 = 0.25 marks pitches a single exposure cannot print. Dots mark the vendor resolution specs: 38 nm, 13 nm and 8 nm half-pitch; vertical marks show the tightest metal pitches of several processes.](../assets/images/nodes/k1-vs-pitch-light.svg#only-light){ width="760" }
-  ![Line chart of required k1 against line/space pitch for ArF immersion at NA 1.35, EUV at NA 0.33 and High-NA EUV at NA 0.55. Each line rises linearly with pitch; the shaded band below k1 = 0.25 marks pitches a single exposure cannot print. Dots mark the vendor resolution specs: 38 nm, 13 nm and 8 nm half-pitch; vertical marks show the tightest metal pitches of several processes.](../assets/images/nodes/k1-vs-pitch-dark.svg#only-dark){ width="760" }
-  <figcaption>k₁ needed to print a pitch in one exposure. Where a tool's line enters the
-  shaded band, that tool needs multipatterning. Dots: vendor half-pitch resolution specs
-  (ASML product pages); vertical marks: tightest metal pitches of the processes named.
-  Generated by <code>docs/figures/nodes/make_node_figures.py</code>.</figcaption>
+
+![Required k1 against line/space pitch for ArF immersion (NA 1.35), EUV (NA 0.33) and High-NA EUV (NA 0.55); each line rises with pitch; the band below k1 = 0.25 marks pitches one exposure cannot print. Dots: vendor half-pitch specs (38, 13 and 8 nm); ticks: tightest metal pitches of named processes.](../assets/images/nodes/k1-vs-pitch-light.svg#gh-light-mode-only)
+![Required k1 against line/space pitch for ArF immersion (NA 1.35), EUV (NA 0.33) and High-NA EUV (NA 0.55); each line rises with pitch; the band below k1 = 0.25 marks pitches one exposure cannot print. Dots: vendor half-pitch specs (38, 13 and 8 nm); ticks: tightest metal pitches of named processes.](../assets/images/nodes/k1-vs-pitch-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>The k₁ a single exposure needs, pitch by pitch.</strong> Where a tool's line enters the shaded band below 0.25 that tool needs multipatterning; dots are the vendor half-pitch resolution specs (ASML product pages), ticks the tightest metal pitches of the processes named. <em>Closed form; not the engine. No model badge.</em></figcaption>
 </figure>
 
 ## Why single-exposure 193i stops near 76–80 nm pitch
@@ -104,6 +135,14 @@ the theoretical limit". In production the margin is needed because:
 - the mask error enhancement factor (MEEF) grows at low k₁, so mask CD errors are
   amplified on the wafer.
 
+<figure markdown="span">
+
+![Contrast versus pitch on 193 nm immersion, 0.33 NA EUV and 0.55 NA EUV for conventional and dipole illumination; the dipole keeps contrast down to close to the k1 = 0.25 pitch on each tool, the conventional source loses it well before.](../assets/images/sim/site/site-k1-contrast-vs-pitch-oai-light.png#gh-light-mode-only)
+![Contrast versus pitch on 193 nm immersion, 0.33 NA EUV and 0.55 NA EUV for conventional and dipole illumination; the dipole keeps contrast down to close to the k1 = 0.25 pitch on each tool, the conventional source loses it well before.](../assets/images/sim/site/site-k1-contrast-vs-pitch-oai-dark.png#gh-dark-mode-only)
+
+<figcaption><strong>Dense lines on three tools, conventional against dipole.</strong> 1:1 lines on 193i (water NA 1.35), EUV NA 0.33 and High-NA 0.55 (Sn LPP presets): conventional σ 0.9 against an x-dipole with poles at σ 0.75 — the dipole puts its light where a two-beam image forms and keeps contrast to just above the k<sub>1</sub> = 0.25 pitch (dashed), while the conventional disc fades near λ/(NA·1.9); on the High-NA preset the dipole's contrast falls again above ≈ 22 nm pitch, where the poles' first orders land in the assumed 0.2·NA obscuration. Thin mask, isotropic pupils (no anamorphic optics), no resist. <em>Model: Hopkins imaging ✅ · illumination pupil fills ✅ (two-pole dipole) · EUV projection optics 🔶 (obscuration assumed) · immersion lithography ✅.</em></figcaption>
+</figure>
+
 Hence the working rule used throughout this tour: **one ArF-immersion exposure prints about
 76–80 nm pitch**. Anything tighter has to be split across several exposures or built with
 spacers. In "Seeing Double" (IEEE Spectrum, November 2008), Chris Mack put the smallest period
@@ -113,34 +152,48 @@ wavelength arrived.
 
 <figure markdown="span">
 
-![Contrast versus pitch on 193 nm immersion, 0.33 NA EUV and 0.55 NA EUV for conventional and dipole illumination; the dipole keeps contrast down to close to the k1 = 0.25 pitch on each tool, the conventional source loses it well before.](../assets/images/sim/site/site-k1-contrast-vs-pitch-oai-light.png#gh-light-mode-only)
-![Contrast versus pitch on 193 nm immersion, 0.33 NA EUV and 0.55 NA EUV for conventional and dipole illumination; the dipole keeps contrast down to close to the k1 = 0.25 pitch on each tool, the conventional source loses it well before.](../assets/images/sim/site/site-k1-contrast-vs-pitch-oai-dark.png#gh-dark-mode-only)
+![Aerial-image cross-sections of 32 nm lines on 193 nm immersion at NA 1.35: one exposure of a 64 nm pitch is flat, one LELE mask at 128 nm pitch is well modulated and a 1:1 80 nm pitch keeps little contrast; beside them contrast versus pitch for 1:1 lines falls to zero at the 75 nm cut-off.](../assets/images/sim/site/site-193i-cross-sections-light.png#gh-light-mode-only)
+![Aerial-image cross-sections of 32 nm lines on 193 nm immersion at NA 1.35: one exposure of a 64 nm pitch is flat, one LELE mask at 128 nm pitch is well modulated and a 1:1 80 nm pitch keeps little contrast; beside them contrast versus pitch for 1:1 lines falls to zero at the 75 nm cut-off.](../assets/images/sim/site/site-193i-cross-sections-dark.png#gh-dark-mode-only)
 
-<figcaption>Companion to the k<sub>1</sub>-versus-pitch chart: dense 1:1 lines on the page's three tools (193i: 193 nm, water NA 1.35; EUV: Sn LPP through the NA 0.33 and 0.55 presets), conventional σ 0.9 against an x-dipole whose poles sit at σ 0.75. The dipole puts all its light where a two-beam image forms and keeps contrast to just above the k<sub>1</sub> = 0.25 pitch (dashed); the conventional disc fades out near λ/(NA·1.9). On the High-NA preset the dipole's contrast falls again above ≈ 22 nm pitch, where first orders from the poles start to land in the assumed 0.2·NA central obscuration. Thin mask, isotropic pupils (High-NA obscuration 0.2·NA assumed, no anamorphic optics), no resist. Models: scalar Hopkins imaging ✅, illumination pupil fills ✅ (two-pole dipole), EUV projection optics 🔶, immersion ✅.</figcaption>
+<figcaption><strong>Where single-exposure 193i stops.</strong> Aerial-image cross-sections of 32 nm lines on 193 nm water immersion at NA 1.35 with conventional σ 0.9 — the page's example: one exposure of a 64 nm pitch has no modulation, one LELE mask at 128 nm pitch is well modulated, and a 1:1 80 nm pitch just above the λ/(NA(1+σ)) cut-off keeps little; (b) contrast of 1:1 lines against pitch with the same cut-off. Thin mask, scalar model, no resist, perfect overlay. <em>Model: Hopkins imaging ✅ · immersion lithography ✅ · multiple patterning 🔶 (one LELE mask; no overlay cost shown).</em></figcaption>
 </figure>
 
 ## Node by node: the k₁ each tool would need
 
-The table takes the tightest metal pitch reported for each generation (rounded; sources on
-the generation pages) and computes the k₁ a single exposure would need. **Bold** entries are
-below the 0.25 floor, where a single exposure is impossible.
+Take the tightest metal pitch reported for each generation (rounded; sources on the
+generation pages) and compute the k₁ a single exposure would need. Hatched cells sit below
+the 0.25 floor, where a single exposure is impossible.
+
+<figure markdown="span">
+
+![A matrix of the k1 each tool would need for the tightest metal pitch of eleven generations, 32 nm to the IRDS 2035 row, on 193i at NA 1.35, EUV at NA 0.33 and High-NA EUV at NA 0.55; cells below 0.25 are hatched (impossible in one exposure), the three IRDS rows are marked as projections.](../assets/images/nodes/k1-heatmap-light.svg#gh-light-mode-only)
+![A matrix of the k1 each tool would need for the tightest metal pitch of eleven generations, 32 nm to the IRDS 2035 row, on 193i at NA 1.35, EUV at NA 0.33 and High-NA EUV at NA 0.55; cells below 0.25 are hatched (impossible in one exposure), the three IRDS rows are marked as projections.](../assets/images/nodes/k1-heatmap-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>The k₁ each tool would need, node by node.</strong> k₁ = (pitch/2)·NA/λ for the tightest reported metal pitch on 193i (NA 1.35), EUV (NA 0.33) and High-NA EUV (NA 0.55); hatched cells sit below the 0.25 floor, where one exposure cannot print the pitch. <em>Reported, rounded pitches; IRDS rows are projections. Data chart; no model badge.</em></figcaption>
+</figure>
+
+<details markdown="1">
+<summary>The k₁ table behind the chart, with how each generation was (or is planned to be) patterned</summary>
+
+**Bold** entries are below the 0.25 floor, where a single exposure is impossible. IRDS rows use
+the International Roadmap for Devices and Systems More Moore and Lithography tables (2022 and
+2024 editions); roadmap years are projections, not announcements.
 
 | Generation (example) | Tightest metal pitch | 193i, NA 1.35 | EUV, NA 0.33 | High-NA, NA 0.55 | How it was (or is planned to be) patterned |
 |---|---|---|---|---|---|
-| 32 nm (Intel) | 112.5 nm | 0.39 | — | — | ArF immersion, single exposure |
-| 22 nm (Intel) | 80 nm | 0.28 | — | — | ArF immersion, single patterning |
-| 16/14 nm (TSMC, Samsung) | ≈ 64–67 nm | **0.22–0.23** | — | — | double patterning |
-| 14 nm (Intel) | 52 nm | **0.18** | — | — | self-aligned double patterning |
-| 10 nm class | 36–51 nm | **0.13–0.18** | — | — | SADP, SAQP or triple patterning |
-| 7 nm (TSMC N7) | 40 nm | **0.14** | 0.49 | — | spacer multipatterning on N7; EUV on some layers from N7+ |
-| 5 nm (TSMC N5) | ≈ 28–30 nm | **0.10** | 0.34–0.37 | — | EUV on more than ten layers; tightest (M0) reportedly double patterned |
-| 3 nm (TSMC N3E) | 23 nm | **0.08** | 0.28 | 0.47 | EUV; the first N3 double-patterned some critical layers |
-| IRDS 2025 ("2 nm") | 20–22 nm | **0.07–0.08** | **0.24**–0.27 | 0.41–0.45 | IRDS: 193i and EUV double patterning |
-| IRDS 2028–2033 | 16 nm | **0.06** | **0.20** | 0.33 | IRDS: High-NA single patterning |
-| IRDS 2035+ (2024 edition) | 14 nm | **0.05** | **0.17** | 0.29 | IRDS: High-NA (with multipatterning) |
+| [32 nm (Intel)](90-to-28nm.md) | 112.5 nm | 0.39 | — | — | ArF immersion, single exposure |
+| [22 nm (Intel)](22-to-10nm.md) | 80 nm | 0.28 | — | — | ArF immersion, single patterning |
+| [16/14 nm (TSMC, Samsung)](22-to-10nm.md) | ≈ 64–67 nm | **0.22–0.23** | — | — | double patterning |
+| [14 nm (Intel)](22-to-10nm.md) | 52 nm | **0.18** | — | — | self-aligned double patterning |
+| [10 nm class](22-to-10nm.md) | 36–51 nm | **0.13–0.18** | — | — | SADP, SAQP or triple patterning |
+| [7 nm (TSMC N7)](7-and-5nm.md) | 40 nm | **0.14** | 0.49 | — | spacer multipatterning on N7; EUV on some layers from N7+ |
+| [5 nm (TSMC N5)](7-and-5nm.md) | ≈ 28–30 nm | **0.10** | 0.34–0.37 | — | EUV on more than ten layers; tightest (M0) reportedly double patterned |
+| [3 nm (TSMC N3E)](3nm-and-2nm.md) | 23 nm | **0.08** | 0.28 | 0.47 | EUV; the first N3 double-patterned some critical layers |
+| [IRDS 2025 ("2 nm")](angstrom-era.md) | 20–22 nm | **0.07–0.08** | **0.24**–0.27 | 0.41–0.45 | IRDS: 193i and EUV double patterning |
+| [IRDS 2028–2033](angstrom-era.md) | 16 nm | **0.06** | **0.20** | 0.33 | IRDS: High-NA single patterning |
+| [IRDS 2035+ (2024 edition)](angstrom-era.md) | 14 nm | **0.05** | **0.17** | 0.29 | IRDS: High-NA (with multipatterning) |
 
-IRDS rows use the International Roadmap for Devices and Systems More Moore and Lithography
-tables (2022 and 2024 editions); roadmap years are projections, not announcements.
+</details>
 
 Notice that EUV at 23–30 nm pitch sits well above the optical floor, yet production still
 double-patterned some of those layers. Optics is not the binding limit there: photon shot noise
@@ -151,12 +204,14 @@ production, 0.33-NA EUV has printed about 30–36 nm pitch in a single exposure.
 
 Splitting a grating across exposures relaxes the pitch each exposure has to print:
 
+<!-- huv-table: stack -->
+
 | Scheme | Pitch printed by the lithography step | k₁ for a 36 nm final pitch on 193i |
 |---|---|---|
-| Single exposure | $p$ | 0.13 (impossible) |
-| LELE double patterning (two masks) | $2p$ per mask | 0.25 per mask (at the floor) |
-| SADP (one mandrel mask + spacer) | $2p$ mandrel pitch | 0.25 |
-| SAQP (one mandrel mask + two spacers) | $4p$ mandrel pitch | 0.50 |
+| Single exposure | the final pitch | 0.13 (impossible) |
+| LELE double patterning (two masks) | twice the final pitch per mask | 0.25 per mask (at the floor) |
+| SADP (one mandrel mask + spacer) | twice the final pitch (mandrels) | 0.25 |
+| SAQP (one mandrel mask + two spacers) | four times the final pitch (mandrels) | 0.50 |
 
 Spacer schemes make the lithography easy again but hand the problem to deposition and etch
 (spacer thickness and mandrel CD now set line positions), and they print only regular
@@ -181,6 +236,14 @@ for meeting small depths-of-focus at 0.55 NA" among the key High-NA challenges. 
 paraxial formula is not reliable at all (the angles in the resist are large); Lin's non-paraxial
 equations were developed for exactly that case.
 
+<figure markdown="span">
+
+![Contrast versus focus for 0.33 and 0.55 NA EUV: at the same 32 nm pitch the 0.55 NA image starts higher but fades faster with defocus; at equal k1 both start near 0.5 and the 0.55 NA image fades about three times faster.](../assets/images/sim/site/site-euv-depth-of-focus-light.png#gh-light-mode-only)
+![Contrast versus focus for 0.33 and 0.55 NA EUV: at the same 32 nm pitch the 0.55 NA image starts higher but fades faster with defocus; at equal k1 both start near 0.5 and the 0.55 NA image fades about three times faster.](../assets/images/sim/site/site-euv-depth-of-focus-dark.png#gh-dark-mode-only)
+
+<figcaption><strong>The depth-of-focus price of NA 0.55.</strong> Sn LPP, conventional σ 0.9: (a) the angstrom-era example, a 32 nm pitch through the NXE and High-NA presets; (b) the High-NA page's example, equal k<sub>1</sub> (32 nm at 0.33, 19.2 nm at 0.55) through ideal unobscured pupils. The engine applies the exact non-paraxial defocus phase per source point; image in air, no resist, no mask-3D best-focus shifts. <em>Model: defocus / through-focus imaging ✅ · EUV projection optics 🔶.</em></figcaption>
+</figure>
+
 ## Counting photons
 
 A photon of wavelength λ carries $E_\text{ph} = hc/\lambda$ = 1239.84 eV·nm / λ: 6.42 eV
@@ -198,6 +261,8 @@ At the same dose, EUV delivers **14.3× fewer photons** than ArF, simply because
 carries 14.3× more energy. Photon arrival is a Poisson process, so the relative fluctuation
 of the count $N$ in an area is $\sigma_N/N = 1/\sqrt{N}$:
 
+<!-- huv-table: stack -->
+
 | Case | Area | Dose (mJ/cm²) | Incident photons $N$ | 3σ count noise |
 |---|---|---|---|---|
 | ArF | (20 nm)² | 30 | 116,590 | 0.9 % |
@@ -206,34 +271,54 @@ of the count $N$ in an area is $\sigma_N/N = 1/\sqrt{N}$:
 | High-NA-sized contact | (12 nm)² | 50 | 4,893 | 4.3 % |
 
 (30 and 50 mJ/cm² are the doses at which ASML quotes NXE:3600D/3800E and EXE throughput;
-real processes choose their own doses.) These are *incident* photons. A resist film of
-thickness $d$ and absorption coefficient $\alpha$ absorbs a fraction $A = 1 - e^{-\alpha d}$ of
-them. Organic chemically amplified resists absorb roughly 5 µm⁻¹ at 13.5 nm, so a 35 nm film
-takes up only about 16 %; tin-based metal-oxide resists, at roughly 10–20 µm⁻¹, take up about
-30–50 % (absorption data: Fallica et al. 2018; MacKenzie et al. 2025).
-The absorbed count is $A N$, and the noise grows by $1/\sqrt{A}$: 2.5× for $A = 0.16$. Secondary
-electrons, acid generation and diffusion then add their own randomness; the
-[7 nm and 5 nm page](7-and-5nm.md) covers what that does to real patterns, and
-[the stochastic frontier](../future/stochastic-frontier.md) where it leads next. The scaling is
-unforgiving: to keep the same relative roughness, a 0.7× shrink in CD needs about three times
-the dose (C. A. Mack, 2018).
+real processes choose their own doses.)
 
 <figure markdown="span">
-  ![Two panels. Left: incident photons on a 20 nm by 20 nm area against dose, log scale; the ArF line sits about 14 times above the EUV line; at 30 mJ/cm² EUV gives 8,155 photons and at 50 mJ/cm² 13,592. Right: the corresponding 3-sigma photon-count noise, 3.3 percent and 2.6 percent for EUV at those doses and under 1 percent for ArF.](../assets/images/nodes/photons-vs-dose-light.svg#only-light){ width="760" }
-  ![Two panels. Left: incident photons on a 20 nm by 20 nm area against dose, log scale; the ArF line sits about 14 times above the EUV line; at 30 mJ/cm² EUV gives 8,155 photons and at 50 mJ/cm² 13,592. Right: the corresponding 3-sigma photon-count noise, 3.3 percent and 2.6 percent for EUV at those doses and under 1 percent for ArF.](../assets/images/nodes/photons-vs-dose-dark.svg#only-dark){ width="760" }
-  <figcaption>Photon shot noise at ArF and EUV doses, from E = hc/λ and Poisson statistics.
-  Dots: the doses at which ASML quotes NXE and EXE throughput. Generated by
-  <code>docs/figures/nodes/make_node_figures.py</code>.</figcaption>
+
+![Two panels. Left: incident photons on a 20 nm by 20 nm area against dose, log scale; the ArF line sits about 14 times above the EUV line; at 30 mJ/cm² EUV gives 8,155 photons, at 50 mJ/cm² 13,592. Right: 3-sigma photon-count noise, 3.3 and 2.6 percent for EUV at those doses, under 1 percent for ArF.](../assets/images/nodes/photons-vs-dose-light.svg#gh-light-mode-only)
+![Two panels. Left: incident photons on a 20 nm by 20 nm area against dose, log scale; the ArF line sits about 14 times above the EUV line; at 30 mJ/cm² EUV gives 8,155 photons, at 50 mJ/cm² 13,592. Right: 3-sigma photon-count noise, 3.3 and 2.6 percent for EUV at those doses, under 1 percent for ArF.](../assets/images/nodes/photons-vs-dose-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Photon shot noise at ArF and EUV doses.</strong> Incident photons on a (20 nm)² area from E = hc/λ and Poisson statistics; dots mark the doses at which ASML quotes NXE and EXE throughput. <em>Closed form; not the engine. No model badge.</em></figcaption>
 </figure>
+
+These are *incident* photons. A resist film of thickness $d$ and absorption coefficient
+$\alpha$ absorbs a fraction $A = 1 - e^{-\alpha d}$ of them. Organic chemically amplified
+resists absorb roughly 5 µm⁻¹ at 13.5 nm, so a 35 nm film takes up only about 16 %; tin-based
+metal-oxide resists, at roughly 10–20 µm⁻¹, take up about 30–50 % (absorption data: Fallica
+et al. 2018; MacKenzie et al. 2025). The absorbed count is $A N$, and the noise grows by
+$1/\sqrt{A}$: 2.5× for $A = 0.16$. Secondary electrons, acid generation and diffusion then add
+their own randomness; the [7 nm and 5 nm page](7-and-5nm.md) covers what that does to real
+patterns, and [the stochastic frontier](../future/stochastic-frontier.md) where it leads next.
+The scaling is unforgiving: to keep the same relative roughness, a 0.7× shrink in CD needs
+about three times the dose (C. A. Mack, 2018).
 
 highuvlith's stochastic module derives its photon density from the source wavelength in the
 same way, and a regression test pins the 13.5 nm value to the 0.68 photons/nm² per mJ/cm²
 used in the EUV literature ([research modules](../research-modules.md)).
 
+The calculator below is a 🔶 teaching toy on the closed form (Poisson statistics of incident
+photons, the same formulas as the [playground](../playground/index.md)); the engine example at
+the end of the page samples the counts from a source preset. Pick a wavelength, a dose and a
+feature size and read off the count and its 1σ spread.
+
+<figure markdown="span">
+
+![Two log–log charts against feature size from 5 to 100 nm at 30 mJ/cm²: incident photons in a square feature and the Poisson 1σ fluctuation 1/√N in percent for g-line 436, KrF 248, ArF 193, EUV 13.5 and 6.7 nm; a 20 nm square at 13.5 nm holds 8155 photons, a 1σ of 1.11 %.](../assets/images/playground/playground-shotnoise-light.svg#gh-light-mode-only)
+![Two log–log charts against feature size from 5 to 100 nm at 30 mJ/cm²: incident photons in a square feature and the Poisson 1σ fluctuation 1/√N in percent for g-line 436, KrF 248, ArF 193, EUV 13.5 and 6.7 nm; a 20 nm square at 13.5 nm holds 8155 photons, a 1σ of 1.11 %.](../assets/images/playground/playground-shotnoise-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Photons per feature and shot noise.</strong> Incident photons × f<sub>abs</sub> (here 1) in a square feature at 30 mJ/cm² (left) and the Poisson 1σ fluctuation 1/√N (right) against feature size: the count falls with λ at fixed dose, so a 20 nm square holds 8155 photons at 13.5 nm, a 1σ of 1.11 %. <em>Closed-form toy, same formulas as the calculator; not the engine. No model badge.</em></figcaption>
+</figure>
+
+<div class="huv-calc" data-huv-calc="shotnoise">
+<noscript>This calculator needs JavaScript. The formulas above give the same numbers by hand.</noscript>
+</div>
+
 ## Overlay and edge-placement budgets
 
 Overlay is how accurately one layer lands on the previous one. The IRDS 2022 Lithography
 tables set these targets for leading-edge logic (all 3σ, nm):
+
+<!-- huv-table: stack -->
 
 | IRDS 2022 target year | 2022 | 2025 | 2028 |
 |---|---|---|---|
@@ -267,83 +352,90 @@ litho-etch-litho-etch double patterning an overlay error moves one set of lines 
 the other and turns directly into a space-width error, whereas a spacer-defined line pair
 cannot be misaligned relative to itself.
 
-!!! note "What highuvlith does and does not model here"
-    The aerial image is a scalar Hopkins/SOCS calculation (✅; flagged 🔶 above NA ≈ 0.8,
-    where polarization matters, so ArF-immersion results at NA 1.35 are optimistic; see the
-    [vector imaging](../vector-imaging.md) page for the polarization-aware path). The mask is
-    thin (Kirchhoff): EUV mask 3D effects are not modeled, and the High-NA preset is an
-    isotropic wafer-side model with a circular pupil (the anamorphic 4×/8× mask-side
-    magnification is not modeled). Photon shot noise and dose jitter are ✅; the LELE
-    double-patterning module is 🔶 (two exposures with an overlay shift, no resist chemistry
-    between them). Current badges live in the [capability matrix](../capability-matrix.md).
-
 ## Try it in highuvlith
 
-!!! example "Contrast versus pitch on three generations of tools"
-    Image equal lines and spaces at four pitches with a conventional σ = 0.9 source. On
-    each tool the contrast falls as the pitch shrinks and drops to zero once
-    $\lambda/p > \mathrm{NA} (1+\sigma)$: below about 75 nm on 193i, 22 nm on EUV and 13 nm
-    on High-NA. At 80 nm, just above its cut-off, 193i keeps only a few percent of contrast
-    with this source: production reaches 76–80 nm with dipole or C-quad illumination, which
-    puts the light at the angles that form a two-beam image.
+**What highuvlith models here.** The aerial image is a scalar Hopkins/SOCS calculation of a thin mask; photon shot noise and dose jitter are computed; the LELE module is simplified; mask 3-D effects, anamorphic optics and resist chemistry are not modelled.
 
-    <!-- verify-example -->
-    ```python
-    import highuvlith as huv
+<!-- huv-table: stack -->
 
-    euv = huv.SourceConfig.lpp_sn_13nm5(0.9)
-    tools = {
-        "193i NA 1.35": (huv.SourceConfig.arf_laser(0.9), huv.OpticsConfig.immersion_193i()),
-        "EUV NA 0.33": (euv, huv.OpticsConfig.euv_nxe()),
-        "EUV NA 0.55": (euv, huv.OpticsConfig.euv_high_na()),
-    }
-    for name, (src, opt) in tools.items():
-        row = []
-        for pitch in (80.0, 40.0, 28.0, 20.0):
-            mask = huv.MaskConfig.line_space(pitch / 2, pitch)
-            eng = huv.SimulationEngine(src, opt, mask, grid=huv.GridConfig(64, pitch / 32))  # 2 periods
-            row.append(round(eng.compute_aerial_image(focus_nm=0.0).image_contrast(), 2))
-        print(name, row)
+| Issue | In highuvlith | Grade | Matrix row |
+|---|---|---|---|
+| Contrast versus pitch on three tools | scalar Hopkins/SOCS aerial image; the scalar model is optimistic above NA ≈ 0.8, where polarization matters ([vector imaging](../vector-imaging.md)) | ✅ Implemented | [Hopkins imaging (factorized TCC/SOCS)](../capability-matrix.md#core-imaging) |
+| 193 nm water immersion at NA 1.35 | `OpticsConfig.immersion_193i()`, defocus phase in the medium | ✅ Implemented | [Immersion lithography (193i)](../capability-matrix.md#optical-systems) |
+| EUV and High-NA EUV | isotropic wafer-side pupil with an assumed 0.2·NA obscuration for High-NA; no anamorphic optics, no mask 3-D | 🔶 Simplified | [EUV scanner projection optics](../capability-matrix.md#optical-systems) |
+| Depth of focus | exact non-paraxial defocus phase per source point | ✅ Implemented | [Defocus / through-focus imaging](../capability-matrix.md#core-imaging) |
+| Photons per contact | Poisson counts per pixel from the source wavelength | ✅ Implemented | [Photon shot noise](../capability-matrix.md#stochastics) |
+| Shot-to-shot dose variation | Gamma-distributed per-exposure dose factor | ✅ Implemented | [Shot-to-shot dose jitter](../capability-matrix.md#stochastics) |
+| Roughness from the noise | threshold-crossing statistics without resist chemistry (`huv.compute_ler_lwr`) | 🔶 Simplified | [LER/LWR Monte Carlo](../capability-matrix.md#stochastics) |
+| LELE double patterning | two exposures with an overlay shift, no resist chemistry between them | 🔶 Simplified | [Multiple patterning (LELE, SADP, SAQP)](../capability-matrix.md#optimization-and-patterning) |
+
+### Contrast versus pitch on three generations of tools
+
+Image equal lines and spaces at four pitches with a conventional σ = 0.9 source. On
+each tool the contrast falls as the pitch shrinks and drops to zero once
+$\lambda/p > \mathrm{NA} (1+\sigma)$: below about 75 nm on 193i, 22 nm on EUV and 13 nm
+on High-NA. At 80 nm, just above its cut-off, 193i keeps only a few percent of contrast
+with this source: production reaches 76–80 nm with dipole or C-quad illumination, which
+puts the light at the angles that form a two-beam image.
+
+<!-- verify-example -->
+```python
+import highuvlith as huv
+
+euv = huv.SourceConfig.lpp_sn_13nm5(0.9)
+tools = {
+    "193i NA 1.35": (huv.SourceConfig.arf_laser(0.9), huv.OpticsConfig.immersion_193i()),
+    "EUV NA 0.33": (euv, huv.OpticsConfig.euv_nxe()),
+    "EUV NA 0.55": (euv, huv.OpticsConfig.euv_high_na()),
+}
+for name, (src, opt) in tools.items():
+    row = []
+    for pitch in (80.0, 40.0, 28.0, 20.0):
+        mask = huv.MaskConfig.line_space(pitch / 2, pitch)
+        eng = huv.SimulationEngine(src, opt, mask, grid=huv.GridConfig(64, pitch / 32))  # 2 periods
+        row.append(round(eng.compute_aerial_image(focus_nm=0.0).image_contrast(), 2))
+    print(name, row)
+```
+
+???+ success "Output"
+
+    ```text
+    193i NA 1.35 [0.04, 0.0, 0.0, 0.0]
+    EUV NA 0.33 [0.93, 0.75, 0.32, 0.0]
+    EUV NA 0.55 [0.95, 0.84, 0.77, 0.58]
     ```
 
-    ??? success "Output"
+### Photons per contact, from the source model
 
-        ```text
-        193i NA 1.35 [0.04, 0.0, 0.0, 0.0]
-        EUV NA 0.33 [0.93, 0.75, 0.32, 0.0]
-        EUV NA 0.55 [0.95, 0.84, 0.77, 0.58]
-        ```
+The photon density follows from the source wavelength alone; Poisson sampling gives the
+contact-to-contact spread. highuvlith's stochastic module runs the full version of this
+(Poisson noise per pixel plus Gamma-distributed dose jitter, turned into LER/LWR) in Rust;
+from Python it is `huv.compute_ler_lwr` (🔶 Simplified, see the ledger above).
 
-!!! example "Photons per contact, from the source model"
-    The photon density follows from the source wavelength alone; Poisson sampling gives the
-    contact-to-contact spread. highuvlith's stochastic module runs the full version of this
-    (Poisson noise per pixel plus Gamma-distributed dose jitter, turned into LER/LWR) in Rust;
-    from Python it is `huv.compute_ler_lwr` (🔶).
+<!-- verify-example -->
+```python
+import numpy as np
+import highuvlith as huv
 
-    <!-- verify-example -->
-    ```python
-    import numpy as np
-    import highuvlith as huv
+rng = np.random.default_rng(1)
+for src in (huv.SourceConfig.arf_laser(0.9), huv.SourceConfig.lpp_sn_13nm5(0.9)):
+    e_ph = 1239.84193 / src.wavelength_nm * 1.602176634e-19   # J per photon
+    per_nm2 = 1e-17 / e_ph                                     # photons/nm² per mJ/cm²
+    for dose in (30.0, 60.0):
+        mean = dose * per_nm2 * 20.0**2                        # (20 nm)² contact
+        n = rng.poisson(mean, 20_000)                          # 20,000 contacts
+        print(f"{src.wavelength_nm:6.1f} nm  {dose:3.0f} mJ/cm²  N = {mean:9,.0f}"
+              f"  3σ = {300 * n.std() / n.mean():.2f} %")
+```
 
-    rng = np.random.default_rng(1)
-    for src in (huv.SourceConfig.arf_laser(0.9), huv.SourceConfig.lpp_sn_13nm5(0.9)):
-        e_ph = 1239.84193 / src.wavelength_nm * 1.602176634e-19   # J per photon
-        per_nm2 = 1e-17 / e_ph                                     # photons/nm² per mJ/cm²
-        for dose in (30.0, 60.0):
-            mean = dose * per_nm2 * 20.0**2                        # (20 nm)² contact
-            n = rng.poisson(mean, 20_000)                          # 20,000 contacts
-            print(f"{src.wavelength_nm:6.1f} nm  {dose:3.0f} mJ/cm²  N = {mean:9,.0f}"
-                  f"  3σ = {300 * n.std() / n.mean():.2f} %")
+???+ success "Output"
+
+    ```text
+     193.4 nm   30 mJ/cm²  N =   116,812  3σ = 0.87 %
+     193.4 nm   60 mJ/cm²  N =   233,625  3σ = 0.62 %
+      13.5 nm   30 mJ/cm²  N =     8,155  3σ = 3.29 %
+      13.5 nm   60 mJ/cm²  N =    16,311  3σ = 2.35 %
     ```
-
-    ??? success "Output"
-
-        ```text
-         193.4 nm   30 mJ/cm²  N =   116,812  3σ = 0.87 %
-         193.4 nm   60 mJ/cm²  N =   233,625  3σ = 0.62 %
-          13.5 nm   30 mJ/cm²  N =     8,155  3σ = 3.29 %
-          13.5 nm   60 mJ/cm²  N =    16,311  3σ = 2.35 %
-        ```
 
 ## Key takeaways
 
@@ -360,6 +452,8 @@ cannot be misaligned relative to itself.
   before the resist even absorbs them, and a typical organic resist absorbs only about a sixth.
 - Roadmap overlay targets are about 20 % of the half-pitch (2.4 nm at 12 nm half-pitch);
   edge placement, not resolution alone, sets what can be manufactured.
+
+**Where next:** ← [The Ångström era](angstrom-era.md) · [The future](../future/index.md) → · Related: [Playground](../playground/index.md) · [History: one equation, three levers](../history/index.md#one-equation-three-levers) · [Simulation pipeline](../pipeline.md) · [capability matrix](../capability-matrix.md#core-imaging)
 
 ## References and further reading
 

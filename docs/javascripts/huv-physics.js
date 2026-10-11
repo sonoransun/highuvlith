@@ -1,9 +1,39 @@
-/* Physics for the playground calculators (docs/playground/index.md).
+/* Physics for the playground calculators (docs/playground/index.md) and the calculators
+ * embedded on nodes/litho-math.md and nodes/7-and-5nm.md.
  *
  * Closed-form textbook formulas only: Rayleigh resolution and depth of focus, photon
- * counting statistics, and a 1-D scalar Abbe image of a line/space grating. This is a
- * teaching toy, not the Rust engine. Pure functions, no DOM: loaded by the site as
- * window.HUVPhysics and by `node --test docs/javascripts/tests/*.test.mjs`.
+ * counting statistics, a 1-D scalar Abbe image of a line/space grating and the pupil
+ * geometry of that grating (the site's D5 pupil grammar). This is a teaching toy, not
+ * the Rust engine. Pure functions, no DOM: loaded by the site as window.HUVPhysics and
+ * by `node --test docs/javascripts/tests/*.test.mjs` (physics.test.mjs).
+ *
+ * Exports (owner G0b; DESIGN §5.6 R3/R4, §5.2 I2):
+ *   PRESETS                      wavelength presets {id, label, wavelength, na, n, illustrative}
+ *   rayleigh(p)                  {halfPitch, pitch, dofParaxial, dofExact, minHalfPitch}
+ *   photonEnergy(nm)             {eV, J}
+ *   featureArea(shape, size)     nm² of a square or round feature
+ *   shotNoise(p) / doseForNoise(p)
+ *   maskCoefficient(m, cd, p)    Fourier coefficient of the opaque-line grating
+ *   sourcePoints(σin, σout, n)   the 1-D source samples the toy integrates over
+ *   aerialModel(p) / imageMetrics(model, p)
+ *   pupilOrders({k1, sigma, fill, poles})   pupil geometry in units of NA/λ (R4 live pupil)
+ *
+ * Pinned sample points (tests/physics.test.mjs asserts them; other scripts copy them):
+ *   I2 `pupil-orders-anim` (V1c, make_physics_schematics.py) — the 1:1 grating under the
+ *   toy's defaults (41 midpoint source samples, thin mask, in focus):
+ *     k₁ 0.40, conventional σ 0.7      contrast 0.6423340  (analytic: two-beam for |s| ≥ 0.25,
+ *                                        26/41 of the samples → (2f/π) / (0.5 + 2f/π²), f = 26/41)
+ *     k₁ 0.30, dipole σin = σout = 1/(4k₁) = 0.8333   contrast 0.9060367 ((2/π)/(0.5 + 2/π²))
+ *     k₁ 0.25, conventional σ 0.7      contrast 0 (below the partial cutoff k₁ = 1/(2(1+σ)) = 0.2941)
+ *   R3 `playground-*` fallbacks (V5, make_playground_figures.py), three points per calculator:
+ *     rayleigh  λ 13.5 NA 0.33 k₁ 0.3 k₂ 1 → R 12.2727 nm, DOF exact 120.4947 nm (paraxial 123.9669)
+ *               λ 193 NA 1.35 n 1.437 k₁ 0.27 k₂ 1 → R 38.6 nm, DOF exact 102.1609 nm (paraxial 105.8985)
+ *               λ 13.5 NA 0.55 k₁ 0.3 k₂ 1 → R 7.3636 nm, DOF exact 40.9500 nm (paraxial 44.6281)
+ *     shotnoise 13.5 nm, 30 mJ/cm², 20 nm square, f 1 → 8155.27 photons, 1σ 1.107 %
+ *               193 nm, 30 mJ/cm², 20 nm square, f 1 → 116 590 photons, 1σ 0.2929 %
+ *               13.5 nm, 30 mJ/cm², 20 nm circle, f 0.3 → 1921.54 photons, 1σ 2.281 %
+ *     aerial    the three I2 contrasts above (the fallback is I2's still + the 1-D cut at the
+ *               default preset: ArF 193 nm, NA 0.93, p 187 nm, w 94 nm, σ 0.7 → contrast 0.7923451)
  */
 (function (root, factory) {
   "use strict";
@@ -282,6 +312,75 @@
     };
   }
 
+  /* Pupil geometry of a line/space grating in pupil units (NA/λ ≡ 1): the site's D5
+     drawing grammar — pupil circle of radius 1, the source fill, diffraction orders
+     coloured by |m| and the dashed support circle at 1 + σ. Geometry only, no intensities.
+       k1     half-pitch k₁ = (p/2)·NA/λ; the grating's orders sit at m/(2k₁) (any duty cycle)
+       sigma  outer radius σ of the source (0 = coherent, on-axis point)
+       fill   "conventional" (0 ≤ |s| ≤ σ, default) or "dipole" (two poles σin ≤ |s| ≤ σ,
+              the toy's σ_in > 0 case; "annular" is accepted as a synonym)
+       poles  σin of the poles (dipole only); a pole is a point when poles = sigma
+     Returns {spacing, support, source, samples, cutoffs, resolved}:
+       spacing   1/(2k₁), the order spacing in pupil units
+       support   1 + σ, the radius of the support circle the engine uses ((1+σ)·NA/λ)
+       source    {kind, outer, inner, centre, radius} — centre/radius of each pole (dipole)
+       samples   one entry per sampled source point s (on-axis; the σ extremes; for a dipole
+                 the pole centres and both edges of each pole): {s, label, orders:[{m, f,
+                 inside}]} for m = −N…N, f = m·spacing + s, inside = |f| ≤ 1 (1e-9 tolerance)
+       cutoffs   coherent 0.5 (the ±1 orders reach the rim on axis), partial 1/(2(1+σ)) (the
+                 ±1 orders leave the support circle: no source point resolves the grating),
+                 dipoleFloor 0.25 (pole centre and +1 order sit on opposite rims when the
+                 pole is at σ_c = 1/(4k₁)), dipoleCentre 1/(4k₁) = λ/(2pNA)
+       resolved  some sampled source point passes the zeroth and a first order together */
+  function pupilOrders(p) {
+    var k1 = p.k1;
+    var sigma = Math.max(0, p.sigma || 0);
+    var kind = sigma === 0 ? "coherent" : (p.fill === "dipole" || p.fill === "annular") ? "dipole" : "conventional";
+    var inner = kind === "dipole" ? Math.min(sigma, Math.max(0, p.poles === undefined ? sigma : p.poles)) : 0;
+    var spacing = 1 / (2 * k1);
+    var support = 1 + sigma;
+    var tol = 1e-9;
+    var n = Math.max(1, Math.ceil((1 + sigma) / spacing) + 1);
+    var points = [];
+    function add(s, label) {
+      for (var i = 0; i < points.length; i++) if (Math.abs(points[i].s - s) < 1e-12) return;
+      points.push({ s: s, label: label });
+    }
+    if (kind === "coherent") add(0, "on-axis");
+    else if (kind === "conventional") { add(0, "on-axis"); add(-sigma, "edge −σ"); add(sigma, "edge +σ"); }
+    else {
+      var c = (inner + sigma) / 2;
+      add(-c, "pole −σc"); add(c, "pole +σc");
+      add(-sigma, "pole edge −σ"); add(sigma, "pole edge +σ");
+      add(-inner, "pole edge −σin"); add(inner, "pole edge +σin");
+    }
+    points.sort(function (a, b) { return a.s - b.s; });
+    var resolved = false;
+    var samples = points.map(function (pt) {
+      var orders = [];
+      var zero = false;
+      var first = false;
+      for (var m = -n; m <= n; m++) {
+        var f = m * spacing + pt.s;
+        var inside = Math.abs(f) <= 1 + tol;
+        orders.push({ m: m, f: f, inside: inside });
+        if (inside && m === 0) zero = true;
+        if (inside && Math.abs(m) === 1) first = true;
+      }
+      if (zero && first) resolved = true;
+      return { s: pt.s, label: pt.label, orders: orders };
+    });
+    return {
+      spacing: spacing,
+      support: support,
+      source: { kind: kind, outer: sigma, inner: inner, centre: kind === "dipole" ? (inner + sigma) / 2 : 0,
+        radius: kind === "dipole" ? (sigma - inner) / 2 : sigma },
+      samples: samples,
+      cutoffs: { coherent: 0.5, partial: 1 / (2 * (1 + sigma)), dipoleFloor: 0.25, dipoleCentre: 1 / (4 * k1) },
+      resolved: resolved
+    };
+  }
+
   return {
     HC_EV_NM: HC_EV_NM,
     EV_IN_J: EV_IN_J,
@@ -294,6 +393,7 @@
     maskCoefficient: maskCoefficient,
     sourcePoints: sourcePoints,
     aerialModel: aerialModel,
-    imageMetrics: imageMetrics
+    imageMetrics: imageMetrics,
+    pupilOrders: pupilOrders
   };
 });

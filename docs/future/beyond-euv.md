@@ -4,39 +4,61 @@ description: "Why the step from 13.5 nm to 6.x nm 'beyond EUV' is so hard (gadol
 
 # Beyond EUV: 6.x nm and the X-ray revival
 
-Almost every generation of lithography has made its pitch shrink with a shorter wavelength:
-mercury g- and i-lines, then KrF at 248 nm, ArF at 193 nm, and finally the jump to 13.5 nm
-extreme ultraviolet. The obvious next rung is **6.5–6.7 nm "beyond EUV" (BEUV)**, which
-halves the wavelength again. It has been studied for well over a decade. The 2023 edition
-of the International Roadmap for Devices and Systems (IRDS) says shorter wavelengths
-"(6 nm < λ < 7 nm) are also being assessed" alongside hyper-NA optics. It also warns that
-"changing to a shorter wavelength would be a much bigger change than increased NA and be
-much more challenging" [1].
+<p class="huv-lead">Almost every generation of lithography has shrunk its pitch with a shorter wavelength, and the obvious next rung after 13.5 nm is 6.5–6.7 nm "beyond EUV" (BEUV), studied for well over a decade. Every part of the optical chain has to be reinvented there — plasma, mirrors, resist and the photon statistics that set the dose — against real rewards in depth of focus and polarization. The page then follows the two other short-wavelength paths: the 11.2 nm alternative on a national roadmap, and the X-ray proximity lithography that lost the race for chips around 2000 and lives on as LIGA.</p>
 
-This page explains why (for a review of EUV lithography itself, see [11]). Every part of
-the optical chain has to be reinvented at 6.x nm: the plasma that makes the light, the
-mirrors that carry it, the resist that records it, and the photon statistics that set the
-dose. The physics also offers real rewards: more
-depth of focus and much milder polarization problems than hyper-NA at the same resolution.
-The page also covers two other short-wavelength paths. One is the **11.2 nm** alternative,
-now on a Russian national roadmap. The other is **X-ray proximity lithography**, which lost
-the race for integrated circuits around 2000 but lives on as LIGA deep X-ray lithography.
+**Verdict (as of September 2026):** no scanner maker has announced a 6.x nm exposure tool; gadolinium sources and La/B mirrors exist at laboratory scale, the 11.2 nm programme is announced and undemonstrated, and X-ray lithography survives only as LIGA.
+
+<figure markdown="span">
+
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-future-narrow-light.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-future-light.svg#gh-light-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the EUV → X-ray span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-future-narrow-dark.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-future-dark.svg#gh-dark-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the EUV → X-ray span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
+
+<figcaption><strong>You are here on the axis of light.</strong> The chapter's wavelengths and eras at full strength, the rest faded; years are first tool models in litho_tools.csv; the log axis is expanded above 100 nm. <em>Data chart from litho_tools.csv; no model badge.</em></figcaption>
+</figure>
+
+**Five limits:** [k₁ ≥ 0.25](index.md#diffraction-and-the-resolution-floor) · [photons ∝ λ³/NA²](index.md#photons-and-shot-noise) · [Z-factor](index.md#resolution-roughness-and-dose) · [electron blur](index.md#electron-blur) · [throughput](index.md#throughput-and-cost)
+
+<figure markdown="span">
+
+![A ladder of exposure wavelengths from 436 nm down to 1 nm with photon energy on a second scale, the optic below each rung and a readiness rung word where a page states one: 11.2 nm announced, 6.x nm speculative.](../assets/images/diagrams/spectrum-strip-ladder-light.svg#gh-light-mode-only)
+![A ladder of exposure wavelengths from 436 nm down to 1 nm with photon energy on a second scale, the optic below each rung and a readiness rung word where a page states one: 11.2 nm announced, 6.x nm speculative.](../assets/images/diagrams/spectrum-strip-ladder-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Each step down the ladder needed a new optic.</strong> Photon energy rises as the wavelength falls; rung words are the Future section's readiness ladder as of September 2026. <em>Data chart from litho_tools.csv and the readiness table; no model badge.</em></figcaption>
+</figure>
+
+The 2023 edition of the International Roadmap for Devices and Systems (IRDS) says shorter wavelengths "(6 nm < λ < 7 nm) are also being assessed" alongside hyper-NA optics, and warns that "changing to a shorter wavelength would be a much bigger change than increased NA and be much more challenging" [1]. For a review of EUV lithography itself, see [11].
 
 ## Readiness at a glance
 
-| Technology | Readiness (as of Sep 2026) | highuvlith model |
+<!-- huv-table: stack -->
+| Technology | Readiness (Sep 2026) | highuvlith model |
 |---|---|---|
-| 6.x nm (BEUV) projection scanner | Theoretical / speculative. Assessed by IRDS; no exposure tool announced | ✅ Hopkins imaging at 6.7 nm through an ideal 🔶 [EUV projection pupil](../optics.md) (no BEUV lens design exists); source and mirror models below |
-| Gd/Tb laser-produced plasma at 6.5–6.7 nm | Demonstrated in the lab. Conversion efficiency 0.54 % in a 0.6 % band with a dual-pulse low-density target [3]; up to 0.8 % in-band reported with twelve-beam irradiation of Gd microspheres [41, 43]; we found no report of watt-level in-band power | [`lpp_gd_6nm7` / `lpp_tb_6nm5`](../sources/lpp.md) ✅/🔶 (the power at intermediate focus is a projection) |
-| kW-class 6.x nm sources (LPP, energy-recovery FEL) | Proposed (design study) [4, 17] | LPP power chain ✅/🔶; FEL physics in [XFEL](../sources/xfel.md) ✅, ERL preset 🧪 (at 13.5 nm) |
-| La/B-family multilayer mirrors | Demonstrated in the lab. Record 64.1 % at 6.65 nm [5] | [`MultilayerMirror`](../materials.md) ✅ (ideal Parratt model, not yet wired into the optics) |
-| 11.2 nm lithography (Xe plasma + Ru/Be optics) | Announced / in development. Russian roadmap; first tool planned for 2026–2028 [19] | Not modeled (a generic narrow-band 11.2 nm source can be imaged) |
-| X-ray proximity lithography (~1 nm) for chips | Demonstrated in the lab. Pilot lines in the 1990s, abandoned around 2000 [27, 32] | Proximity shadow printing in the [LIGA module](../processes/liga-deep-xray.md) ✅/🔶 |
-| Deep X-ray lithography (LIGA) | In production. Niche microfabrication, e.g. KIT's three LIGA beamlines [31] | [LIGA](../processes/liga-deep-xray.md) ✅/🔶, with [synchrotron](../sources/synchrotron.md) ✅, [X-ray tube](../sources/xray-tube.md) ✅/🔶 and [betatron](../sources/betatron.md) 🧪 sources |
-| Accelerator-driven X-ray lithography start-up (Substrate) | Announced / in development. Company claims, publicly disputed [34, 35] | Not modeled |
+| 6.x nm (BEUV) projection scanner | **Speculative** (assessed by IRDS; no tool announced) | ✅ [Hopkins imaging](../pipeline.md) at 6.7 nm through an ideal 🔶 [EUV projection pupil](../optics.md) |
+| Gd/Tb laser-produced plasma at 6.5–6.7 nm | **Demonstrated** (CE 0.54–0.8 % in a 0.6 % band; no watt-level power found) | ✅ [`lpp_gd_6nm7` / `lpp_tb_6nm5`](../sources/lpp.md) (🔶 CE defaults, étendue; 🧪 Gd/Tb power) |
+| kW-class 6.x nm sources (LPP, energy-recovery FEL) | **Proposed** (design studies) [4, 17] | ✅ [LPP power chain](../sources/lpp.md) (🧪 Gd/Tb power); ✅ [XFEL](../sources/xfel.md) (🧪 ERL preset, at 13.5 nm) |
+| La/B-family multilayer mirrors | **Demonstrated** (record 64.1 % at 6.65 nm) [5] | ✅ [`MultilayerMirror`](../materials.md), ideal Parratt model |
+| 11.2 nm lithography (Xe plasma + Ru/Be optics) | **Announced** (Russian roadmap; first tool planned 2026–2028) [19] | not modelled (a generic narrow-band 11.2 nm source can be imaged) |
+| X-ray proximity lithography (~1 nm) for chips | **Demonstrated** (pilot lines in the 1990s; abandoned around 2000) [27, 32] | ✅ [LIGA proximity diffraction](../processes/liga-deep-xray.md) (🔶 thin-screen absorber) |
+| Deep X-ray lithography (LIGA) | **In production** (niche; KIT's three LIGA beamlines) [31] | ✅ [LIGA](../processes/liga-deep-xray.md) with ✅ [synchrotron](../sources/synchrotron.md), 🔶 [X-ray tube](../sources/xray-tube.md), 🧪 [betatron](../sources/betatron.md) |
+| Accelerator-driven X-ray lithography start-up (Substrate) | **Announced** (company claims, publicly disputed) [34, 35] | not modelled |
 
-Badges describe the *simulator's model*, not the technology; see the
-[capability matrix](../capability-matrix.md).
+Rung words follow the [readiness ladder](index.md#readiness-ladder); chips are the simulator's grades from the [capability matrix](../capability-matrix.md).
+
+<details markdown="1">
+<summary>Why these rungs</summary>
+
+| Technology | Evidence for the rung | What the model leaves out |
+|---|---|---|
+| 6.x nm projection scanner | assessed by IRDS 2023 [1]; no exposure tool announced by any scanner maker | no BEUV lens design exists; the pupil is the generic, unobscured `euv_projection` |
+| Gd/Tb plasma | conversion efficiency 0.54 % in a 0.6 % band with a dual-pulse low-density target [3]; up to 0.8 % in-band with twelve-beam irradiation of Gd microspheres [41, 43]; we found no report of watt-level in-band power | the power at intermediate focus is a projection (13.6 W for the Gd preset) |
+| kW-class 6.x nm sources | Endo's 2012 kW concept [4] and KEK's ERL-FEL design point [17] are paper studies | the FEL physics lives in the XFEL model; the ERL preset is at 13.5 nm |
+| La/B mirrors | 64.1 % measured at 6.65 nm, 1.5° off normal [5] | the ideal model has no interdiffusion and no roughness unless asked |
+| 11.2 nm lithography | three tool generations announced for 2026–2036 [19]; none independently demonstrated | — |
+| X-ray proximity lithography | IBM's program from 1980 and Japan's ASET project ran pilot lines; SEMATECH narrowed funding in 1998 and Japan's program wound down around 2000–2001 [27, 32] | shadow printing only; photoelectron transport beyond a crude blur, fluorescence and mask heating are not modelled |
+| LIGA | KIT runs three LIGA beamlines at KARA for production microfabrication [31] | electroforming and molding end the simulation at the developed resist |
+| Substrate | company claims of October 2025 [34], questioned within a week by an analyst report [35]; nothing peer-reviewed | — |
+
+</details>
 
 ## Why "6.x" nm? The boron K edge
 
@@ -111,6 +133,8 @@ demonstration. So are the Waseda inverse-Compton designs, which reach only 13 µ
 per 2 % bandwidth at 6.7 nm [18]. The [accelerator page](accelerator-light-sources.md)
 compares all of these against the power that high-volume manufacturing needs.
 
+**The simulator's Gd and Tb power at intermediate focus is an optimistic projection built on laboratory conversion efficiencies, not a measured source.**
+
 !!! note "What the simulator does with Gd and Tb"
     `LppSource` models BEUV with the same power chain as tin: drive power × CE × transport to
     IF, with the in-band spectrum as a Gaussian inside the mirror band (40 pm for Gd, 39 pm for
@@ -125,28 +149,28 @@ Mirrors are where BEUV has made the most measurable progress. Here are the headl
 numbers, with measured records set against the simulator's *ideal* calculation:
 
 <figure markdown="span">
-  ![Horizontal bar chart. Left panel: best measured peak reflectance of one multilayer mirror: Mo/Si 70.15 percent at 13.5 nanometres, Ru/Be with Mo interlayers 72.2 percent at 11.4 nanometres, Mo/Be 68.7 percent at 11.3 nanometres, La/B 64.1 percent at 6.65 nanometres and LaN/B 57.3 percent at 6.6 nanometres. Right panel: what 11 reflections leave: 2.02, 2.78, 1.61, 0.75 and 0.22 percent.](../assets/images/future/multilayer-reflectance-light.svg#only-light){ width="860" }
-  ![Horizontal bar chart. Left panel: best measured peak reflectance of one multilayer mirror: Mo/Si 70.15 percent at 13.5 nanometres, Ru/Be with Mo interlayers 72.2 percent at 11.4 nanometres, Mo/Be 68.7 percent at 11.3 nanometres, La/B 64.1 percent at 6.65 nanometres and LaN/B 57.3 percent at 6.6 nanometres. Right panel: what 11 reflections leave: 2.02, 2.78, 1.61, 0.75 and 0.22 percent.](../assets/images/future/multilayer-reflectance-dark.svg#only-dark){ width="860" }
-  <figcaption>Best measured normal-incidence peak reflectance at 13.5, ~11 and 6.6–6.7 nm
-  (records as stated in each paper's abstract, sourced in the table below) and the fraction
-  left after 11 reflections, R¹¹ (simple arithmetic with a representative mirror count). The
-  simulator's ideal values are in the table, not the chart. Own work, generated by
-  <code>docs/figures/future/make_future_figures.py</code>.</figcaption>
+
+![Two bar charts: best measured peak reflectance of one multilayer mirror — Mo/Si 70.15 % at 13.5 nm, Ru/Be 72.2 % at 11.4 nm, Mo/Be 68.7 % at 11.3 nm, La/B 64.1 % at 6.65 nm, LaN/B 57.3 % at 6.6 nm — and the fraction left after 11 reflections, from 2.8 % down to 0.22 %.](../assets/images/future/multilayer-reflectance-light.svg#gh-light-mode-only)
+![Two bar charts: best measured peak reflectance of one multilayer mirror — Mo/Si 70.15 % at 13.5 nm, Ru/Be 72.2 % at 11.4 nm, Mo/Be 68.7 % at 11.3 nm, La/B 64.1 % at 6.65 nm, LaN/B 57.3 % at 6.6 nm — and the fraction left after 11 reflections, from 2.8 % down to 0.22 %.](../assets/images/future/multilayer-reflectance-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>A few points less per mirror becomes 3–9× less light at the wafer.</strong> Best measured normal-incidence peak reflectance per paper abstract (Mo/Si 70.15 %, Ru/Be 72.2 %, Mo/Be 68.7 %, La/B 64.1 %, LaN/B 57.3 %) and the fraction left after 11 reflections, a representative count rather than a specific scanner. <em>Data chart from the cited abstracts; no model badge.</em></figcaption>
 </figure>
 
-??? info "Data: multilayer mirror records and ideal values"
+<details markdown="1">
+<summary>Data: multilayer mirror records and ideal values</summary>
 
-    | Multilayer | λ (nm) | Measured peak R | Source | highuvlith ideal (`MultilayerMirror`) |
-    |---|---|---|---|---|
-    | Mo/Si with B₄C interface barriers (50 periods) | 13.5 | 70.15 % (70.5 % at 13.3 nm); 70 % with 0.545 nm peak width in an earlier LLNL result | [39, 40] | 73.0 % at 13.48 nm, 40 bilayers, FWHM 0.63 nm |
-    | Ru/Be with Mo interlayers | 11.4; ~11 | 72.2 % (record, 2022); > 71 % with near-zero stress (2024) | [42, 22] | not a preset |
-    | Mo/Be (70 bilayers) | 11.3 | 68.7 ± 0.2 % (1995) | [21] | not a preset |
-    | La/B (nitridated, "hybrid" deposition) | 6.65 | 64.1 % (1.5° off normal) | [5] | 80.3 % at 6.65 nm, 200 bilayers, FWHM 0.067 nm |
-    | LaN/B (175 bilayers) | 6.6 | 57.3 % | [6] | not a preset |
-    | La/B$_4$C | 6.7 | barrier-layer designs reported [8]; no record value verified here | [8] | 68.9 % at 6.7 nm, 200 bilayers, FWHM 0.061 nm; 63.9 % with 0.3 nm roughness |
+| Multilayer | λ (nm) | Measured peak R | Source | highuvlith ideal (`MultilayerMirror`) |
+|---|---|---|---|---|
+| Mo/Si with B₄C interface barriers (50 periods) | 13.5 | 70.15 % (70.5 % at 13.3 nm); 70 % with 0.545 nm peak width in an earlier LLNL result | [39, 40] | 73.0 % at 13.48 nm, 40 bilayers, FWHM 0.63 nm |
+| Ru/Be with Mo interlayers | 11.4; ~11 | 72.2 % (record, 2022); > 71 % with near-zero stress (2024) | [42, 22] | not a preset |
+| Mo/Be (70 bilayers) | 11.3 | 68.7 ± 0.2 % (1995) | [21] | not a preset |
+| La/B (nitridated, "hybrid" deposition) | 6.65 | 64.1 % (1.5° off normal) | [5] | 80.3 % at 6.65 nm, 200 bilayers, FWHM 0.067 nm |
+| LaN/B (175 bilayers) | 6.6 | 57.3 % | [6] | not a preset |
+| La/B₄C | 6.7 | barrier-layer designs reported [8]; no record value verified here | [8] | 68.9 % at 6.7 nm, 200 bilayers, FWHM 0.061 nm; 63.9 % with 0.3 nm roughness |
 
-    The ideal values come from highuvlith's multilayer module (Parratt recursion with Névot–Croce
-    roughness and CXRO/Henke optical constants); see [materials](../materials.md).
+The ideal values come from highuvlith's multilayer module (Parratt recursion with Névot–Croce roughness and CXRO/Henke optical constants); see [materials](../materials.md).
+
+</details>
 
 Three things make BEUV mirrors harder than Mo/Si.
 
@@ -162,13 +186,16 @@ Three things make BEUV mirrors harder than Mo/Si.
    assessment [17]. A narrow band also rejects more of the source's UTA.
 3. **Compounding.** A scanner reflects the light a dozen or so times between plasma and
    wafer, counting the reflective mask. A dozen reflections from 70 % mirrors leave about
-   1.4 % [9]. The table shows what the records imply:
+   1.4 % [9]; the chart above and the throughput model count eleven (ten mirrors and the
+   mask), which leaves 2 %. The staircase shows what the records imply at twelve:
 
-| Reflections | Mo/Si, R = 0.70 | La/B record, R = 0.641 | LaN/B, R = 0.573 |
-|---|---|---|---|
-| 10 | 2.8 % | 1.2 % | 0.38 % |
-| 11 | 2.0 % | 0.75 % | 0.22 % |
-| 12 | 1.4 % | 0.48 % | 0.13 % |
+<figure markdown="span">
+
+![A staircase of twelve light bars shrinking by 30 percent at each multilayer reflection, from the collector through four illuminator mirrors, the mask and six projection mirrors, ending at 1.4 percent; a dotted line shows the 64 percent La/B record falling to 0.5 percent.](../assets/images/history/mirror-staircase-light.svg#gh-light-mode-only)
+![A staircase of twelve light bars shrinking by 30 percent at each multilayer reflection, from the collector through four illuminator mirrors, the mask and six projection mirrors, ending at 1.4 percent; a dotted line shows the 64 percent La/B record falling to 0.5 percent.](../assets/images/history/mirror-staircase-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Twelve reflections at 70 %: 1.4 % of the light left.</strong> 70 % is the cited best case and twelve is the count the EUV chapter and this staircase use; the Beyond-EUV reflectance chart and the throughput model's chain count eleven, ten mirrors and the mask (the throughput model also takes the mask at 0.65, a stated assumption); the dotted line is the 64.1 % La/B record at 6.7 nm. <em>Model: EUV/BEUV multilayer mirrors ✅.</em></figcaption>
+</figure>
 
 Scattered light gets worse too. The fraction a mirror scatters from mid-spatial-frequency
 roughness grows as $1/\lambda^2$. The 2019 assessment estimated that flare at 6.x nm is four
@@ -179,7 +206,7 @@ times higher than at 13.5 nm for the same mirror finish [17].
 ![Three reflectance charts: a Mo/Si multilayer peaking near 73 percent at 13.5 nm with a 0.6 nm bandwidth; La/B4C and La/B multilayers near 6.7 nm with much narrower peaks; and Mo/Si reflectance falling with angle of incidence, faster for p polarization.](../assets/images/sim/materials-multilayer-light.png#gh-light-mode-only)
 ![Three reflectance charts: a Mo/Si multilayer peaking near 73 percent at 13.5 nm with a 0.6 nm bandwidth; La/B4C and La/B multilayers near 6.7 nm with much narrower peaks; and Mo/Si reflectance falling with angle of incidence, faster for p polarization.](../assets/images/sim/materials-multilayer-dark.png#gh-dark-mode-only)
 
-<figcaption>EUV/BEUV multilayer mirrors from Parratt recursion with CXRO/Henke optical constants. (a) Mo/Si 40 × 6.9 nm (Mo fraction 0.4, ideal interfaces) against the best reported measured reflectance. (b) La/B<sub>4</sub>C and La/B, periods tuned to 6.7 / 6.65 nm: the ideal model sits well above the 64.1 % La/B record (Opt. Lett. 40, 3778, 2015) because interdiffusion and roughness are off. (c) Mo/Si at 13.5 nm vs angle of incidence, s and p. Model: multilayer mirrors ✅ (matches the CXRO calculator within 3·10⁻³; no interdiffusion layers by default).</figcaption>
+<figcaption><strong>Multilayer mirrors from Parratt recursion with CXRO/Henke constants.</strong> (a) Mo/Si 40 × 6.9 nm (Mo fraction 0.4, ideal interfaces) against the best reported measured reflectance; (b) La/B<sub>4</sub>C and La/B with periods tuned to 6.7 / 6.65 nm sit well above the 64.1 % La/B record (Opt. Lett. 40, 3778, 2015) because interdiffusion and roughness are off; (c) Mo/Si at 13.5 nm against the angle of incidence, s and p. <em>Model: EUV/BEUV multilayer mirrors ✅ (matches the CXRO calculator within 3·10⁻³; no interdiffusion layers by default).</em></figcaption>
 </figure>
 
 ## Photons, focus and polarization: the case for and against a shorter wavelength
@@ -203,7 +230,16 @@ TM-polarized light still interferes well (see the
 [vector imaging](../vector-imaging.md)). Here is the arithmetic for two targets at
 $k_1 = 0.30$:
 
-| Target half-pitch | Path | NA needed | $\lambda/\mathrm{NA}^2$ | $\sin\theta$ of the two orders | TM two-beam contrast | Photons per (half-pitch)² at 30 mJ/cm² |
+<figure markdown="span">
+
+![Three dumbbells: a 13.5 nm high-NA route against a 6.7 nm BEUV route to 6.0 and 5.4 nm half-pitch at k1 = 0.30 — lambda over NA squared 29.6 vs 59.7 and 24.0 vs 48.4 nm, TM contrast 0.37 vs 0.84 and 0.22 vs 0.81, 734 vs 364 and 595 vs 295 photons; every system hollow (hypothetical).](../assets/images/future/two-routes-light.svg#gh-light-mode-only)
+![Three dumbbells: a 13.5 nm high-NA route against a 6.7 nm BEUV route to 6.0 and 5.4 nm half-pitch at k1 = 0.30 — lambda over NA squared 29.6 vs 59.7 and 24.0 vs 48.4 nm, TM contrast 0.37 vs 0.84 and 0.22 vs 0.81, 734 vs 364 and 595 vs 295 photons; every system hollow (hypothetical).](../assets/images/future/two-routes-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Two routes to 5–6 nm half-pitch at k₁ = 0.30.</strong> Hyper-NA at 13.5 nm against BEUV at 6.7 nm on three dumbbells — λ/NA² (depth of focus), TM two-beam contrast |cos 2θ| and incident photons per (half-pitch)² at 30 mJ/cm²; the shorter wavelength wins focus and polarization and loses photons. <em>Arithmetic at k₁ = 0.30, not a simulation; hollow = hypothetical system.</em></figcaption>
+</figure>
+
+<!-- huv-table: stack -->
+| Target half-pitch | Path | NA needed | λ/NA² | sin θ of the two orders | TM two-beam contrast | Photons per (half-pitch)² at 30 mJ/cm² |
 |---|---|---|---|---|---|---|
 | 6.0 nm | 13.5 nm, high NA | 0.675 | 29.6 nm | 0.56 | 0.37 | 734 |
 | 6.0 nm | 6.7 nm (BEUV) | 0.335 | 59.7 nm | 0.28 | 0.84 | 364 |
@@ -221,14 +257,7 @@ delivers half as many photons: 0.337 photons/nm² per mJ/cm² at 6.7 nm against 
 13.5 nm. At fixed $k_1$ the feature area also shrinks, so photons per feature fall roughly
 as $\lambda^3$:
 
-<figure markdown="span">
-  ![Log-log chart of photons incident on a half-pitch-squared area at 30 mJ per square centimetre versus half-pitch for 193, 13.5 and 6.7 nanometre light, with vendor resolution specs and hypothetical Hyper-NA and BEUV points](../assets/images/future/photons-per-feature-light.svg#only-light){ width="860" }
-  ![Log-log chart of photons incident on a half-pitch-squared area at 30 mJ per square centimetre versus half-pitch for 193, 13.5 and 6.7 nanometre light, with vendor resolution specs and hypothetical Hyper-NA and BEUV points](../assets/images/future/photons-per-feature-dark.svg#only-dark){ width="860" }
-  <figcaption>Photons incident on a (half-pitch)² square at 30 mJ/cm². Lines are arithmetic
-  from CODATA constants. Filled points are ASML resolution specs; hollow points (Hyper-NA
-  0.75 and BEUV 6.7 nm at NA 0.55, both with k₁ = 0.32) are hypothetical. Own work, generated
-  by <code>docs/figures/future/make_future_figures.py</code>.</figcaption>
-</figure>
+The chart of incident photons per feature against half-pitch — about 1,305 photons per (8 nm)² at the High-NA spec and 154 per (3.9 nm)² for a hypothetical 6.7 nm system at NA 0.55 — is on the [stochastic frontier](stochastic-frontier.md#counting-photons) page.
 
 The [stochastic frontier](stochastic-frontier.md) page follows this scaling into
 resist chemistry. IRDS draws the consequence: "maintaining the same level of photon shot
@@ -251,19 +280,6 @@ lithography at the Paul Scherrer Institute patterned resists "beyond 22 nm resol
 found that "inorganic photoresists have much better performance at BEUV, while organic
 chemically-amplified photoresists would need serious adaptations" [13].
 
-```mermaid
-flowchart TB
-    G["Goal: ~5 nm half-pitch in one exposure (k₁ ≈ 0.3)"]
-    G --> H["Hyper-NA at 13.5 nm<br/>NA ≈ 0.75"]
-    G --> B["BEUV at 6.7 nm<br/>NA ≈ 0.37"]
-    H --> H1["Reuses tin sources, Mo/Si mirrors,<br/>13.5 nm masks and resists"]
-    H --> H2["DOF scale λ/NA² ≈ 24 nm;<br/>TM contrast ≈ 0.22: polarized light needed"]
-    H --> H3["Very large, costly projection optics"]
-    B --> B1["DOF scale ≈ 48 nm;<br/>TM contrast ≈ 0.81"]
-    B --> B2["New source: CE ≈ 0.5 % vs > 5 %;<br/>new mirrors: 64 % record, < 1 % band"]
-    B --> B3["185 eV photons: 2× dose for the same<br/>shot noise; new resists and masks"]
-```
-
 ## The 11.2 nm alternative
 
 A quieter proposal sits between 13.5 and 6.7 nm. In 2013 Chkhalo and Salashchenko of the
@@ -280,14 +296,11 @@ Mo/Si, and much better than La/B:
 - the proposed source is a laser-excited **xenon** plasma, which emits near 11 nm [24] and,
   unlike tin, leaves no droplet debris to contaminate optics and masks [19].
 
-That program now has an announced roadmap. As reported in September 2025, IPM plans three
-generations of 11.2 nm tools, all *announced* and none independently demonstrated [19]:
+That program now has an announced roadmap. As reported in September 2025, IPM plans three generations of 11.2 nm tools — **announced, none demonstrated** [19]:
 
-| Stage | Years | Target | Optics | Overlay | Field | Throughput |
-|---|---|---|---|---|---|---|
-| 1 | 2026–2028 | 40 nm-capable | two-mirror objective | 10 nm | up to 3 × 3 mm | > 5 wafers/h |
-| 2 | 2029–2032 | 28 nm (potentially 14 nm) | four mirrors | 5 nm | 26 × 0.5 mm | > 50 wafers/h |
-| 3 | 2033–2036 | sub-10 nm | six mirrors | 2 nm | 26 × 2 mm | > 100 wafers/h |
+- **2026–2028 · Announced** — stage 1: a 40 nm-capable tool with a two-mirror objective, 10 nm overlay, a field up to 3 × 3 mm and more than 5 wafers per hour.
+- **2029–2032 · Announced** — stage 2: 28 nm (potentially 14 nm) with four mirrors, 5 nm overlay, a 26 × 0.5 mm field and more than 50 wafers per hour.
+- **2033–2036 · Announced** — stage 3: sub-10 nm with six mirrors, 2 nm overlay, a 26 × 2 mm field and more than 100 wafers per hour.
 
 Earlier coverage quoted the program's leader, Nikolay Chkhalo, claiming a 20 % resolution
 gain from the shorter wavelength and a throughput roughly 2.7 times lower than ASML's tools,
@@ -326,16 +339,15 @@ across the gap $g$ (plus photoelectron range):
 
 Printing ~100 nm features therefore needed gaps of only 10–15 µm [28].
 
-```mermaid
-timeline
-    title Proximity X-ray lithography, rise and retreat
-    1972 : Spears and Smith (MIT Lincoln Laboratory) replicate patterns with soft X-rays
-    1980 : IBM starts synchrotron X-ray lithography on a Brookhaven NSLS port
-    1986 : Japan's MITI founds SORTEC (1 GeV ring at Tsukuba)
-    1991 : Oxford Instruments' compact superconducting ring Helios arrives at IBM East Fishkill
-    1996–2001 : ASET proximity X-ray project hosted at NTT Atsugi
-    1998 : SEMATECH workshop recommends narrowing funding to EUV and SCALPEL
-```
+<details markdown="1">
+<summary>X-ray lithography: the road not taken, dated</summary>
+
+- **1972** — Spears and Smith (MIT Lincoln Laboratory) replicate patterns with soft X-rays [26].
+- **1980** — IBM starts synchrotron X-ray lithography on a Brookhaven NSLS port [27].
+- **1986** — Japan's MITI founds SORTEC (1 GeV ring at Tsukuba) [30].
+- **1991** — Oxford Instruments' compact superconducting ring Helios arrives at IBM East Fishkill [27, 29].
+- **1996–2001** — ASET proximity X-ray project hosted at NTT Atsugi [33].
+- **1998** — a SEMATECH workshop recommends narrowing funding to EUV and SCALPEL [32].
 
 The timeline draws on [26–30]. IBM's program began in 1980 on a Brookhaven port. Helios,
 a 700 MeV, 4.5 T superconducting ring built by Oxford Instruments, reached IBM East Fishkill in
@@ -352,6 +364,10 @@ consortium put it bluntly: "the key issue in PXL technology is the mask writer" 
 with 4× reduction optics and thick, reflective masks. In the same 1993 paper, the authors
 asserted that "projection XRL using multilayer mirrors at 13 nm can never match the present
 performance of proximity XRL" [28]. History went the other way.
+
+</details>
+
+**Substrate's accelerator-driven X-ray lithography is announced and unverified: company claims, publicly disputed, nothing peer-reviewed.**
 
 !!! warning "Claims to watch: accelerator-driven X-ray lithography"
     In October 2025 the US start-up **Substrate** said it is developing X-ray lithography driven
@@ -372,12 +388,22 @@ developed mold is then electroplated and replicated. The Karlsruhe Institute of 
 still runs **three LIGA beamlines** at its KARA storage ring. They cover mask making, deep
 X-ray lithography, and ultra-deep lithography with optimized exposure conditions [31].
 
+<figure markdown="span">
+
+![Beam path of LIGA shadow printing from a storage-ring bending magnet through a Be window and filters to a Ti-membrane mask with 20 µm Au absorbers, a gap g and a 10–1000 µm PMMA resist on its substrate, with the spectrum hardening at each station and the scan direction marked.](../assets/images/diagrams/liga-geometry-light.svg#gh-light-mode-only)
+![Beam path of LIGA shadow printing from a storage-ring bending magnet through a Be window and filters to a Ti-membrane mask with 20 µm Au absorbers, a gap g and a 10–1000 µm PMMA resist on its substrate, with the spectrum hardening at each station and the scan direction marked.](../assets/images/diagrams/liga-geometry-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Mechanism.</strong> A bending-magnet white beam passes a Be window and filters that harden its spectrum, then a Ti-membrane mask with Au absorbers casts a 1:1 shadow across a gap g into 10–1000 µm of PMMA while mask and substrate scan through the fan; there is no optic, and the dose at depth z is set by the hardened spectrum at d = g + z. Simulation ends at the developed resist: electroforming and molding are not modelled. <em>Schematic, not to scale.</em></figcaption>
+</figure>
+
 A modern example is grating-based X-ray phase-contrast imaging (Talbot–Lau interferometry).
 It needs absorption gratings with very high aspect ratios, a textbook LIGA product
 [37, 38]. The source side is broadening too. Lab X-ray tubes and laser-wakefield
 **betatron** sources are candidates where a synchrotron is not available, and highuvlith
-models both as LIGA inputs ([X-ray tube](../sources/xray-tube.md) ✅/🔶,
-[betatron](../sources/betatron.md) 🧪).
+models both as LIGA inputs: the [X-ray tube](../sources/xray-tube.md) with its simplified
+continuum and the theoretical [betatron](../sources/betatron.md), graded in the table above.
+
+**The LIGA module is shadow printing with a polychromatic depth dose and absolute exposure time; the projection pipeline is bypassed entirely.**
 
 !!! note "What the simulator does for X-ray lithography"
     The [LIGA module](../processes/liga-deep-xray.md) computes the polychromatic depth dose
@@ -390,101 +416,138 @@ models both as LIGA inputs ([X-ray tube](../sources/xray-tube.md) ✅/🔶,
 
 ## Try it in highuvlith
 
-!!! example "Try it in highuvlith: the same optics at 13.5 nm and 6.7 nm"
-    A 20 nm pitch is below the 13.5 nm resolution limit of an NA 0.33 objective with σ = 0.9:
-    the first diffraction orders fall outside the pupil ($\lambda/[\mathrm{NA}(1+\sigma)] = 21.5$ nm).
-    At 6.7 nm the same ideal optics print it (contrast about 0.75 against 0.00). No BEUV
-    projection lens exists; the pupil here is the generic, unobscured `euv_projection`.
+### The same optics at 13.5 nm and 6.7 nm
 
-    <!-- verify-example -->
-    ```python
-    import highuvlith as huv
+A 20 nm pitch is below the 13.5 nm resolution limit of an NA 0.33 objective with σ = 0.9:
+the first diffraction orders fall outside the pupil ($\lambda/[\mathrm{NA}(1+\sigma)] = 21.5$ nm).
+At 6.7 nm the same ideal optics print it (contrast about 0.75 against 0.00). No BEUV
+projection lens exists; the pupil here is the generic, unobscured `euv_projection`.
 
-    pitch = 20.0  # nm
-    optics = huv.OpticsConfig.euv_projection(numerical_aperture=0.33)  # ideal, unobscured pupil
-    mask = huv.MaskConfig.line_space(cd_nm=pitch / 2, pitch_nm=pitch)
-    grid = huv.GridConfig(128, pitch / 16)  # field = 8 periods (commensurate)
-    for src in (huv.SourceConfig.lpp_sn_13nm5(0.9), huv.SourceConfig.lpp_gd_6nm7(0.9)):
-        engine = huv.SimulationEngine(src, optics, mask, grid=grid)
-        contrast = engine.compute_aerial_image(focus_nm=0.0).image_contrast()
-        e_photon = 1239.84193 / src.wavelength_nm
-        print(f"{src.wavelength_nm:4.1f} nm, {e_photon:5.1f} eV/photon: contrast {contrast:.2f}")
+<!-- verify-example -->
+```python
+import highuvlith as huv
+
+pitch = 20.0  # nm
+optics = huv.OpticsConfig.euv_projection(numerical_aperture=0.33)  # ideal, unobscured pupil
+mask = huv.MaskConfig.line_space(cd_nm=pitch / 2, pitch_nm=pitch)
+grid = huv.GridConfig(128, pitch / 16)  # field = 8 periods (commensurate)
+for src in (huv.SourceConfig.lpp_sn_13nm5(0.9), huv.SourceConfig.lpp_gd_6nm7(0.9)):
+    engine = huv.SimulationEngine(src, optics, mask, grid=grid)
+    contrast = engine.compute_aerial_image(focus_nm=0.0).image_contrast()
+    e_photon = 1239.84193 / src.wavelength_nm
+    print(f"{src.wavelength_nm:4.1f} nm, {e_photon:5.1f} eV/photon: contrast {contrast:.2f}")
+```
+
+???+ success "Output"
+
+    ```text
+    13.5 nm,  91.8 eV/photon: contrast 0.00
+     6.7 nm, 185.1 eV/photon: contrast 0.75
     ```
-
-    ??? success "Output"
-
-        ```text
-        13.5 nm,  91.8 eV/photon: contrast 0.00
-         6.7 nm, 185.1 eV/photon: contrast 0.75
-        ```
-
-!!! example "Try it in highuvlith: ideal Mo/Si versus La/B multilayers"
-    The Parratt multilayer model reproduces the ideal peak, the ~10× narrower BEUV band, the
-    damage done by 0.3 nm of interface roughness, and what 11 reflections leave.
-
-    <!-- verify-example -->
-    ```python
-    from highuvlith.api import MultilayerMirror
-
-    mirrors = {
-        "Mo/Si x40": (MultilayerMirror.mo_si(), 12.5, 14.5),
-        "La/B4C x200": (MultilayerMirror.la_b4c(), 6.4, 7.0),
-        "La/B x200": (MultilayerMirror.la_b(), 6.4, 7.0),
-    }
-    for name, (m, lo, hi) in mirrors.items():
-        lam, r = m.peak(lo, hi)
-        fwhm = m.bandwidth_fwhm_nm(lo, hi)
-        r_rough = m.with_roughness(0.3).peak(lo, hi)[1]
-        print(f"{name:12s} R={r:.1%} at {lam:.3f} nm, FWHM {fwhm:.3f} nm, "
-              f"0.3 nm rough {r_rough:.1%}, R^11={r ** 11:.2%}")
-    ```
-
-    ??? success "Output"
-
-        ```text
-        Mo/Si x40    R=73.0% at 13.480 nm, FWHM 0.629 nm, 0.3 nm rough 71.9%, R^11=3.14%
-        La/B4C x200  R=68.9% at 6.700 nm, FWHM 0.061 nm, 0.3 nm rough 63.9%, R^11=1.66%
-        La/B x200    R=80.3% at 6.651 nm, FWHM 0.066 nm, 0.3 nm rough 77.0%, R^11=8.89%
-        ```
-
-!!! example "Try it in highuvlith: the BEUV source penalty"
-    Both LPP presets report their power chain as derived quantities. Compare the power at
-    intermediate focus and the drive-laser watts needed per watt of in-band light. The Gd
-    numbers are a projection built on lab conversion efficiencies.
-
-    <!-- verify-example -->
-    ```python
-    import highuvlith as huv
-
-    for src in (huv.SourceConfig.lpp_sn_13nm5(0.9), huv.SourceConfig.lpp_gd_6nm7(0.9)):
-        p_if = src.derived_quantity("in_band_power_at_if") or float("nan")
-        per_watt = src.derived_quantity("drive_watts_per_if_watt") or float("nan")
-        photons = 1e-17 / (1239.84193 / src.wavelength_nm * 1.602176634e-19)
-        print(f"{src.wavelength_nm:4.1f} nm: {p_if:6.1f} W at IF, "
-              f"{per_watt:5.0f} W of laser per IF watt, "
-              f"{photons:.3f} photons/nm² per mJ/cm²")
-    ```
-
-    ??? success "Output"
-
-        ```text
-        13.5 nm:  250.0 W at IF,    86 W of laser per IF watt, 0.680 photons/nm² per mJ/cm²
-         6.7 nm:   13.6 W at IF,   737 W of laser per IF watt, 0.337 photons/nm² per mJ/cm²
-        ```
-
-For X-ray proximity and deep X-ray exposures, start from the runnable examples on the
-[LIGA page](../processes/liga-deep-xray.md) (`huv.simulate_liga`).
 
 <figure markdown="span">
 
 ![A 20 nm pitch grating through the same ideal NA 0.33 optics at 13.5 nm and at 6.7 nm: flat at 13.5 nm, well modulated at 6.7 nm; contrast versus pitch shows the cut-off halving with the wavelength.](../assets/images/sim/site/site-beuv-20nm-pitch-light.png#gh-light-mode-only)
 ![A 20 nm pitch grating through the same ideal NA 0.33 optics at 13.5 nm and at 6.7 nm: flat at 13.5 nm, well modulated at 6.7 nm; contrast versus pitch shows the cut-off halving with the wavelength.](../assets/images/sim/site/site-beuv-20nm-pitch-dark.png#gh-dark-mode-only)
 
-<figcaption>The same optics at 13.5 nm and 6.7 nm (the Beyond-EUV page's example): Sn and Gd plasma presets (conventional σ 0.9) through an ideal, unobscured NA 0.33 <code>euv_projection</code> pupil. No BEUV projection lens exists; mirror reflectance, flare and mask-3D are not included, and the Gd source power is a projection. Models: scalar Hopkins imaging ✅, EUV projection optics 🔶, Gd LPP source 🧪 (power).</figcaption>
+<figcaption><strong>The same optics at 13.5 nm and 6.7 nm.</strong> Sn and Gd plasma presets (conventional σ 0.9) through an ideal, unobscured NA 0.33 <code>euv_projection</code> pupil — the Beyond-EUV page's example. No BEUV projection lens exists; mirror reflectance, flare and mask-3D are not included, and the Gd source power is a projection. <em>Model: Hopkins imaging ✅ · EUV projection optics 🔶 · laser-produced plasma ✅ (🧪 Gd in-band power, a projection).</em></figcaption>
 </figure>
+
+### Ideal Mo/Si versus La/B multilayers
+
+The Parratt multilayer model reproduces the ideal peak, the ~10× narrower BEUV band, the
+damage done by 0.3 nm of interface roughness, and what 11 reflections leave.
+
+<!-- verify-example -->
+```python
+from highuvlith.api import MultilayerMirror
+
+mirrors = {
+    "Mo/Si x40": (MultilayerMirror.mo_si(), 12.5, 14.5),
+    "La/B4C x200": (MultilayerMirror.la_b4c(), 6.4, 7.0),
+    "La/B x200": (MultilayerMirror.la_b(), 6.4, 7.0),
+}
+for name, (m, lo, hi) in mirrors.items():
+    lam, r = m.peak(lo, hi)
+    fwhm = m.bandwidth_fwhm_nm(lo, hi)
+    r_rough = m.with_roughness(0.3).peak(lo, hi)[1]
+    print(f"{name:12s} R={r:.1%} at {lam:.3f} nm, FWHM {fwhm:.3f} nm, "
+          f"0.3 nm rough {r_rough:.1%}, R^11={r ** 11:.2%}")
+```
+
+???+ success "Output"
+
+    ```text
+    Mo/Si x40    R=73.0% at 13.480 nm, FWHM 0.629 nm, 0.3 nm rough 71.9%, R^11=3.14%
+    La/B4C x200  R=68.9% at 6.700 nm, FWHM 0.061 nm, 0.3 nm rough 63.9%, R^11=1.66%
+    La/B x200    R=80.3% at 6.651 nm, FWHM 0.066 nm, 0.3 nm rough 77.0%, R^11=8.89%
+    ```
+
+### The BEUV source penalty
+
+Both LPP presets report their power chain as derived quantities. Compare the power at
+intermediate focus and the drive-laser watts needed per watt of in-band light. The Gd
+numbers are a projection built on lab conversion efficiencies.
+
+<!-- verify-example -->
+```python
+import highuvlith as huv
+
+for src in (huv.SourceConfig.lpp_sn_13nm5(0.9), huv.SourceConfig.lpp_gd_6nm7(0.9)):
+    p_if = src.derived_quantity("in_band_power_at_if") or float("nan")
+    per_watt = src.derived_quantity("drive_watts_per_if_watt") or float("nan")
+    photons = 1e-17 / (1239.84193 / src.wavelength_nm * 1.602176634e-19)
+    print(f"{src.wavelength_nm:4.1f} nm: {p_if:6.1f} W at IF, "
+          f"{per_watt:5.0f} W of laser per IF watt, "
+          f"{photons:.3f} photons/nm² per mJ/cm²")
+```
+
+???+ success "Output"
+
+    ```text
+    13.5 nm:  250.0 W at IF,    86 W of laser per IF watt, 0.680 photons/nm² per mJ/cm²
+     6.7 nm:   13.6 W at IF,   737 W of laser per IF watt, 0.337 photons/nm² per mJ/cm²
+    ```
+
+### The photon and power ladder of the source presets
+
+Photon energy, photons per nm² per mJ/cm², and the average power each preset reports.
+The DUV numbers are laser output, the EUV numbers in-band power at intermediate focus;
+the Gd value is a projection built on lab conversion efficiencies.
+
+<!-- verify-example -->
+```python
+import highuvlith as huv
+
+sources = {
+    "KrF 248 nm": huv.SourceConfig.krf_laser(0.7),
+    "ArF 193 nm": huv.SourceConfig.arf_laser(0.7),
+    "F2 157 nm": huv.SourceConfig.f2_laser(0.7),
+    "Sn LPP 13.5 nm": huv.SourceConfig.lpp_sn_13nm5(0.9),
+    "Gd LPP 6.7 nm": huv.SourceConfig.lpp_gd_6nm7(0.9),
+}
+for name, src in sources.items():
+    e_ev = 1239.84193 / src.wavelength_nm                # photon energy
+    per_nm2 = 1e-17 / (e_ev * 1.602176634e-19)          # photons/nm² per mJ/cm²
+    print(f"{name:15s} {e_ev:6.1f} eV {per_nm2:6.2f} /nm² per mJ/cm² {src.average_power_w:7.1f} W")
+```
+
+???+ success "Output"
+
+    ```text
+    KrF 248 nm         5.0 eV  12.50 /nm² per mJ/cm²    40.0 W
+    ArF 193 nm         6.4 eV   9.73 /nm² per mJ/cm²    90.0 W
+    F2 157 nm          7.9 eV   7.94 /nm² per mJ/cm²    40.0 W
+    Sn LPP 13.5 nm    91.8 eV   0.68 /nm² per mJ/cm²   250.0 W
+    Gd LPP 6.7 nm    185.1 eV   0.34 /nm² per mJ/cm²    13.6 W
+    ```
+
+For X-ray proximity and deep X-ray exposures, start from the runnable examples on the
+[LIGA page](../processes/liga-deep-xray.md) (`huv.simulate_liga`).
 
 ## Key takeaways
 
+- **The verdict:** no scanner maker has announced a 6.x nm tool; the building blocks exist only at lab scale.
 - **6.x nm is fixed by boron.** La/B mirrors work just longward of the boron K edge
   (188 eV, 6.6 nm), so "beyond EUV" means about 6.6–6.7 nm.
 - **Sources are the biggest gap.** The best published Gd conversion efficiencies are 0.54 %
@@ -503,6 +566,8 @@ For X-ray proximity and deep X-ray exposures, start from the runnable examples o
 - **X-ray proximity printing lost on the 1× mask, not on physics.** It survives as LIGA for
   high-aspect-ratio microstructures, which highuvlith models with Fresnel diffraction and
   absolute exposure time.
+
+**Where next:** ← [High-NA and Hyper-NA](high-na-and-hyper-na.md) · [Accelerator light sources](accelerator-light-sources.md) → · Related: [materials](../materials.md) · [LPP sources](../sources/lpp.md) · [LIGA deep X-ray](../processes/liga-deep-xray.md) · [capability matrix](../capability-matrix.md)
 
 ## References and further reading
 

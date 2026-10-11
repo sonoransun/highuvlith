@@ -1,0 +1,25 @@
+# scripts/mermaid_allowlist.txt — pages that may hold a ```mermaid fence OUTSIDE <details> (DESIGN §4.11, decision 6).
+# Read by scripts/check_docs_badges.py (rule `mermaid-allowlist`, an error in every mode): a fence outside <details>
+# on a page with no line here is an error; in strict mode a page may hold no more such fences than it has lines.
+# Form: one line per fence, `<path>: <category>`, category ∈ {loop, decision-tree, legacy}; a path may repeat;
+# `#` starts a comment. Fences inside <details markdown="1"> (the GitHub fallback, §4.11 row c) need no line.
+# docs/roadmap.md is absent by design: it links reference/index.md#how-a-capability-changes-grade and holds no fence (§7.9).
+#
+# Pruned by INT to exactly the DESIGN §4.11 table, rows (a) process loops and (b) decision trees (§9.0 rule 9,
+# §9.2 INT row); scripts/test_check_docs_badges.py asserts the lines equal the table.
+
+# --- DESIGN §4.11 rows (a) process loops and (b) decision trees: the lines INT keeps ---
+docs/history/origins.md: loop
+docs/processes/resist-models.md: loop
+docs/processes/volumetric-exposure.md: loop
+docs/processes/volumetric-exposure.md: decision-tree
+docs/processes/liga-deep-xray.md: loop
+docs/processes/grayscale.md: loop
+docs/processes/interference-volumetric.md: loop
+docs/reference/index.md: loop
+docs/extending.md: loop
+CONTRIBUTING.md: loop
+docs/nodes/index.md: decision-tree
+docs/future/alternative-patterning.md: decision-tree
+docs/masks.md: decision-tree
+docs/processes/index.md: decision-tree

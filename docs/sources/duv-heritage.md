@@ -1,42 +1,62 @@
-# DUV/UV Heritage Sources (Hg g/h/i lines, KrF 248 nm, ArF 193 nm)
+---
+description: "The mercury g/h/i lamp lines and the KrF 248 nm and ArF 193 nm excimer presets: exact photon budgets and E95 conventions on representative laser parameters, with no lamp power model."
+---
 
-**Status:** ✅ DUV/UV heritage sources — the NIST mercury-line wavelengths, the photon budgets and the line-shape / E95 bandwidth mathematics are exact and test-pinned; 🔶 the excimer-laser bandwidths and pulse energy × rep-rate values are representative (not vendor specifications), and mercury-lamp output power is not modeled.
+# DUV/UV heritage
 
-## Overview
+**Status:** ✅ Implemented (🔶 parameters) — NIST Hg-line wavelengths, photon budgets and the line-shape / E95 arithmetic are exact and test-pinned; excimer bandwidths and pulse energy × rep rate are representative, not vendor data; lamp power is not modelled; ArF 90 W is laser output · [matrix](../capability-matrix.md#light-sources)
 
-Every optical-lithography generation before EUV is a step down a wavelength
-ladder, and each step changed the light source:
+<p class="huv-lead">Every optical-lithography generation before EUV is a step down a wavelength ladder, and each step changed the light source: a filtered mercury arc for the g, h and i lines, then line-narrowed KrF and ArF excimer lasers whose picometre bandwidth let a lens be made from one material. In highuvlith these five are presets of the same <code>VuvSource</code> as the F₂ laser, so one struct carries 436 nm to 157 nm.</p>
 
-| Step | Wavelength | Source | Photon energy | Photons/nm² per mJ/cm² | vs 13.5 nm EUV |
-|------|------------|--------|---------------|------------------------|----------------|
-| g-line | 435.8328 nm | Hg arc lamp + filter | 2.845 eV | 21.94 | 32.3× |
-| h-line | 404.6563 nm | Hg arc lamp + filter | 3.064 eV | 20.37 | 30.0× |
-| i-line | 365.0153 nm | Hg arc lamp + filter | 3.397 eV | 18.38 | 27.0× |
-| KrF | ~248.3 nm | line-narrowed excimer laser | 4.993 eV | 12.50 | 18.4× |
-| ArF | 193.368 nm | line-narrowed excimer laser | 6.412 eV | 9.734 | 14.3× |
-| ArF immersion | 193 nm in water (n ≈ 1.44 → ~134 nm effective) | same laser | — | — | — |
-| F₂ (dropped 2003–04) | 157.63 nm | F₂ laser — see [vuv-excimer.md](./vuv-excimer.md) | 7.866 eV | 7.935 | 11.7× |
-| EUV | 13.5 nm | Sn laser-produced plasma — see [lpp.md](./lpp.md) | 91.84 eV | 0.680 | 1× |
+<div class="huv-physics" markdown>
 
-The mercury wavelengths are the NIST **air** wavelengths of the Hg I lines;
-the photon columns follow from hc/λ (the last column is λ/13.5 nm, i.e. how
-many more photons a given dose carries than at EUV — 14.3× for ArF, which is
-one reason EUV is so much more exposed to photon shot noise).
+<figure markdown="span">
 
-In ASML's own summary, the g-line (436 nm) systems printed features down to
-~1 µm; i-line (365 nm) systems went below 1 µm and eventually reached
-~220 nm; KrF (248 nm) systems shrank features from the ~280 nm of i-line to
-150 nm, and modern KrF tools reach ~80 nm; ArF (193 nm) enabled ~38 nm
-features; EUV is more than 14× shorter than DUV. The planned next step to
-157 nm (F₂) was dropped when Intel extended 193 nm instead (reported
-23 May 2003) and TSMC cancelled its 157 nm orders and backed water
-immersion (14 Oct 2003); water (n ≈ 1.44) turns 193 nm into an effective
-~134 nm wavelength.
+![Two lanes to a top-hat pupil of sigma 0.7: a pulsed Kr/Ar/F2 discharge forms the excimer, a prism-and-grating module narrows the line to the E95 bandwidth and a silica or CaF2 lens follows; an Hg arc lamp and an interference filter isolate the g, h or i line.](../assets/images/diagrams/sources-cluster-excimer-light.svg#gh-light-mode-only)
+![Two lanes to a top-hat pupil of sigma 0.7: a pulsed Kr/Ar/F2 discharge forms the excimer, a prism-and-grating module narrows the line to the E95 bandwidth and a silica or CaF2 lens follows; an Hg arc lamp and an interference filter isolate the g, h or i line.](../assets/images/diagrams/sources-cluster-excimer-dark.svg#gh-dark-mode-only)
 
-In highuvlith these sources are presets of the same `VuvSource` type as the
-F₂ laser: `arf_laser`, `krf_laser`, `hg_i_line`, `hg_h_line`, `hg_g_line`.
+<figcaption><strong>Mechanism.</strong> The excimer-laser lane: a pulsed discharge in Kr, Ar or F₂ with a buffer gas forms the excimer, whose free-running band a prism-and-grating module narrows to the picometre-class E95 bandwidth the model parameterises before a silica or CaF₂ lens column. The mercury-lamp lane: a high-pressure arc and an interference filter isolate the g, h or i line as one 3 nm Gaussian sample. Both lanes end in the engine's default top-hat pupil (σ 0.7). <em>Schematic, not to scale; no model badge.</em></figcaption>
+</figure>
 
-## Generation physics
+<figure markdown="span">
+
+![Left, Gaussian, Lorentzian and sinc-squared lines at equal full width at half maximum with their 95 percent-energy intervals of 1.66, 12.7 and 4.68 widths; right, the five sampled spectral weights of the ArF preset over a Gaussian and of the F2 preset over a Lorentzian, in picometre offsets.](../assets/images/sim/sources-line-shapes-e95-light.png#gh-light-mode-only)
+![Left, Gaussian, Lorentzian and sinc-squared lines at equal full width at half maximum with their 95 percent-energy intervals of 1.66, 12.7 and 4.68 widths; right, the five sampled spectral weights of the ArF preset over a Gaussian and of the F2 preset over a Lorentzian, in picometre offsets.](../assets/images/sim/sources-line-shapes-e95-dark.png#gh-dark-mode-only)
+
+<figcaption><strong>Why a vendor E95 is not the model's FWHM.</strong> (a) At equal FWHM the 95 %-energy interval is 1.66 FWHM for a Gaussian, 4.68 for the undulator sinc² and 12.7 for a Lorentzian — the ratios the derived quantity <code>e95_bandwidth</code> reports. (b, c) The spectral weights <code>spectrum()</code> hands the imaging engine: five samples over ±2.5 FWHM, each line sampled at its stated FWHM — the ArF preset's 0.2 pm Gaussian (σ = FWHM/2√(2 ln 2)) and the F₂ preset's 1.1 pm Lorentzian. Line shapes as parameterized in the model, not measured laser spectra. <em>Model: excimer sources ✅.</em></figcaption>
+</figure>
+
+<!-- huv-table: stack -->
+
+| What is modeled | Grade | Dominant approximation | Details |
+|---|---|---|---|
+| Wavelengths, photon budgets, E95 arithmetic | ✅ Implemented (🔶 parameters) | NIST air wavelengths; laser bandwidth and pulse × rate representative | [Key equations](#key-equations) |
+| Polychromatic imaging of the pm-class lines | ✅ Implemented | narrow-band path shifts focus per sample at Δλ/λ ≈ 10⁻⁶; Gaussian samples at the stated FWHM (sampler corrected 2026-10-10) | [What the model does](#what-the-model-does) |
+| Wafers per hour from laser output | 🔶 Simplified | one refractive-column transmission, lumped overheads | [throughput](index.md#dose-limited-throughput) |
+| Lamp output power, excimer dose jitter, lamp-era achromats | not modelled | out of scope (`average_power_w() = None`; `shot_to_shot_rms = 0`) | [Limits](#what-the-model-does) |
+
+**Same thing elsewhere:** Python `SourceConfig.arf_laser(sigma=0.7)` · TOML `[source] type = "vuv"` + `preset = "arf"` · CLI `highuvlith sources --family vuv` · GUI Source panel · physics → [Pipeline](../pipeline.md#stage-1--source)
+
+</div>
+
+<p class="huv-lead">What the model gets right is the arithmetic: NIST wavelengths, photons per millijoule, the E95-to-FWHM conversion for each line shape. What it leaves representative is the lasers' bandwidth and pulse metadata, and what it does not model at all is lamp output power — the lamp presets report <code>None</code> rather than an invented wattage.</p>
+
+<div class="huv-glance" markdown>
+
+| Property | Value |
+|---|---|
+| Wavelength | 435.8328 / 404.6563 / 365.0153 nm (Hg g/h/i, NIST air); 248.3 nm (KrF); 193.368 nm (ArF) — fixed lines |
+| Band / class | filtered mercury arc (CW, 3 nm Gaussian passband); line-narrowed excimer lasers (Gaussian, 0.6 / 0.2 pm FWHM) |
+| Coherence → pupil | multimode, trait default 0 → top-hat σ (your choice; presets 0.5–0.7) |
+| Power | ArF 15 mJ × 6 kHz = 90 W, KrF 10 mJ × 4 kHz = 40 W **laser output**; lamps `None` (not modelled) |
+| Presets | `arf_laser()`, `krf_laser()`, `hg_i_line()`, `hg_h_line()`, `hg_g_line()` — presets of the VUV type |
+| Grade | ✅ Implemented (🔶 parameters) |
+| Compare with | [VUV excimer](vuv-excimer.md) · [LPP](lpp.md) · [history: excimer lasers and deep UV](../history/excimer-duv.md) |
+
+</div>
+
+<details markdown="1">
+<summary>How the light is made (flowchart)</summary>
 
 ```mermaid
 flowchart LR
@@ -57,28 +77,17 @@ flowchart LR
     LENS2 --> WAFER
 ```
 
-**Mercury lamps.** A high-pressure mercury arc is a plasma that emits many
-lines; an interference filter selects one of them. J. H. Bruning's history of
-optical lithography describes the first wafer stepper (the GCA 4800 DSW,
-introduced 1978: a 10:1 Carl Zeiss lens, NA 0.28, 10 × 10 mm field) as using
-"the spectrally isolated mercury g-line (436 nm) from a high-pressure mercury
-lamp", and notes that "the relatively large 3 nm bandwidth of the Hg i-line
-required multiple glasses to correct color aberrations" — as with earlier
-g-line lenses. The lamp line is spatially incoherent and continuous-wave.
+</details>
 
-**Excimer lasers.** In a pulsed electric discharge through a rare-gas /
-fluorine mixture, excited rare-gas atoms bind with fluorine into short-lived
-rare-gas-halide excimers (KrF\*, ArF\*) whose ground state is repulsive or
-only very weakly bound, so population inversion is automatic. The free-running laser band is far too
-wide for a single-material lens; a line-narrowing module reduces it to the
-pm class. Bruning: changing the source to a line-narrowed 248 nm KrF excimer
-laser "eliminated the need to color correct the lens" — "the few-pm source
-bandwidth allowed all elements of the lens to be made from fused silica".
+## Key equations
 
-**Bandwidth conventions.** Every `bandwidth_pm` in highuvlith is a **FWHM**.
-Lithography-laser vendors specify **E95**, the width that holds the central
-95 % of the line energy. The conversion depends on the line shape, and the
-model reports it as the derived quantity `e95_bandwidth`:
+Photon energy and the photon budget follow from the wavelength alone, and they are what make the ladder matter for EUV: a given dose at ArF carries 14.3× more photons than at 13.5 nm, one reason EUV is so exposed to shot noise.
+
+```math
+E_\gamma = \frac{hc}{\lambda}, \qquad N_\text{photons/mJ} = \frac{1\ \text{mJ}}{E_\gamma}, \qquad \frac{n_\text{photons}(\lambda)}{n_\text{photons}(13.5\ \text{nm})} = \frac{\lambda}{13.5\ \text{nm}}
+```
+
+Lithography-laser vendors specify **E95**, the width holding the central 95 % of the line energy. The conversion depends on the line shape, and the model reports it as `e95_bandwidth`:
 
 ```math
 \frac{E_{95}}{\mathrm{FWHM}} =
@@ -89,240 +98,159 @@ model reports it as the derived quantity `e95_bandwidth`:
 \end{cases}
 ```
 
-A pure Lorentzian has such heavy tails that its E95 is 12.7 × its FWHM, so
-the heritage laser presets use a **Gaussian** line, for which a 0.2 pm FWHM
-gives E95 ≈ 0.33 pm. Real line-narrowed spectra sit between the two shapes.
+A pure Lorentzian has such heavy tails that its E95 is 12.7× its FWHM, so the heritage laser presets use a **Gaussian** line (0.2 pm FWHM → E95 ≈ 0.33 pm); real line-narrowed spectra sit between the two shapes. **Bandwidth convention.** Every `bandwidth_pm` is a FWHM, in the E95 arithmetic and in the sampled spectrum alike: the Lorentzian sampler uses γ = FWHM/2, the Gaussian sampler σ = FWHM/(2√(2 ln 2)) ≈ FWHM/2.355, and the sinc² sampler puts its first zero at FWHM/0.886.
 
-## Real-machine parameters and history
+## Real machines
 
-Verified milestones (wording hedged where the sources disagree):
+<!-- huv-table: stack -->
 
-| Year | Milestone | Wavelength | Reference |
-|------|-----------|------------|-----------|
-| 1970–71 | First excimer laser (Xe₂, e-beam-excited liquid Xe, ~172–176 nm; Lebedev Institute) | ~172 nm | Basov, Danilychev & Popov, *Sov. J. Quantum Electron.* **1**, 18 (1971) |
-| 1975 | KrF first lases (5 June 1975), together with XeCl | 248 nm | Ewing & Brau, *Appl. Phys. Lett.* **27**, 350 (1975) |
-| 1976 | ArF laser action reported (Sandia) | 193 nm | Hoffman, Hays & Tisone, *Appl. Phys. Lett.* **28**, 538 (1976) |
-| 1978 | First wafer stepper, GCA 4800 DSW: 10:1, NA 0.28, Hg g-line | 436 nm | Bruning (2007) |
-| 1982 | Excimer-laser lithography first proposed and demonstrated (XeCl 308 nm and KrF 248 nm; about 100× faster than lamp exposure) | 248 / 308 nm | Jain, Willson & Lin, *IEEE Electron Device Lett.* **3**, 53 (1982) |
-| 1988 | Nikon NSR-1505EX: first KrF excimer stepper (NA 0.42, 0.5 µm; R&D use) | 248 nm | lithography-history fact-check (Nikon) |
-| 1990 | Perkin-Elmer Micrascan I: the first step-and-scan system — lamp DUV, NA 0.35 | ~250 nm (lamp) | Bruning (2007) |
-| 1992–93 | SVGL Micrascan II — still lamp DUV, NA 0.50 (Bruning dates it 1993; other sources June 1992) | ~250 nm (lamp) | Bruning (2007) |
-| 1995 | Nikon NSR-S201A, described as the first production-worthy KrF scanner | 248 nm | lithography-history fact-check (Nikon) |
-| 1996–97 | SVGL Micrascan III — SVGL's first excimer-laser tool, KrF, NA 0.6 (Bruning's table: 1997) | 248 nm | Bruning (2007) |
-| 1998–99 | First ArF tools reported: ASML PAS 5500/900 (1998); Nikon NSR-S302A, Canon FPA-5000AS1 and SVGL Micrascan 193 (1999) | 193 nm | lithography-history fact-check |
-| 2003 | Intel drops 157 nm (May); TSMC cancels its 157 nm orders and backs immersion (14 Oct) | 157 → 193 nm | EE Times reports (2003) |
-| 2004–05 | First water-immersion ArF scanners (ASML 1250i, NA 0.85, shipped 2004; Nikon NSR-S609B, NA 1.07, 2005, the first in mass production) | 193 nm | lithography-history fact-check |
+| Machine / milestone | Wavelength | What it set | Plane / provenance | Reference |
+|---|---|---|---|---|
+| GCA 4800 DSW (1978): first wafer stepper, 10:1, NA 0.28, Hg g-line | 436 nm | 1.5 µm minimum CD (1980) | reported | Bruning (2007) |
+| Nikon NSR-1505EX (1988): first KrF excimer stepper, NA 0.42 | 248 nm | 0.5 µm, R&D use | reported | Nikon history |
+| SVGL Micrascan III (1996–97): first excimer step-and-scan, NA 0.6 | 248 nm | CD 200 nm | reported | Bruning (2007) |
+| ASML PAS 5500/900 (1998), Nikon NSR-S302A, Canon FPA-5000AS1 (1999) | 193 nm | first ArF tools | reported | lithography-history fact-check |
+| ASML 1250i (2004), Nikon NSR-S609B (2005) | 193 nm in water | first immersion scanners, NA 0.85 / 1.07 | reported | lithography-history fact-check |
+| Cymer ELS-4000F (1995) · Rokitski et al. (2013) | 248 / 193 nm | 6 W at 600 Hz · 120 W ArF immersion laser | reported, laser output | Rokitski (2013) |
+| `krf_laser` · `arf_laser` presets | 248.3 / 193.368 nm | 10 mJ × 4 kHz = 40 W · 15 mJ × 6 kHz = 90 W | this model, representative laser output | — |
 
-Bruning's tables give the resolution ladder in numbers. His "turning points
-in reduction wafer stepper evolution" list a minimum CD of 1.5 µm at 436 nm
-(1980, 10:1), 1.0 µm at 436 nm (1985, 5:1), 0.5 µm at 365 nm (1990, 4:1) and
-0.25 µm at 248 nm (1993, 4:1). The Micrascan step-and-scan family went from a 250 nm
-lamp at NA 0.35 (1990) and 0.50 (1993), to KrF at NA 0.60 (CD 200 nm),
-ArF at NA 0.75 (2001, CD 130 nm), and F₂ at NA 0.75 (2003, CD 100 nm).
+Bruning's turning points give the resolution ladder in numbers — 1.5 µm at 436 nm (1980), 1.0 µm at 436 nm (1985), 0.5 µm at 365 nm (1990), 0.25 µm at 248 nm (1993) — and the KrF-to-ArF transition, the chemically amplified resists it needed and the end of 157 nm are told on the [history pages](../history/excimer-duv.md) rather than here. The laser classes (KrF ~30–60 W; ArF immersion ~60–120 W) come from Cymer and Gigaphoton product specifications; the 3 nm lamp passband is the i-line figure Bruning quotes, applied to all three lines.
 
-**Source parameters used by the presets** (all laser values REPRESENTATIVE):
+<figure markdown="span">
 
-| Preset | λ | Line shape, FWHM | E95 (derived) | Pulse energy × rep rate | Average power | Real-world context |
-|--------|---|------------------|---------------|-------------------------|---------------|--------------------|
-| `hg_g_line` | 435.8328 nm (NIST air) | Gaussian, 3 nm | 4.99 nm | CW | not modeled | filtered lamp line |
-| `hg_h_line` | 404.6563 nm (NIST air) | Gaussian, 3 nm | 4.99 nm | CW | not modeled | filtered lamp line |
-| `hg_i_line` | 365.0153 nm (NIST air) | Gaussian, 3 nm | 4.99 nm | CW | not modeled | "relatively large 3 nm bandwidth" (Bruning) |
-| `krf_laser` | ~248.3 nm | Gaussian, 0.6 pm | 1.00 pm | 10 mJ × 4 kHz | 40 W | KrF lithography lasers ~30–60 W; "few-pm" bandwidth for the first line-narrowed KrF lasers |
-| `arf_laser` | 193.368 nm | Gaussian, 0.2 pm | 0.33 pm | 15 mJ × 6 kHz | 90 W | ArF immersion lasers ~60–120 W (vendor specifications; 120 W reported in 2013) |
+![Log-power bars for the ArF and KrF excimer presets: 90 W and 40 W of laser output become 24 W and 11 W on the wafer through the refractive column's transmission.](../assets/images/sim/sources-power-chain-duv-light.png#gh-light-mode-only)
+![Log-power bars for the ArF and KrF excimer presets: 90 W and 40 W of laser output become 24 W and 11 W on the wafer through the refractive column's transmission.](../assets/images/sim/sources-power-chain-duv-dark.png#gh-dark-mode-only)
 
-The 3 nm lamp passband is the i-line figure Bruning quotes and is applied to
-all three lines as a representative value. The laser power classes come from
-Cymer and Gigaphoton product specifications and from Rokitski et al.,
-"High power 120W ArF immersion XLR laser system" (2013). For comparison, an
-early KrF lithography laser (Cymer ELS-4000F, 1995) delivered about 6 W at
-600 Hz.
+<figcaption><strong>Representative excimer outputs, one transmission factor.</strong> Pulse energy × repetition rate gives the laser output; the refractive column (optics 0.3 × mask 0.9, an assumption) the power on the wafer. The Hg g/h/i lamps carry no power model and are not drawn. <em>Model: DUV/UV heritage ✅ (🔶 parameters) · Dose-limited wafer throughput 🔶.</em></figcaption>
+</figure>
 
-## Simulation model
+## What the model does
 
-All five presets are constructors of [`VuvSource`](../../crates/highuvlith-core/src/source.rs)
-(the struct gained **no** new fields). They serialize with the TOML/serde tag
-`type = "vuv"`, next to `f2_laser` and the hypothetical `ar2_laser`:
+All five presets are constructors of [`VuvSource`](../../crates/highuvlith-core/src/source.rs) (the struct gained no new fields) and serialize with the TOML tag `type = "vuv"`; the wavelengths are public constants and `e95_bandwidth_pm(shape, fwhm_pm)` implements the conversion.
 
-```rust
-VuvSource::hg_g_line(sigma)  // 435.8328 nm, 3 nm FWHM Gaussian, CW, 1 spectral sample
-VuvSource::hg_h_line(sigma)  // 404.6563 nm
-VuvSource::hg_i_line(sigma)  // 365.0153 nm
-VuvSource::krf_laser(sigma)  // 248.3 nm, 0.6 pm FWHM Gaussian, 10 mJ × 4 kHz, 5 samples
-VuvSource::arf_laser(sigma)  // 193.368 nm, 0.2 pm FWHM Gaussian, 15 mJ × 6 kHz, 5 samples
-```
+- **`wavelength_nm()`** — the NIST air wavelength of the Hg line (vacuum values are ~0.1 nm longer, a 3 × 10⁻⁴ relative difference, immaterial for imaging) or the excimer line.
+- **`spectral_weights()`** — five Gaussian samples for the lasers; **one** sample for the lamps (`spectral_samples = 1`), because the engine's default chromatic coefficient of 15 nm per pm is a CaF₂/157 nm figure and sampling a 3 nm lamp band through it would add tens of micrometres of spurious defocus. For multi-sample lamp imaging set `axial_chromatic_nm_per_pm = 0` on an achromat (`OpticsConfig.immersion(numerical_aperture=..., immersion_index=1.0)`, TOML `[optics] immersion_index = 1.0`).
+- **`intensity_at()`** — the top-hat disk of radius σ: lamps and excimer lasers are spatially incoherent / multimode, so `transverse_coherence()` keeps the trait default 0.
+- **`pulse_energy_j()` / `rep_rate_hz()` / `average_power_w()`** — live for the lasers (10 mJ × 4 kHz = 40 W; 15 mJ × 6 kHz = 90 W); a lamp preset sets `rep_rate_hz = 0`, the continuous-wave convention, under which all three return `None` and `wafer_throughput()` returns `None`.
+- **Not modelled** — lamp output power and arc spectrum, excimer pulse-energy jitter and E95 stabilisation (`shot_to_shot_rms = 0`), colour-corrected lamp-era lens designs (an optics setting, not the source).
 
-The wavelengths are public constants (`HG_G_LINE_NM`, `HG_H_LINE_NM`,
-`HG_I_LINE_NM`, `KRF_WAVELENGTH_NM`, `ARF_WAVELENGTH_NM`); the free function
-`e95_bandwidth_pm(shape, fwhm_pm)` implements the E95 conversion (for a
-`Tabulated` spectrum it integrates the table); `line_label()` identifies a
-heritage line within 0.5 nm (used in the derived-quantity notes).
+<!-- huv-table: stack -->
 
-- **Continuous-wave convention.** A mercury lamp is CW: the presets set
-  `rep_rate_hz = 0`, and for any `VuvSource` with `rep_rate_hz ≤ 0` the trait
-  methods `pulse_energy_j()` and `rep_rate_hz()` return `None`, so
-  `average_power_w()` is `None` and `wafer_throughput()` returns `None` —
-  lamp output power is simply not modeled (no invented wattage).
-- **One spectral sample for lamps.** The lamp presets default to
-  `spectral_samples = 1` (monochromatic imaging at the line centre).
-  **Multi-sample lamp imaging needs a colour-corrected lens:** set
-  `axial_chromatic_nm_per_pm = 0` on `ProjectionOptics` for an achromat
-  (`ProjectionOptics::immersion` starts from 0; with `immersion_index = 1.0` —
-  Python `OpticsConfig.immersion(numerical_aperture=..., immersion_index=1.0)`,
-  TOML `[optics] immersion_index = 1.0` — that is a dry lens without the
-  chromatic term). The default of `ProjectionOptics::new`, 15 nm of defocus per
-  pm, is a 157 nm CaF₂ singlet figure, while lamp-era g/h/i-line lenses were
-  colour-corrected multi-glass designs: sampling a 3 nm lamp band through
-  15 nm/pm would add tens of micrometres of spurious defocus. The laser presets
-  keep 5 samples (pm-class bands).
-- **Air vs vacuum.** The Hg wavelengths are NIST air values, as is
-  conventional for lamp lines; vacuum wavelengths are ~0.1 nm longer (a
-  3×10⁻⁴ relative difference), immaterial for imaging and photon counting.
-- **Coherence and jitter.** Lamps and excimer lasers are spatially
-  incoherent/multimode: `transverse_coherence()` keeps the trait default 0 and
-  the pupil fill is the conventional disk σ you pass. Excimer pulse-energy
-  jitter is not modeled (`shot_to_shot_rms() = 0`).
-- **Imaging.** Scalar by default (vector TE/TM imaging is available, see
-  [vector-imaging.md](../vector-imaging.md)); the pm-class laser bands are
-  honest for the narrow-band path (per-sample focus shift, kernels at the
-  centre wavelength; Δλ/λ ≈ 10⁻⁶), and `compute_multiwavelength` gives the
-  exact per-wavelength sum.
+| Field | Unit | Consumed by | Status |
+|---|---|---|---|
+| `wavelength_nm` | nm | TCC pupil scaling, photon energy and density, derived photon budget | live |
+| `bandwidth_pm` | pm FWHM | polychromatic sampling range; `relative_bandwidth`, `e95_bandwidth`, `coherence_length` | live |
+| `spectral_samples` | count | polychromatic samples (1 for the lamp presets) | live |
+| `spectral_shape` | enum | line weighting (Gaussian for the heritage presets); E95 conversion | live |
+| `pulse_energy_mj`, `rep_rate_hz`, `illumination` | mJ, Hz, enum | `average_power_w()` → throughput, `rep_rate_hz = 0` marks a CW lamp; pupil `intensity_at()` during TCC construction | live |
+| lamp power, laser jitter, lamp-era achromat | — | not modelled | planned |
 
 ## Derived quantities
 
-`derived_quantities()` (Python `SourceConfig.derived_quantities()` /
-`derived_quantity(name)`; printed by `highuvlith simulate`) reports physics
-computed from the stored fields. Informational only — the imaging pipeline
-never reads these values.
+`derived_quantities()` (Python `SourceConfig.derived_quantities()` / `derived_quantity(name)`; printed by `highuvlith simulate`) reports physics computed from the stored fields — informational, never read by the imaging pipeline.
 
-| Name | Unit | Meaning | g-line | h-line | i-line | KrF | ArF |
-|------|------|---------|--------|--------|--------|-----|-----|
-| `photon_energy` | eV | hc/λ (note names the line) | 2.845 | 3.064 | 3.397 | 4.993 | 6.412 |
-| `relative_bandwidth` | — | FWHM/λ | 6.88×10⁻³ | 7.41×10⁻³ | 8.22×10⁻³ | 2.42×10⁻⁶ | 1.03×10⁻⁶ |
-| `e95_bandwidth` | pm | 95 %-energy width of the configured shape | 4 994 | 4 994 | 4 994 | 0.999 | 0.333 |
-| `coherence_length` | µm | λ²/Δλ | 63.3 | 54.6 | 44.4 | 102 755 | 186 956 |
-| `photons_per_mj` | photons | 1 mJ / (hc/λ) | 2.194×10¹⁵ | 2.037×10¹⁵ | 1.838×10¹⁵ | 1.250×10¹⁵ | 9.734×10¹⁴ |
-| `photon_density_per_dose` | photons/nm² per mJ/cm² | incident photons per nm² at 1 mJ/cm² | 21.94 | 20.37 | 18.38 | 12.50 | 9.734 |
-| `photons_vs_13nm5` | — | photons per dose relative to 13.5 nm (λ/13.5 nm) | 32.28 | 29.97 | 27.04 | 18.39 | 14.32 |
-| `continuous_wave` | bool | 1 for a CW lamp (no pulse metadata) | 1 | 1 | 1 | — | — |
-| `photons_per_pulse` | photons | pulse energy / photon energy | — | — | — | 1.250×10¹⁶ | 1.460×10¹⁶ |
-| `average_power` | W | pulse energy × rep rate (laser output) | — | — | — | 40 | 90 |
-| `photon_rate` | photons/s | average power / photon energy | — | — | — | 5.00×10¹⁹ | 8.76×10¹⁹ |
+<!-- huv-table: stack -->
 
-**Throughput context.** `SourceConfig.wafer_throughput(...)` is a first-order
-dose-limited scanner model (🔶, illustrative assumptions). With refractive-tool
-settings (`optics_transmission=0.3, mask_efficiency=0.9, slit_height_mm=8.0`)
-at 30 mJ/cm²: KrF puts 10.8 W on the wafer → ~172 wafers/h with ~23 pulses per
-exposure point; ArF puts 24.3 W on the wafer → ~185 wafers/h with ~15 pulses
-per point. Both dose-limited scan speeds (1.4 and 3.1 m/s) exceed real stage
-speeds, so the results are overhead-dominated — pass `max_scan_speed_mm_s` to
-cap them. At 30 mJ/cm² a (38 nm)² square receives ~4.2×10⁵ ArF photons (0.15 %
-relative shot noise). The lamp presets return `None` (no power model).
+| Name | Unit | Meaning | i-line | KrF | ArF |
+|---|---|---|---|---|---|
+| `photon_energy` | eV | hc/λ | 3.397 | 4.993 | 6.412 |
+| `e95_bandwidth` | pm | 95 %-energy width of the configured shape | 4 994 | 0.999 | 0.333 |
+| `coherence_length` | µm | λ²/Δλ | 44.4 | 102 755 | 186 956 |
+| `photons_per_mj` | photons | 1 mJ / (hc/λ) | 1.838 × 10¹⁵ | 1.250 × 10¹⁵ | 9.734 × 10¹⁴ |
+| `photon_density_per_dose` | photons/nm² per mJ/cm² | incident photons per nm² at 1 mJ/cm² | 18.38 | 12.50 | 9.734 |
+| `photons_vs_13nm5` | — | photons per dose relative to 13.5 nm (λ/13.5 nm) | 27.04 | 18.39 | 14.32 |
+| `average_power` | W | pulse energy × rep rate (laser output) | — | 40 | 90 |
+| `continuous_wave` | bool | 1 for a CW lamp (no pulse metadata) | 1 | — | — |
 
-## Model coverage
+<details markdown="1">
+<summary>The remaining rows and the g/h lines</summary>
 
-| Field | Unit | Consumed by | Status |
-|-------|------|-------------|--------|
-| `wavelength_nm` | nm | TCC pupil scaling, photon energy/density, derived photon budget | live |
-| `bandwidth_pm` | pm FWHM | polychromatic sampling range; `relative_bandwidth`, `e95_bandwidth`, `coherence_length` | live |
-| `spectral_samples` | count | number of polychromatic samples (1 for the lamp presets) | live |
-| `spectral_shape` | enum | line weighting (Gaussian for the heritage presets); E95 conversion | live |
-| `pulse_energy_mj` | mJ | `pulse_energy_j()` → `average_power_w()` → throughput (ignored when CW) | live |
-| `rep_rate_hz` | Hz | `average_power_w()`; `0` marks a CW lamp (pulse metadata `None`) | live |
-| `illumination` | enum | pupil `intensity_at()` during TCC construction | live |
-| — lamp output power / arc spectrum | — | not modeled (`average_power_w() = None`) | planned |
-| — laser pulse-energy jitter, E95 stabilization | — | trait default 0 / not modeled | planned |
-| — colour-corrected lamp-era lens model | — | engine optics (`axial_chromatic_nm_per_pm`), not the source | planned |
+g-line / h-line: `photon_energy` 2.845 / 3.064 eV; `photons_per_mj` 2.194 × 10¹⁵ / 2.037 × 10¹⁵; `photon_density_per_dose` 21.94 / 20.37 photons/nm² per mJ/cm²; `photons_vs_13nm5` 32.28 / 29.97; `e95_bandwidth` 4 994 pm and `coherence_length` 63.3 / 54.6 µm. `relative_bandwidth` (FWHM/λ) 6.88 × 10⁻³ / 7.41 × 10⁻³ / 8.22 × 10⁻³ for g/h/i and 2.42 × 10⁻⁶ / 1.03 × 10⁻⁶ for KrF / ArF; `photons_per_pulse` 1.250 × 10¹⁶ / 1.460 × 10¹⁶ and `photon_rate` 5.00 × 10¹⁹ / 8.76 × 10¹⁹ photons/s for KrF / ArF. With refractive-tool settings at 30 mJ/cm² the [throughput model](index.md#dose-limited-throughput) puts 10.8 W (KrF) and 24.3 W (ArF) on the wafer — ≈ 172 and ≈ 185 wafers/h, overhead-dominated, with ≈ 23 and ≈ 15 pulses per exposure point; the dose-limited scan speeds (1.4 and 3.1 m/s) exceed real stages, so pass `max_scan_speed_mm_s` to cap them. The KrF row coincides with the F₂ row on the index because both presets are 40 W lasers.
 
-## Usage
+</details>
 
-Python (factories in [`py_config.rs`](../../crates/highuvlith-py/src/py_config.rs)):
+## Use it
+
+### Python
+
+Factories in [`py_config.rs`](../../crates/highuvlith-py/src/py_config.rs):
 
 <!-- verify-example -->
 ```python
 import highuvlith as huv
 
-arf = huv.SourceConfig.arf_laser(sigma=0.7)   # 193.368 nm, 90 W representative
-krf = huv.SourceConfig.krf_laser(sigma=0.7)   # 248.3 nm, 40 W representative
-i_line = huv.SourceConfig.hg_i_line(sigma=0.6)   # 365.0153 nm, CW lamp
-g_line = huv.SourceConfig.hg_g_line(sigma=0.5)   # 435.8328 nm, CW lamp
-
-print(arf.derived_quantity("e95_bandwidth"))     # 0.333 pm
-print(arf.derived_quantity("photons_vs_13nm5"))  # 14.32
-print(i_line.average_power_w, i_line.rep_rate_hz)   # None 0.0  (CW, not modeled)
-
+arf = huv.SourceConfig.arf_laser(sigma=0.7)       # 193.368 nm, 90 W representative
+krf = huv.SourceConfig.krf_laser(sigma=0.7)       # 248.3 nm, 40 W representative
+i_line = huv.SourceConfig.hg_i_line(sigma=0.6)    # 365.0153 nm, CW lamp
+print(f"ArF E95 {arf.derived_quantity('e95_bandwidth'):.3g} pm, "
+      f"{arf.derived_quantity('photons_vs_13nm5'):.3g} x the photons of 13.5 nm per dose")
+print(i_line.average_power_w, i_line.rep_rate_hz)   # CW lamp: power not modelled
 tp = krf.wafer_throughput(dose_mj_cm2=30.0, optics_transmission=0.3,
                           mask_efficiency=0.9, slit_height_mm=8.0)
-print(tp["wafers_per_hour"], tp["pulses_per_point"])   # ~172, ~23
+print(f"KrF {tp['wafers_per_hour']:.3g} wph, {tp['pulses_per_point']:.3g} pulses per point")
 ```
 
-??? success "Output"
+???+ success "Output"
 
     ```text
-    0.33292802796984766
-    14.323555555555556
+    ArF E95 0.333 pm, 14.3 x the photons of 13.5 nm per dose
     None 0.0
-    172.35326034917495 23.111111111111107
+    KrF 172 wph, 23.1 pulses per point
     ```
 
-TOML (field names from [`config.rs`](../../crates/highuvlith-cli/src/config.rs)):
-select a preset with `preset`; explicit `wavelength_nm`, `bandwidth_pm` and
-`rep_rate_hz` override it. Without `preset`, the legacy explicit-wavelength
-VUV source is built (Lorentzian 1.1 pm, 10 mJ, 4 kHz), exactly as before.
+`highuvlith simulate --config examples/sim_arf.toml` prints the derived quantities; the CLI's refractive optics accept NA ≤ 1, so the examples are dry systems.
+
+## TOML keys
+
+The keys the CLI reads for `type = "vuv"` (`VUV_KEYS` in [`config.rs`](../../crates/highuvlith-cli/src/config.rs); the same set serves the [F₂ and Ar₂ presets](vuv-excimer.md#toml-keys)). Without `preset` the legacy explicit-wavelength source is built (Lorentzian 1.1 pm, 10 mJ, 4 kHz).
+
+| Key | Default | Units | Notes |
+|---|---|---|---|
+| `type` | `"vuv"` | — | optional: an absent tag also means `vuv` |
+| `preset` | none (legacy source) | — | `arf`, `krf`, `hg_i` / `i_line`, `hg_h` / `h_line`, `hg_g` / `g_line`, `f2`, `ar2` |
+| `sigma` | 0.7 | — | top-hat pupil radius, (0, 1]; not with `[illumination]` |
+| `wavelength_nm` | preset (157.63 without one) | nm | overrides the preset line |
+| `bandwidth_pm` | preset (1.1 without one) | pm FWHM | overrides the preset shape width |
+| `rep_rate_hz` | preset (4000 without one) | Hz | overrides the preset rate; pulse energy stays the preset's |
+| `spectral_samples` | preset (5; lamps 1) | — | polychromatic samples |
 
 ```toml
 [source]
-type   = "vuv"     # optional: an absent type tag also means "vuv"
-preset = "arf"     # f2 | ar2 | arf | krf | hg_i | hg_h | hg_g  (aliases i_line, h_line, g_line)
+preset = "arf"     # type "vuv" implied; f2 | ar2 | arf | krf | hg_i | hg_h | hg_g
 sigma  = 0.7
-# bandwidth_pm = 0.3    # overrides the preset FWHM
 ```
 
-Examples: [`sim_arf.toml`](../../examples/sim_arf.toml) (dry ArF, NA 0.93),
-[`sim_krf.toml`](../../examples/sim_krf.toml) (NA 0.8),
-[`sim_hg_iline.toml`](../../examples/sim_hg_iline.toml) (NA 0.6, 350 nm lines),
-[`sim_hg_gline.toml`](../../examples/sim_hg_gline.toml) (NA 0.45, 700 nm lines);
-`highuvlith simulate --config examples/sim_arf.toml` prints the derived
-quantities above. The CLI's refractive optics accept NA ≤ 1, so the examples
-are dry (non-immersion) systems.
+Examples: [`sim_arf.toml`](../../examples/sim_arf.toml) (dry ArF, NA 0.93), [`sim_krf.toml`](../../examples/sim_krf.toml) (NA 0.8), [`sim_hg_iline.toml`](../../examples/sim_hg_iline.toml) (NA 0.6, 350 nm lines), [`sim_hg_gline.toml`](../../examples/sim_hg_gline.toml) (NA 0.45, 700 nm lines).
 
-## Validation
+<details markdown="1">
+<summary>Validation — 9 tests</summary>
 
-- `source.rs`: `test_heritage_presets_photon_budget` (photon energies and
-  photons per mJ of all five presets against mpmath fixtures, NIST wavelengths,
-  λ/13.5 ratio, 90 W / 40 W laser budgets, σ validation),
-  `test_hg_lamps_are_cw_single_sample` (no pulse metadata, `average_power_w()`
-  = `None`, one spectral sample at the line centre, `continuous_wave = 1`,
-  E95 of the 3 nm Gaussian passband), `test_e95_bandwidth_conventions`
-  (Gaussian 1.6646, Lorentzian 12.706, sinc² 4.680, a tabulated triangle,
-  degenerate tables), `test_vuv_derived_quantities`,
-  `test_every_family_reports_derived_quantities`.
-- CLI `config.rs`: `test_vuv_heritage_presets` (presets, aliases, explicit
-  overrides, the legacy no-preset path, unknown preset rejected, `preset` as an
-  XFEL alias), `test_family_example_tomls_validate` (the four heritage
-  examples parse and validate), `test_toml_back_compat_without_type_tag`.
-- Python `tests/python/test_sources_physics.py::TestHeritage` (wavelengths and
-  photon energies, lasers vs lamps, and a lamp imaging check: with one
-  spectral sample the polychromatic image equals the monochromatic one).
+| Claim | Test | Tolerance |
+|---|---|---|
+| photon energies and photons per mJ of all five presets, NIST wavelengths, the λ/13.5 ratio, 90 W / 40 W budgets, σ validation; lamps are CW with one spectral sample, `average_power_w() = None`, `continuous_wave = 1`, E95 of the 3 nm passband | `source.rs::test_heritage_presets_photon_budget`, `test_hg_lamps_are_cw_single_sample` | mpmath fixtures |
+| E95/FWHM 1.6646 / 12.706 / 4.680, a tabulated triangle, degenerate tables; derived quantities finite and documented for every family | `test_e95_bandwidth_conventions`, `test_vuv_derived_quantities`, `test_every_family_reports_derived_quantities` | fixtures |
+| presets, aliases, explicit overrides, the legacy path, unknown preset rejected; the four heritage example TOMLs validate; absent `type` → VUV; wavelengths and photon energies through the bindings, a one-sample lamp images identically monochromatic and polychromatic | CLI `test_vuv_heritage_presets`, `test_family_example_tomls_validate`, `test_toml_back_compat_without_type_tag`; `tests/python/test_sources_physics.py::TestHeritage` | — |
+
+</details>
+
+<details markdown="1">
+<summary>Changes</summary>
+
+- Until 2026-10-10 the Gaussian line sampler used σ = FWHM/(2√ln 2), so every Gaussian-line preset's polychromatic samples were √2 wider than stated (the ArF 0.2 pm line sampled as 0.283 pm); `e95_bandwidth` and the Lorentzian / sinc² samples were always exact. Corrected; recorded in the [matrix audit log](../capability-matrix.md#audit-log).
+- The `Dipole` illumination shape placed both poles at one point until 2026-09-30; the heritage presets never use it.
+
+</details>
+
+## See also
+
+[VUV excimer](vuv-excimer.md) (the same struct, F₂ and the Ar₂ what-if) · [Laser-produced plasma](lpp.md) (13.5 nm, 14× fewer photons per dose) · history: [Excimer lasers and deep UV](../history/excimer-duv.md), [The 157 nm detour](../history/157nm-detour.md) · [Throughput, stated once](index.md#dose-limited-throughput) · [configuration](../configuration.md) · [`examples/sim_arf.toml`](../../examples/sim_arf.toml)
 
 ## References
 
-1. NIST, *Handbook of Basic Atomic Spectroscopic Data* — mercury (Hg I) strong
-   lines, air wavelengths g 435.8328 nm, h 404.6563 nm, i 365.0153 nm:
-   https://physics.nist.gov/PhysRefData/Handbook/Tables/mercurytable2.htm
-2. J. H. Bruning, "Optical Lithography … 40 years and holding," *Proc. SPIE*
-   **6520**, 652004 (2007).
-3. ASML, "Light & lasers" (Lithography principles):
-   https://www.asml.com/en/technology/lithography-principles/light-and-lasers
-4. Basov, Danilychev & Popov, *Sov. J. Quantum Electron.* **1**, 18 (1971),
-   doi:10.1070/QE1971v001n01ABEH003011 — the Xe₂ excimer laser.
-5. Ewing & Brau, *Appl. Phys. Lett.* **27**, 350 (1975) — KrF and XeCl lasers.
-6. Hoffman, Hays & Tisone, *Appl. Phys. Lett.* **28**, 538 (1976) — ArF laser.
-7. Jain, Willson & Lin, *IEEE Electron Device Lett.* **3**, 53 (1982),
-   doi:10.1109/EDL.1982.25476 — excimer-laser lithography.
-8. Rokitski et al., "High power 120W ArF immersion XLR laser system,"
-   *Proc. SPIE* **8683**, 86831H (2013), doi:10.1117/12.2012681.
-9. EE Times (2003): Intel drops 157 nm tools from its lithography roadmap;
-   TSMC cancels 157 nm litho orders and backs immersion.
-10. Related pages: [vuv-excimer.md](./vuv-excimer.md) (F₂ 157 nm, the
-    hypothetical Ar₂ 126 nm preset), [lpp.md](./lpp.md) (13.5 nm EUV),
-    [index.md](./index.md) (trait contract).
+1. NIST, *Handbook of Basic Atomic Spectroscopic Data* — Hg I strong lines, air wavelengths g 435.8328 nm, h 404.6563 nm, i 365.0153 nm: https://physics.nist.gov/PhysRefData/Handbook/Tables/mercurytable2.htm
+2. J. H. Bruning, "Optical Lithography … 40 years and holding," *Proc. SPIE* **6520**, 652004 (2007).
+3. ASML, "Light & lasers" (Lithography principles): https://www.asml.com/en/technology/lithography-principles/light-and-lasers
+4. Ewing & Brau, *Appl. Phys. Lett.* **27**, 350 (1975) — KrF and XeCl lasers; Hoffman, Hays & Tisone, *Appl. Phys. Lett.* **28**, 538 (1976) — ArF; Jain, Willson & Lin, *IEEE Electron Device Lett.* **3**, 53 (1982), doi:10.1109/EDL.1982.25476 — excimer-laser lithography.
+6. Rokitski et al., "High power 120W ArF immersion XLR laser system," *Proc. SPIE* **8683**, 86831H (2013), doi:10.1117/12.2012681.
+
+**Where next:** ← [Sources](index.md) · [VUV excimer](vuv-excimer.md) → · Related: [Excimer lasers and deep UV](../history/excimer-duv.md) · [Capability matrix](../capability-matrix.md#light-sources)

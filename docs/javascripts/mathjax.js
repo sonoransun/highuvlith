@@ -19,6 +19,15 @@ function huvFitInlineMath() {
   });
 }
 
+/* Display math (div.arithmatex) scrolls sideways with the site-wide overflow cue of
+   layout.js (window.huvMarkOverflow, owner G0b, DESIGN §4.9): data-huv-overflow="true",
+   tabindex and a name while the typeset block is wider than the column. Both are run
+   after the initial typeset and after every instant-navigation re-typeset. */
+function huvAfterTypeset() {
+  huvFitInlineMath();
+  if (typeof window.huvMarkOverflow === "function") window.huvMarkOverflow();
+}
+
 window.MathJax = {
   tex: {
     inlineMath: [["\\(", "\\)"]],
@@ -32,7 +41,7 @@ window.MathJax = {
   },
   startup: {
     pageReady: function () {
-      return window.MathJax.startup.defaultPageReady().then(huvFitInlineMath);
+      return window.MathJax.startup.defaultPageReady().then(huvAfterTypeset);
     }
   }
 };
@@ -53,7 +62,7 @@ if (typeof document$ !== "undefined") {
     mj.startup.output.clearCache();
     mj.typesetClear();
     mj.texReset();
-    mj.typesetPromise().then(huvFitInlineMath);
+    mj.typesetPromise().then(huvAfterTypeset);
   });
 }
 

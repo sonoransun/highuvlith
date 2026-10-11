@@ -4,6 +4,22 @@ description: "Quantum (NOON-state) lithography, the entangled two-photon absorpt
 
 # Quantum and exotic lithography
 
+<p class="huv-lead">The other pages in this section are about engineering physics we already understand; this one looks at proposals that would change the physics of exposure itself — entangled photons to write finer than the diffraction limit, quantum correlations to make two-photon absorption efficient at low flux, and EUV or X-ray light from free electrons skimming nanostructures or from table-top lasers. All of it is real physics with striking laboratory results. What none of it has produced is a pattern written into a resist by entangled light, or an exposure source within a factor of ten thousand of a production scanner; the simulator's models exist to make those gaps quantitative.</p>
+
+**Verdict (as of September 2026):** no pattern has been written into a resist by entangled light, the entangled two-photon cross-section is disputed by four orders of magnitude or more, and every exotic compact source sits 10⁴ to 10¹¹ below production power.
+
+<figure markdown="span">
+
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-future-narrow-light.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-future-light.svg#gh-light-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the EUV → X-ray span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-future-narrow-dark.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-future-dark.svg#gh-dark-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the EUV → X-ray span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
+
+<figcaption><strong>You are here on the axis of light.</strong> The chapter's wavelengths and eras at full strength, the rest faded; years are first tool models in litho_tools.csv; the log axis is expanded above 100 nm. <em>Data chart from litho_tools.csv; no model badge.</em></figcaption>
+</figure>
+
+**Five limits:** [k₁ ≥ 0.25](index.md#diffraction-and-the-resolution-floor) · [photons ∝ λ³/NA²](index.md#photons-and-shot-noise) · [Z-factor](index.md#resolution-roughness-and-dose) · [electron blur](index.md#electron-blur) · [throughput](index.md#throughput-and-cost)
+
+**Everything on this page is at least one of: not demonstrated as lithography, disputed in the literature, or many orders of magnitude short of production needs — the readiness labels and the 🧪 Theoretical grades are deliberate.**
+
 !!! warning "Speculative territory"
     Everything on this page is at least one of these: not demonstrated as lithography,
     disputed in the literature, or many orders of magnitude short of production needs.
@@ -11,40 +27,33 @@ description: "Quantum (NOON-state) lithography, the entangled two-photon absorpt
     🧪 Theoretical badge unless a section says otherwise. Where a number is a simulator
     preset rather than a measurement, the text says so.
 
-The other pages in this section are about engineering physics we already understand:
-more numerical aperture, shorter wavelengths, brighter sources, better resists. This page
-looks at proposals that would change the physics of exposure itself. The first is to use
-**entangled photons** to write finer than the diffraction limit allows. The second is to
-use quantum correlations to make **two-photon absorption** efficient at low flux. The
-third is to make EUV and X-ray light from **free electrons skimming nanostructures**, or
-from lasers that fit on a table.
-
-All of this is real physics, and some of it has produced striking laboratory results:
-interference fringes at half the classical period, tunable X-rays from layered crystals,
-and coherent 13.5 nm light on an optical bench. What none of it has produced is a pattern
-written into a resist by entangled light, or an exposure source within a factor of ten
-thousand of what a production scanner uses. The reasons are a useful tour of the hard
-limits of lithography: photon statistics, photon flux, and the materials that have to
-record the light.
-
-The simulator's models of these ideas are there to make the gaps quantitative, not to
-suggest a path to production. They are the quantum research module, the entangled-photon
-source, and the Smith–Purcell source (all theoretical), plus simplified models of the more
-mature table-top sources (soft-X-ray lasers and high-harmonic generation).
-
 ## Readiness at a glance
 
-| Technology | Readiness (as of Sep 2026) | highuvlith model |
+<!-- huv-table: stack -->
+| Technology | Readiness (Sep 2026) | highuvlith model |
 |---|---|---|
-| NOON-state (entangled-photon) interferometric lithography | **Theoretical / speculative.** λ/N fringes have been seen only in photon-coincidence counts, never recorded in a resist | 🧪 [quantum module](../research-modules.md) and [entangled-photon source](../sources/entangled-photon.md): classical N-photon absorption Iᴺ (sharpening at the classical period), plus the ideal NOON model: analytic two-beam fringes at λ/(2N sin θ) and a λ/N ideal-limit image for general masks |
-| Classical multiphoton sub-Rayleigh recording (phase-shifted gratings) | **Demonstrated in the lab** (2× beyond the Rayleigh limit in PMMA, 2006) | Partly: the quantum module's `n_photon_absorption_image` applies the same Iᴺ nonlinearity. The multi-exposure phase-shift scheme is not modeled. Two-photon voxel kinetics: [interference module](../processes/interference-volumetric.md) ✅/🔶 |
-| Entangled two-photon absorption (ETPA) as an exposure mechanism | **Theoretical / speculative.** The cross-section is disputed by four orders of magnitude or more | 🧪 [entangled-photon source](../sources/entangled-photon.md): exposure time for the claimed and the bounded cross-sections |
-| Free-electron nanophotonic sources (Smith–Purcell, van der Waals X-rays) | **Demonstrated in the lab** as emitters (Smith–Purcell down to 230 nm; keV X-rays from layered crystals). Nothing at 13.5 nm with useful power | 🧪 [Smith–Purcell source](../sources/smith-purcell.md) |
-| Table-top soft-X-ray lasers (46.9 nm down to 6.85 nm) | **Demonstrated in the lab**, including interference and Talbot printing | ✅/🔶 [soft-X-ray laser source](../sources/soft-xray-laser.md) |
-| High-harmonic generation (HHG) at 13.5 nm | **Demonstrated in the lab** as an exposure source. Table-top systems are used for actinic metrology and coherent imaging | ✅/🔶 [HHG source](../sources/hhg.md) |
+| NOON-state (entangled-photon) interferometric lithography | **Speculative** (λ/N fringes seen only in coincidence counts, never in a resist) | 🧪 [quantum module](../research-modules.md) and [entangled-photon source](../sources/entangled-photon.md): classical Iᴺ sharpening plus the ideal NOON (λ/N) model |
+| Classical multiphoton sub-Rayleigh recording (phase-shifted gratings) | **Demonstrated** (2× beyond the Rayleigh limit in PMMA, 2006) | partly: 🧪 `n_photon_absorption_image` applies the same Iᴺ nonlinearity; the multi-exposure scheme is not modelled |
+| Entangled two-photon absorption (ETPA) as an exposure mechanism | **Speculative** (cross-section disputed by four orders of magnitude or more) | 🧪 [entangled-photon source](../sources/entangled-photon.md): exposure time for the claimed and the bounded cross-sections |
+| Free-electron nanophotonic sources (Smith–Purcell, van der Waals X-rays) | **Demonstrated** as emitters (Smith–Purcell down to 230 nm; keV X-rays); nothing at 13.5 nm with useful power | 🧪 [Smith–Purcell source](../sources/smith-purcell.md) |
+| Table-top soft-X-ray lasers (46.9 nm down to 6.85 nm) | **Demonstrated**, including interference and Talbot printing | ✅ [soft-X-ray laser source](../sources/soft-xray-laser.md) (🔶 pulse, linewidth, coherence) |
+| High-harmonic generation (HHG) at 13.5 nm | **Demonstrated** as an exposure source; table-top systems in actinic metrology | ✅ [HHG source](../sources/hhg.md) (🔶 conversion efficiency) |
 
-Badges follow the [capability matrix](../capability-matrix.md). They grade the
-*simulator's model*, not the technology.
+Rung words follow the [readiness ladder](index.md#readiness-ladder); chips are the simulator's grades from the [capability matrix](../capability-matrix.md). They grade the *simulator's model*, not the technology.
+
+<details markdown="1">
+<summary>Why these rungs</summary>
+
+| Technology | Evidence for the rung |
+|---|---|
+| NOON-state lithography | two-, four- and five-photon fringes detected by coincidence or centroid measurement [2–6]; no sub-Rayleigh pattern written by entangled photons found [11, 12] |
+| Classical multiphoton recording | a two-fold gain over the Rayleigh limit in PMMA with classical light and an N-photon absorber [9] |
+| ETPA as exposure | early claims of σ<sub>E</sub> ≈ 10⁻¹⁷ cm² [17]; independent bounds four to five orders lower and several signals traced to artifacts [24–31]; positive reports continue [23] |
+| Free-electron nanophotonic sources | Smith–Purcell emission down to 230 nm [37]; water-window X-rays from van der Waals crystals [38, 39] |
+| Table-top soft-X-ray lasers | discharge-pumped lasing since 1994 [41]; 6.85 nm gain-saturated [45]; Talbot printing with a 18.9 nm laser [44] |
+| HHG at 13.5 nm | 0.4–1 µW measured at 92 eV [46, 47]; sub-22 nm pitches printed by interference at imec's AttoLab [35 on the alternatives page] |
+
+</details>
 
 ## Quantum lithography: the NOON-state proposal
 
@@ -91,58 +100,60 @@ N-photon absorber. Contrast and the sharpness of the fringe maxima grow with N, 
 density of fringes and thus the limiting resolution does not increase with N" [10].
 
 <figure markdown="span">
-  ![Line plot over two classical fringe periods. The one-photon classical fringe (blue) is a raised cosine with period one. The classical two-photon exposure I squared (orange) has the same period but narrower peaks and flatter valleys. The ideal N = 2 NOON pattern (green) has twice as many peaks, with period one half.](../assets/images/future/noon-fringes-light.svg#only-light){ width="860" }
-  ![Line plot over two classical fringe periods. The one-photon classical fringe (blue) is a raised cosine with period one. The classical two-photon exposure I squared (orange) has the same period but narrower peaks and flatter valleys. The ideal N = 2 NOON pattern (green) has twice as many peaks, with period one half.](../assets/images/future/noon-fringes-dark.svg#only-dark){ width="860" }
-  <figcaption>Classical one-photon exposure I = (1 + cos φ)/2, classical two-photon exposure I², and the ideal N = 2 NOON pattern (1 + cos 2φ)/2. All three are closed-form expressions (nothing measured). I² is exactly what highuvlith's <code>quantum_aerial_image</code> returns for N = 2 and fidelity 1: sharper lines at the classical period. Own work, generated by <code>docs/figures/future/make_future_figures.py</code>.</figcaption>
+
+![Three curves over two classical fringe periods: the one-photon classical fringe (raised cosine, period one), the classical two-photon exposure I squared with the same period but narrower peaks, and the ideal N = 2 NOON pattern whose period is halved.](../assets/images/future/noon-fringes-light.svg#gh-light-mode-only)
+![Three curves over two classical fringe periods: the one-photon classical fringe (raised cosine, period one), the classical two-photon exposure I squared with the same period but narrower peaks, and the ideal N = 2 NOON pattern whose period is halved.](../assets/images/future/noon-fringes-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Sharper is not finer.</strong> Classical one-photon exposure I = (1 + cos φ)/2, classical two-photon exposure I² (exactly what quantum_aerial_image returns for N = 2 and fidelity 1: narrower lines at the classical period) and the ideal N = 2 NOON pattern (1 + cos 2φ)/2, which alone halves the period; all three are closed forms. <em>Model: Quantum lithography (N-photon / N00N) 🧪 (closed forms drawn here, not the engine).</em></figcaption>
 </figure>
 
-??? info "Data behind the figure"
-    Values at five positions across half a classical period (x in units of Λ):
+<details markdown="1">
+<summary>Data behind the figure</summary>
 
-    | x / Λ | I = (1 + cos φ)/2 | I² | NOON, N = 2: (1 + cos 2φ)/2 |
-    |---|---|---|---|
-    | 0 | 1.000 | 1.000 | 1.000 |
-    | 0.125 | 0.854 | 0.729 | 0.500 |
-    | 0.25 | 0.500 | 0.250 | 0.000 |
-    | 0.375 | 0.146 | 0.021 | 0.500 |
-    | 0.5 | 0.000 | 0.000 | 1.000 |
+Values at five positions across half a classical period (x in units of Λ):
 
-!!! info "What highuvlith actually computes"
-    The [quantum module](../research-modules.md) (`quantum.rs`, 🧪) keeps the two curves
-    apart.
+| x / Λ | I = (1 + cos φ)/2 | I² | NOON, N = 2: (1 + cos 2φ)/2 |
+|---|---|---|---|
+| 0 | 1.000 | 1.000 | 1.000 |
+| 0.125 | 0.854 | 0.729 | 0.500 |
+| 0.25 | 0.500 | 0.250 | 0.000 |
+| 0.375 | 0.146 | 0.021 | 0.500 |
+| 0.5 | 0.000 | 0.000 | 1.000 |
 
-    - **Classical N-photon absorption**, $E = I^N$ of a *classical* aerial image
-      (`n_photon_absorption_image`). This is the orange curve above: sharper, at the
-      classical period. The older `quantum_aerial_image` call returns exactly this for
-      any fidelity F.
-    - **The ideal NOON pattern.** `TwoBeamNPhoton` gives the green curve in closed form,
-      period Λ/N. For general masks, `noon_ideal_image` images the same system at λ/N
-      with the same NA and pupil fill. This is Boto et al.'s ideal limit, and it presumes
-      that the entangled states can be prepared for the pattern.
+</details>
 
-    The fidelity F is the share of the exposure from the ideal NOON component. The rest is
-    classical N-photon absorption of the same light, not linear absorption:
+<details markdown="1">
+<summary>What highuvlith actually computes</summary>
 
-    ```math
-    E = F\,I_{\lambda/N} + (1 - F)\,I_\lambda^{\,N} \quad \text{(general masks)}
-    ```
+The [quantum module](../research-modules.md) (`quantum.rs`, 🧪) keeps the two curves
+apart.
 
-    The flux budget comes from the entangled-photon source's constants. These are the
-    entangled-regime ceiling of about 10¹³ photons/s and the ETPA cross-section bounds.
-    For N = 2, exposure takes at least 4.5 × 10¹⁰ times longer than a classical
-    30 mJ/cm² exposure at production wafer power. The
-    [entangled-photon source](../sources/entangled-photon.md) feeds the imaging pipeline
-    its *physical* wavelength, and nothing quantum happens unless you call the quantum
-    module explicitly. Read the λ/N images as the theoretical NOON claim, not a
-    prediction of what any resist would record.
+- **Classical N-photon absorption**, $E = I^N$ of a *classical* aerial image
+  (`n_photon_absorption_image`). This is the orange curve above: sharper, at the
+  classical period. The older `quantum_aerial_image` call returns exactly this for
+  any fidelity F.
+- **The ideal NOON pattern.** `TwoBeamNPhoton` gives the green curve in closed form,
+  period Λ/N. For general masks, `noon_ideal_image` images the same system at λ/N
+  with the same NA and pupil fill. This is Boto et al.'s ideal limit, and it presumes
+  that the entangled states can be prepared for the pattern.
 
-<figure markdown="span">
+The fidelity F is the share of the exposure from the ideal NOON component. The rest is
+classical N-photon absorption of the same light, not linear absorption:
 
-![Classical and two-photon (I squared) exposure profiles of a 240 nm pitch grating: the I squared profile is sharper, but its Fourier spectrum still peaks at the 240 nm period; no finer period appears.](../assets/images/sim/site/site-quantum-i2-period-light.png#gh-light-mode-only)
-![Classical and two-photon (I squared) exposure profiles of a 240 nm pitch grating: the I squared profile is sharper, but its Fourier spectrum still peaks at the 240 nm period; no finer period appears.](../assets/images/sim/site/site-quantum-i2-period-dark.png#gh-dark-mode-only)
+```math
+E = F\,I_{\lambda/N} + (1 - F)\,I_\lambda^{\,N} \quad \text{(general masks)}
+```
 
-<figcaption>Sharpening without a finer period (the quantum page's example): the classical aerial image (F<sub>2</sub> 157.63 nm, NA 0.75, σ 0.7) and the N = 2 post-step I² at fidelity 1. Contrast rises, but the dominant Fourier component of both images is the 240 nm mask period — the I² model is a sharpening proxy, not λ/N resolution. Model: quantum lithography 🧪 (classical N-photon absorption; the ideal N00N limit is a separate model).</figcaption>
-</figure>
+The flux budget comes from the entangled-photon source's constants. These are the
+entangled-regime ceiling of about 10¹³ photons/s and the ETPA cross-section bounds.
+For N = 2, exposure takes at least 4.5 × 10¹⁰ times longer than a classical
+30 mJ/cm² exposure at production wafer power. The
+[entangled-photon source](../sources/entangled-photon.md) feeds the imaging pipeline
+its *physical* wavelength, and nothing quantum happens unless you call the quantum
+module explicitly. Read the λ/N images as the theoretical NOON claim, not a
+prediction of what any resist would record.
+
+</details>
 
 ### What has actually been demonstrated
 
@@ -217,17 +228,16 @@ into two photons at λ, so 157 nm pairs need a 79 nm pump and a nonlinear crysta
 transparent there. Lithium fluoride, the standard vacuum-ultraviolet window material, is
 specified to transmit only from about 120 nm [14].
 
-```mermaid
-flowchart LR
-    P["Pump at λ/2<br/><i>79 nm for 157 nm pairs</i>"] --> S["Down-conversion<br/><i>entangled pairs at λ</i>"]
-    S --> N["NOON-state preparation<br/><i>all N photons in one arm<br/>or the other</i>"]
-    N --> I["Interferometric exposure<br/><i>N-photon phase Nφ</i>"]
-    I --> R["N-photon resist<br/><i>records 1 + cos Nφ</i>"]
-    P -.- X1["no suitable crystal known;<br/>LiF windows are specified<br/>only from ~120 nm"]
-    S -.- X2["pairs stay 'entangled' only below<br/>~1 photon per mode: ≲ µW,<br/>vs ~0.7 W needed on the wafer"]
-    N -.- X3["detection efficiency fell<br/>exponentially with N<br/>in most schemes"]
-    R -.- X4["no such resist;<br/>ETPA cross-section disputed"]
-```
+<!-- huv-table: stack -->
+| Step | What it needs | What stands in the way |
+|---|---|---|
+| Pump at λ/2 | 79 nm for 157 nm pairs | no suitable crystal known; LiF windows are specified only from ~120 nm |
+| Down-conversion | entangled pairs at λ | pairs stay "entangled" only below ~1 photon per mode: ≲ µW, against ~0.7 W needed on the wafer |
+| NOON-state preparation | all N photons in one arm or the other | detection efficiency fell exponentially with N in most schemes |
+| Interferometric exposure | the N-photon phase Nφ | — |
+| N-photon resist | records 1 + cos Nφ | no such resist; the ETPA cross-section is disputed |
+
+**Quantum lithography swaps a diffraction limit for a flux limit, and each exposure event consumes N photons, so stochastic effects get worse, not better.**
 
 !!! warning "Myth: quantum lithography beats the diffraction limit for free"
     It swaps a diffraction limit for a flux limit. The resolution gain N arrives only if
@@ -289,6 +299,8 @@ claims [25]. The controlled replications and bound-setting studies in the table 
 found no ETPA signal at isolated-pair fluxes or traced the signal to linear losses,
 scattering or hot-band absorption.
 
+### Exposure time
+
 For lithography the arithmetic is decisive either way. The entangled-photon source in
 highuvlith turns its pair rate into the time needed to clear a resist,
 t = p_clear / (σ_E φ), with an *assumed* 10 % of molecules that must react. It reports the
@@ -305,10 +317,26 @@ The times scale inversely with pair rate. Even at the entangled-regime ceiling o
 5 × 10¹² pairs per second, the default bound scenario needs roughly 2 × 10⁹ s (about
 60 years) per square centimetre (derived). A 300 mm wafer is about 700 cm².
 
+<figure markdown="span">
+
+![Log-time bars for clearing 1 cm² with entangled pairs under four cross-section scenarios at 10⁶ and 10⁹ pairs/s: 320 years for the largest disputed claim, at least 10¹⁶ s for the independent bound and beyond the age of the Universe for the tightest, against 45 ms classically.](../assets/images/sim/sources-noon-exposure-ladder-light.png#gh-light-mode-only)
+![Log-time bars for clearing 1 cm² with entangled pairs under four cross-section scenarios at 10⁶ and 10⁹ pairs/s: 320 years for the largest disputed claim, at least 10¹⁶ s for the independent bound and beyond the age of the Universe for the tightest, against 45 ms classically.](../assets/images/sim/sources-noon-exposure-ladder-dark.png#gh-dark-mode-only)
+
+<figcaption><strong>Exposure time from the pair rate: years at best, longer than the Universe at the bounds.</strong> <code>entangled_noon(pair_rate_hz=…).derived_quantities()</code> turns the pair rate into the time to clear 1 cm² with an assumed 10 % of molecules reacting; the two bound scenarios use independent <i>upper</i> bounds on the entangled two-photon cross-section, so their bars are lower bounds on the time (arrows), while the hollow bars rest on disputed early claims. The dashed line is the classical reference: a 30 mJ/cm² dose at the derived 0.67 W wafer power. <em>Model: Entangled-photon (NOON) source 🧪.</em></figcaption>
+</figure>
+
 ## Exotic compact sources
 
 These sources are real, coherent or tunable, and genuinely useful in the laboratory. None
 of them is anywhere near exposure-class power.
+
+<figure markdown="span">
+
+![Average power versus wavelength for 51 sourced light-source rows from 5 to 250 nm: tin plasma in production at 13.5 nm near the shaded 250 W to 1 kW need, accelerator designs above it, synchrotron, FEL, HHG and soft-X-ray lasers far below, ArF and KrF lasers at 30–120 W.](../assets/images/future/source-landscape-light.svg#gh-light-mode-only)
+![Average power versus wavelength for 51 sourced light-source rows from 5 to 250 nm: tin plasma in production at 13.5 nm near the shaded 250 W to 1 kW need, accelerator designs above it, synchrotron, FEL, HHG and soft-X-ray lasers far below, ArF and KrF lasers at 30–120 W.](../assets/images/future/source-landscape-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Reported and projected average power of lithography-relevant light sources.</strong> Every point is a sourced row of source_power_vs_wavelength.csv (51 rows); EUV values are in-band power at intermediate focus unless marked into 2π at the source, DUV values are laser output; the band is the 250 W → 1 kW need at 13.5 nm. <em>Data chart from source_power_vs_wavelength.csv; no model badge.</em></figcaption>
+</figure>
 
 ### Free electrons and nanostructures: Smith–Purcell and van der Waals X-rays
 
@@ -351,7 +379,7 @@ lithographically print nanoscale arrays by coherent Talbot self-imaging [44]. Ga
 table-top lasers now reach 6.85 nm [45]. Their narrow lines and partial coherence make them
 natural tools for interference and Talbot lithography (see
 [alternatives to projection lithography](alternative-patterning.md)). highuvlith's
-[soft-X-ray laser source](../sources/soft-xray-laser.md) (✅/🔶) uses the exact atomic
+[soft-X-ray laser source](../sources/soft-xray-laser.md) (✅, with simplified pulse and linewidth parameters) uses the exact atomic
 lines, with order-of-magnitude output presets: 10 µJ × 10 Hz at 46.9 nm, 2 µJ × 10 Hz at
 13.9 nm.
 
@@ -366,7 +394,7 @@ tiny. A KMLabs/JILA system reported about 2.9 × 10¹⁰ photons per second at 9
 (47 nm) [49]. At 13.5 nm, HHG's
 lithographic role is actinic metrology and coherent imaging, such as subwavelength
 coherent diffractive imaging of periodic samples [50]. highuvlith's
-[HHG source](../sources/hhg.md) (✅/🔶) computes the cutoff law and comb exactly. Its
+[HHG source](../sources/hhg.md) (✅, with a simplified conversion efficiency) computes the cutoff law and comb exactly. Its
 neon 13.5 nm preset stores about 1 µW, the upper end of what has been measured.
 
 | Source (best reported) | λ (nm) | Average power | Below 250 W by | Reference |
@@ -384,105 +412,117 @@ sources against the production requirement.
 
 ## Try it in highuvlith
 
-!!! example "Try it in highuvlith: sharpening without a finer period"
-    Image 120 nm lines on a 240 nm pitch at 157.63 nm (NA 0.75), then apply classical
-    N = 2 photon absorption, I². Contrast rises, but the strongest spatial frequency, and so the
-    period, is unchanged. The field is 128 × 3.75 nm = 480 nm, exactly two pitches. (With
-    the current engine this prints contrast 0.884 → 0.992 and a 240 nm period for both
-    images; exact contrasts can shift slightly between engine versions.)
+### Sharpening without a finer period
 
-    <!-- verify-example -->
-    ```python
-    import numpy as np
-    import highuvlith as huv
+Image 120 nm lines on a 240 nm pitch at 157.63 nm (NA 0.75), then apply classical
+N = 2 photon absorption, I². Contrast rises, but the strongest spatial frequency, and so the
+period, is unchanged. The field is 128 × 3.75 nm = 480 nm, exactly two pitches. (With
+the current engine this prints contrast 0.881 → 0.992 and a 240 nm period for both
+images; exact contrasts can shift slightly between engine versions.)
 
-    PIXEL = 3.75  # nm; 128 px x 3.75 nm = 480 nm = two 240 nm periods
-    r = huv.simulate_quantum_line_space(120.0, 240.0, n=2, fidelity=1.0,
-                                        grid_size=128, pixel_nm=PIXEL)
+<!-- verify-example -->
+```python
+import numpy as np
+import highuvlith as huv
 
-    def period_nm(img):
-        row = img[img.shape[0] // 2] - img[img.shape[0] // 2].mean()
-        k = int(np.argmax(np.abs(np.fft.rfft(row))[1:])) + 1  # strongest non-DC order
-        return row.size * PIXEL / k
+PIXEL = 3.75  # nm; 128 px x 3.75 nm = 480 nm = two 240 nm periods
+r = huv.simulate_quantum_line_space(120.0, 240.0, n=2, fidelity=1.0,
+                                    grid_size=128, pixel_nm=PIXEL)
 
-    print(f"contrast: classical {r.classical_contrast:.3f}, I^2 model {r.quantum_contrast:.3f}")
-    print(f"period:   classical {period_nm(r.classical):.0f} nm, I^2 model {period_nm(r.quantum):.0f} nm")
+def period_nm(img):
+    row = img[img.shape[0] // 2] - img[img.shape[0] // 2].mean()
+    k = int(np.argmax(np.abs(np.fft.rfft(row))[1:])) + 1  # strongest non-DC order
+    return row.size * PIXEL / k
+
+print(f"contrast: classical {r.classical_contrast:.3f}, I^2 model {r.quantum_contrast:.3f}")
+print(f"period:   classical {period_nm(r.classical):.0f} nm, I^2 model {period_nm(r.quantum):.0f} nm")
+```
+
+???+ success "Output"
+
+    ```text
+    contrast: classical 0.881, I^2 model 0.992
+    period:   classical 240 nm, I^2 model 240 nm
     ```
 
-    ??? success "Output"
+<figure markdown="span">
 
-        ```text
-        contrast: classical 0.881, I^2 model 0.992
-        period:   classical 240 nm, I^2 model 240 nm
-        ```
+![Classical and two-photon (I squared) exposure profiles of a 240 nm pitch grating: the I squared profile is sharper, but its Fourier spectrum still peaks at the 240 nm period; no finer period appears.](../assets/images/sim/site/site-quantum-i2-period-light.png#gh-light-mode-only)
+![Classical and two-photon (I squared) exposure profiles of a 240 nm pitch grating: the I squared profile is sharper, but its Fourier spectrum still peaks at the 240 nm period; no finer period appears.](../assets/images/sim/site/site-quantum-i2-period-dark.png#gh-dark-mode-only)
 
-!!! example "Try it in highuvlith: the entangled-photon budget"
-    The entangled-photon source reports its effective wavelength, beam power and the ETPA
-    exposure times for the disputed cross-section range, plus the comparison with a
-    production scanner.
+<figcaption><strong>Sharpening without a finer period.</strong> The classical aerial image (F<sub>2</sub> 157.63 nm, NA 0.75, σ 0.7) and the N = 2 post-step I² at fidelity 1 — the quantum page's example: contrast rises, but the dominant Fourier component of both images is the 240 nm mask period, so the I² model is a sharpening proxy, not λ/N resolution. <em>Model: quantum lithography 🧪 (classical N-photon absorption; the ideal N00N limit is a separate model).</em></figcaption>
+</figure>
 
-    <!-- verify-example -->
-    ```python
-    import highuvlith as huv
+### The entangled-photon budget
 
-    # N = 2 NOON source at the F2 wavelength; the default pair rate is 1e6 pairs/s
-    src = huv.SourceConfig.entangled_noon(wavelength_nm=157.63, n=2, fidelity=1.0)
-    for name, value, unit, _note in src.derived_quantities():
-        print(f"{name:34s} {value:11.3g} {unit}")
-    print("one year = 3.16e7 s")
+The entangled-photon source reports its effective wavelength, beam power and the ETPA
+exposure times for the disputed cross-section range, plus the comparison with a
+production scanner.
+
+<!-- verify-example -->
+```python
+import highuvlith as huv
+
+# N = 2 NOON source at the F2 wavelength; the default pair rate is 1e6 pairs/s
+src = huv.SourceConfig.entangled_noon(wavelength_nm=157.63, n=2, fidelity=1.0)
+for name, value, unit, _note in src.derived_quantities():
+    print(f"{name:34s} {value:11.3g} {unit}")
+print("one year = 3.16e7 s")
+```
+
+??? success "Output"
+
+    ```text
+    effective_wavelength                      78.8 nm
+    photon_power                          2.52e-12 W
+    clearing_fluence_bound                   1e+22 pairs/cm^2
+    exposure_time_bound                      1e+16 s
+    exposure_time_bound_tight                1e+18 s
+    clearing_fluence_claims_optimistic       1e+16 pairs/cm^2
+    exposure_time_claims_optimistic          1e+10 s
+    exposure_time_claims_pessimistic         1e+14 s
+    pair_rate_for_1s_bound                   1e+22 pairs/s
+    entangled_flux_ceiling                   1e+13 photons/s
+    hvm_wafer_photon_rate                 5.32e+17 photons/s
+    hvm_rate_over_flux_ceiling            5.32e+04 -
+    classical_photons_30mj                2.38e+16 photons/cm^2
+    classical_rate_gap                    2.38e+10 -
+    one year = 3.16e7 s
     ```
 
-    ??? success "Output"
+### Exotic sources against 250 W
 
-        ```text
-        effective_wavelength                      78.8 nm
-        photon_power                          2.52e-12 W
-        clearing_fluence_bound                   1e+22 pairs/cm^2
-        exposure_time_bound                      1e+16 s
-        exposure_time_bound_tight                1e+18 s
-        clearing_fluence_claims_optimistic       1e+16 pairs/cm^2
-        exposure_time_claims_optimistic          1e+10 s
-        exposure_time_claims_pessimistic         1e+14 s
-        pair_rate_for_1s_bound                   1e+22 pairs/s
-        entangled_flux_ceiling                   1e+13 photons/s
-        hvm_wafer_photon_rate                 5.32e+17 photons/s
-        hvm_rate_over_flux_ceiling            5.32e+04 -
-        classical_photons_30mj                2.38e+16 photons/cm^2
-        classical_rate_gap                    2.38e+10 -
-        one year = 3.16e7 s
-        ```
+Average power of three compact sources, from the simulator's presets (the Smith–Purcell
+number is an order-of-magnitude estimate with an assumed coupling), compared with
+250 W in band at intermediate focus.
 
-!!! example "Try it in highuvlith: exotic sources against 250 W"
-    Average power of three compact sources, from the simulator's presets (the Smith–Purcell
-    number is an order-of-magnitude estimate with an assumed coupling), compared with
-    250 W in band at intermediate focus.
+<!-- verify-example -->
+```python
+import highuvlith as huv
 
-    <!-- verify-example -->
-    ```python
-    import highuvlith as huv
+sources = {
+    "Smith-Purcell, 30 keV / 10 nA": huv.SourceConfig.smith_purcell(),
+    "Ni-like Ag soft-X-ray laser": huv.SourceConfig.sxrl_ag_13nm9(),
+    "Ne-like Ar capillary laser": huv.SourceConfig.sxrl_ar_46nm9(),
+    "HHG in neon, harmonic 59": huv.SourceConfig.hhg_ne_13nm5(),
+}
+for name, src in sources.items():
+    p = src.average_power_w
+    print(f"{name:32s} {src.wavelength_nm:6.2f} nm {p:9.2e} W  x{250.0 / p:8.1e} short")
+```
 
-    sources = {
-        "Smith-Purcell, 30 keV / 10 nA": huv.SourceConfig.smith_purcell(),
-        "Ni-like Ag soft-X-ray laser": huv.SourceConfig.sxrl_ag_13nm9(),
-        "Ne-like Ar capillary laser": huv.SourceConfig.sxrl_ar_46nm9(),
-        "HHG in neon, harmonic 59": huv.SourceConfig.hhg_ne_13nm5(),
-    }
-    for name, src in sources.items():
-        p = src.average_power_w
-        print(f"{name:32s} {src.wavelength_nm:6.2f} nm {p:9.2e} W  x{250.0 / p:8.1e} short")
+???+ success "Output"
+
+    ```text
+    Smith-Purcell, 30 keV / 10 nA     13.50 nm  6.70e-10 W  x 3.7e+11 short
+    Ni-like Ag soft-X-ray laser       13.90 nm  1.00e-04 W  x 2.5e+06 short
+    Ne-like Ar capillary laser        46.90 nm  1.56e-04 W  x 1.6e+06 short
+    HHG in neon, harmonic 59          13.56 nm  9.00e-07 W  x 2.8e+08 short
     ```
-
-    ??? success "Output"
-
-        ```text
-        Smith-Purcell, 30 keV / 10 nA     13.50 nm  6.70e-10 W  x 3.7e+11 short
-        Ni-like Ag soft-X-ray laser       13.90 nm  1.00e-04 W  x 2.5e+06 short
-        Ne-like Ar capillary laser        46.90 nm  1.56e-04 W  x 1.6e+06 short
-        HHG in neon, harmonic 59          13.56 nm  9.00e-07 W  x 2.8e+08 short
-        ```
 
 ## Key takeaways
 
+- **The verdict:** nothing on this page has written a pattern into a resist with entangled light, and no exotic source is within a factor of ten thousand of a scanner.
 - **NOON-state lithography is real physics without a lithography demonstration.** Fringes
   at λ/(2N) have been observed only by counting photon coincidences. The only
   sub-Rayleigh patterns written into a material used classical light and an N-photon
@@ -502,6 +542,8 @@ sources against the production requirement.
   emitters, soft-X-ray lasers and HHG are tunable, coherent or both, and sit 10⁴ to 10¹¹
   below production power. They are valuable for metrology and for interference or Talbot
   printing, not for high-volume exposure.
+
+**Where next:** ← [Alternatives to projection](alternative-patterning.md) · [The future of lithography](index.md) · Related: [entangled-photon source](../sources/entangled-photon.md) · [quantum module](../research-modules.md) · [Smith–Purcell](../sources/smith-purcell.md) · [soft-X-ray laser](../sources/soft-xray-laser.md) · [HHG](../sources/hhg.md) · [capability matrix](../capability-matrix.md)
 
 ## References and further reading
 
@@ -566,8 +608,3 @@ sources against the production requirement.
 48. R. Klas et al., "Table-top milliwatt-class extreme ultraviolet high harmonic light source," *Optica* **3**, 1167 (2016), [doi:10.1364/OPTICA.3.001167](https://doi.org/10.1364/OPTICA.3.001167).
 49. R. Klas et al., "Ultra-short-pulse high-average-power megahertz-repetition-rate coherent extreme-ultraviolet light source," *PhotoniX* **2**, 4 (2021), [doi:10.1186/s43074-021-00028-y](https://doi.org/10.1186/s43074-021-00028-y).
 50. D. F. Gardner et al., "Subwavelength coherent imaging of periodic samples using a 13.5 nm tabletop high-harmonic light source," *Nat. Photon.* **11**, 259 (2017), [doi:10.1038/nphoton.2017.33](https://doi.org/10.1038/nphoton.2017.33).
-
-**In this documentation**
-
-- Simulator models: [entangled-photon source](../sources/entangled-photon.md), [quantum module](../research-modules.md), [Smith–Purcell](../sources/smith-purcell.md), [soft-X-ray laser](../sources/soft-xray-laser.md), [HHG](../sources/hhg.md), [capability matrix](../capability-matrix.md).
-- Related pages in this section: [the map of the future](index.md), [accelerator light sources](accelerator-light-sources.md) (source power landscape), [the stochastic frontier](stochastic-frontier.md) (photon statistics), [alternatives to projection lithography](alternative-patterning.md) (interference and Talbot printing).

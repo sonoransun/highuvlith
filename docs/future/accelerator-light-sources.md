@@ -4,44 +4,53 @@ description: "Free-electron lasers, energy-recovery linacs, steady-state microbu
 
 # Accelerator light sources for lithography
 
-Every EUV scanner in a fab today gets its light from a tin plasma. A CO₂ laser hits
-tin droplets tens of thousands of times a second, and a multilayer collector gathers
-the 13.5 nm emission. That source is a feat of engineering, and it has been scaled
-from a few watts to hundreds of watts of in-band power. It is also a machine
-that turns kilowatts of laser light into a small fraction of EUV. Its own debris
-and heat limit it.
+<p class="huv-lead">Every EUV scanner in a fab today gets its light from a tin plasma that turns kilowatts of laser light into a few hundred watts of 13.5 nm emission, limited by its own debris and heat. Particle accelerators make light differently — a relativistic electron beam in an undulator radiates at a wavelength set by its energy and the magnet period, coherently once the electrons are bunched on that scale. This page covers what each accelerator approach is, what it has actually demonstrated and at what power, what is still on paper, and what highuvlith's source models can and cannot say, with the production tin source as the yardstick.</p>
 
-Particle accelerators make light differently. A relativistic electron beam in an
-undulator radiates at a wavelength set by its energy and the magnet period. When the
-electrons are bunched on the scale of that wavelength, they radiate coherently, and the
-power grows as the square of the number of electrons. This is the free-electron laser
-(FEL) principle. It has led to a series of proposals to feed EUV lithography, or whole
-fabs, from accelerators: linac and energy-recovery-linac FELs, storage rings with
-steady-state microbunching, inverse Compton scattering, and plasma-based accelerators
-small enough for a laboratory.
+**Verdict (as of September 2026):** demonstrated accelerator EUV power is still sub-watt (0.35 W average at FLASH) while the tin source it must beat ships at 600 W with 1 kW shown; every kilowatt accelerator figure is a design study or a company claim.
 
-This page covers what each approach is, what has actually been demonstrated and at what
-power, and what is still on paper. It also covers what highuvlith's source models can
-and cannot tell you about each one. The yardstick throughout is the production tin
-source, because that is the target every accelerator source has to beat.
+<figure markdown="span">
+
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-future-narrow-light.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-future-light.svg#gh-light-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the EUV → X-ray span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-future-narrow-dark.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-future-dark.svg#gh-dark-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the EUV → X-ray span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
+
+<figcaption><strong>You are here on the axis of light.</strong> The chapter's wavelengths and eras at full strength, the rest faded; years are first tool models in litho_tools.csv; the log axis is expanded above 100 nm. <em>Data chart from litho_tools.csv; no model badge.</em></figcaption>
+</figure>
+
+**Five limits:** [k₁ ≥ 0.25](index.md#diffraction-and-the-resolution-floor) · [photons ∝ λ³/NA²](index.md#photons-and-shot-noise) · [Z-factor](index.md#resolution-roughness-and-dose) · [electron blur](index.md#electron-blur) · [throughput](index.md#throughput-and-cost)
 
 ## Readiness at a glance
 
-| Technology | Readiness (as of Sep 2026) | highuvlith model |
+<!-- huv-table: stack -->
+| Technology | Readiness (Sep 2026) | highuvlith model |
 |---|---|---|
-| Tin laser-produced plasma, 250–600 W (the benchmark) | In production | ✅ [`lpp`](../sources/lpp.md): drive power × conversion efficiency × collection → power at IF |
-| Tin LPP at 1 kW | Demonstrated in the lab (proof of concept, April 2025) | ✅ same model; the power is a parameter, not a prediction |
-| Linac SASE FELs at EUV wavelengths (FLASH, FERMI) | Demonstrated in the lab (user facilities, sub-watt average) | ✅ [`xfel`](../sources/xfel.md) FLASH-like and FERMI-like presets |
-| Kilowatt FELs for lithography: superconducting linac, energy-recovery linac (ERL) | Proposed (design study); the ERL lasing principle was shown in the infrared at KEK's cERL | 🧪 `xfel_cw_sc_13nm5()` and `xfel_erl_13nm5()` projection presets |
-| xLight fab-scale FEL | Announced / in development | 🧪 no dedicated model; the ERL preset is the closest proxy |
-| Steady-state microbunching (SSMB) ring | Demonstrated in the lab (mechanism only, 1064 nm, one turn); EUV source Proposed (design study) | 🧪 [`ssmb`](../sources/ssmb.md): coherent power derived from current and bunching factor |
-| Inverse Compton scattering (ICS) at 13.5 nm | Theoretical / speculative (compact ICS sources exist only for hard X-rays) | 🧪 [`ics`](../sources/inverse-compton.md): kinematics exact, yield derived |
-| Laser-plasma-accelerator FEL (LPA-FEL) | Demonstrated in the lab (27 nm SASE gain; stable 420 nm operation) | 🔶 [`lpa_fel`](../sources/lpa-fel.md): spectrum and jitter live, FEL physics estimated |
-| Laser-wakefield betatron X-rays | Demonstrated in the lab (keV X-rays for imaging, not lithography) | 🧪 [`betatron`](../sources/betatron.md) |
+| Tin laser-produced plasma, 250–600 W (the benchmark) | **In production** | ✅ [`lpp`](../sources/lpp.md) (🔶 CE defaults, étendue): drive power × CE × collection → power at IF |
+| Tin LPP at 1 kW | **Demonstrated** (proof of concept, April 2025) | ✅ the same model; the power is a parameter, not a prediction |
+| Linac SASE FELs at EUV wavelengths (FLASH, FERMI) | **Demonstrated** (user facilities, sub-watt average) | ✅ [`xfel`](../sources/xfel.md) FLASH-like and FERMI-like presets |
+| Kilowatt FELs for lithography: superconducting linac, ERL | **Proposed** (design studies; ERL lasing shown in the infrared) | 🧪 `xfel_cw_sc_13nm5()` and `xfel_erl_13nm5()` projection presets ([XFEL](../sources/xfel.md)) |
+| xLight fab-scale FEL | **Announced** (prototype under construction) | 🧪 no dedicated model; the ERL preset is the closest proxy |
+| Steady-state microbunching (SSMB) ring | **Demonstrated** (mechanism only, 1064 nm, one turn); EUV source **Proposed** | 🧪 [`ssmb`](../sources/ssmb.md): coherent power derived from current and bunching factor |
+| Inverse Compton scattering (ICS) at 13.5 nm | **Speculative** (compact ICS exists only for hard X-rays) | 🧪 [`ics`](../sources/inverse-compton.md): kinematics exact, yield derived |
+| Laser-plasma-accelerator FEL (LPA-FEL) | **Demonstrated** (27 nm SASE gain; stable 420 nm operation) | 🔶 [`lpa_fel`](../sources/lpa-fel.md): spectrum and jitter live, FEL physics estimated |
+| Laser-wakefield betatron X-rays | **Demonstrated** (keV X-rays for imaging, not lithography) | 🧪 [`betatron`](../sources/betatron.md) |
 
-Badges follow the [capability matrix](../capability-matrix.md). They grade the
-*simulator model*, not the technology: a ✅ model of a source that does not yet exist is
-still a model of a source that does not yet exist.
+Rung words follow the [readiness ladder](index.md#readiness-ladder); chips are the simulator's grades from the [capability matrix](../capability-matrix.md). A ✅ model of a source that does not yet exist is still a model of a source that does not yet exist.
+
+<details markdown="1">
+<summary>Why these rungs</summary>
+
+| Technology | Evidence for the rung |
+|---|---|
+| Tin LPP 250–600 W | 250 W demonstrated in 2017 and standard since [1, 2]; 500 W stated for the NXE:3800E [3]; 600 W the highest-power industrial source per ASML, February 2026 [5, 6] |
+| Tin LPP at 1 kW | demonstrated in April 2025 per ASML's annual report [4], "under all the same requirements that you could see at a customer" [5] |
+| Linac SASE FELs | FLASH delivers 80 µJ pulses at 18.2 nm 4300 times a second, 350 mW average [8] |
+| Kilowatt FELs | Socol et al. 2011 [10], DESY 2011 [11], KEK 2015 [13] are design studies; the ERL lasing principle was shown at 20 µm at KEK's cERL [16] |
+| xLight | dated company milestones and a CHIPS award finalized 2 June 2026; the Albany prototype is being built, not operating [17] |
+| SSMB | microbunching and coherent radiation one turn after a 1064 nm modulation [19, 20]; no EUV radiation and no steady state reported; > 1 kW per tool is a target [21, 23] |
+| ICS | compact ICS machines exist as hard-X-ray sources [24]; no demonstration at EUV wavelengths found |
+| LPA-FEL | 27 nm gain at SIOM [25], seeded lasing at COXINEL/HZDR [27], gain above 1000 at 420 nm and 8 h of operation at BELLA, at 1 Hz [28, 29] |
+| Betatron | keV flashes from laser-wakefield beams [31–33]; nothing for EUV projection lithography |
+
+</details>
 
 ## The bar to clear: power at intermediate focus
 
@@ -70,6 +79,14 @@ speed. Photon shot noise pushes doses up as features shrink (see the
 [stochastic frontier](stochastic-frontier.md)), and at a fixed dose throughput grows with
 power until stage and wafer-handling overheads take over.
 
+<figure markdown="span">
+
+![Average power at 13.5 nm by source class from 1 µW to 10 kW: tin laser-produced plasma in production at 250–600 W and demonstrated to 1 kW inside the shaded HVM band, discharge plasma at tens of watts, FEL and SSMB designs of 1 to 38 kW as hollow projections, FLASH at 20 mW and HHG at a microwatt.](../assets/images/future/source-landscape-euv-light.svg#gh-light-mode-only)
+![Average power at 13.5 nm by source class from 1 µW to 10 kW: tin laser-produced plasma in production at 250–600 W and demonstrated to 1 kW inside the shaded HVM band, discharge plasma at tens of watts, FEL and SSMB designs of 1 to 38 kW as hollow projections, FLASH at 20 mW and HHG at a microwatt.](../assets/images/future/source-landscape-euv-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>At 13.5 nm only tin plasma delivers HVM power; accelerator kilowatts are still designs.</strong> The 13.2–13.8 nm rows of the same dataset by source class, with in production, demonstrated and projected on separate lines; the xLight point is a company design shared by 16 scanners. <em>Data chart from source_power_vs_wavelength.csv; no model badge.</em></figcaption>
+</figure>
+
 ### Where the watts go
 
 Only a small fraction of the power at IF reaches the resist. highuvlith's dose-limited
@@ -92,64 +109,42 @@ and the result is about 150 wafers per hour. Doubling the source power only halv
 5 s. This is why the source roadmap is framed around higher dose at the same
 productivity, not just more wafers.
 
-```mermaid
-flowchart LR
-    S["Source<br/>in-band power at IF<br/>(the number on every datasheet)"] --> I["Illuminator<br/>mirrors"]
-    I --> M["Reflective mask<br/>(multilayer + absorber)"]
-    M --> P["Projection optics<br/>mirrors"]
-    P --> W["Wafer<br/>~2 % of IF power<br/>(model assumption)"]
-    W --> D["Dose × exposed area<br/>÷ power at wafer<br/>= exposure time"]
-    D --> T["+ field and wafer overheads<br/>= wafers per hour"]
-```
-
 <figure markdown="span">
 
-![Wafers per hour versus resist dose for a 250 W tin source, a 1 kW SSMB projection and an ERL free-electron laser shared by 16 scanners; the tin source falls from about 154 to 103 wafers per hour between 30 and 100 mJ/cm2 while the others stay near the overhead-limited ceiling.](../assets/images/sim/site/site-wph-vs-dose-light.png#gh-light-mode-only)
-![Wafers per hour versus resist dose for a 250 W tin source, a 1 kW SSMB projection and an ERL free-electron laser shared by 16 scanners; the tin source falls from about 154 to 103 wafers per hour between 30 and 100 mJ/cm2 while the others stay near the overhead-limited ceiling.](../assets/images/sim/site/site-wph-vs-dose-dark.png#gh-dark-mode-only)
+![Log-power waterfall from 250 W at intermediate focus through ten mirrors at 0.70 and a 0.65 mask to 4.6 W on the wafer, the 1 kW target drawn hollow beside it, and the time budget per wafer at 30 mJ/cm²: 5.0 s of exposure plus 18.4 s of overheads give 154 wafers per hour, 183 at 1 kW.](../assets/images/sim/site-watts-waterfall-light.png#gh-light-mode-only)
+![Log-power waterfall from 250 W at intermediate focus through ten mirrors at 0.70 and a 0.65 mask to 4.6 W on the wafer, the 1 kW target drawn hollow beside it, and the time budget per wafer at 30 mJ/cm²: 5.0 s of exposure plus 18.4 s of overheads give 154 wafers per hour, 183 at 1 kW.](../assets/images/sim/site-watts-waterfall-dark.png#gh-dark-mode-only)
 
-<figcaption>Power becomes throughput (the accelerator page's example, swept over dose): <code>wafer_throughput()</code> with its defaults (ten mirrors at 0.70, mask 0.65, 84 fields, 0.1 s per field and 10 s per wafer). The ERL curve spreads one source over 16 scanners by multiplying each wafer's exposure time by 16 — the page's back-of-envelope sharing, not a feature of the code. Model: dose-limited throughput 🔶; SSMB and ERL powers are projections.</figcaption>
+<figcaption><strong>From the source to wafers per hour.</strong> 250 W at intermediate focus × 0.70¹⁰ × 0.65 leaves 4.6 W on the wafer; a 300 mm wafer at 30 mJ/cm² needs 21.6 J, so the dose-limited scan of 84 fields takes 5.0 s, and the model's 0.1 s per field and 10 s per wafer overheads make it 154 wafers per hour. Model assumptions, not a vendor optical budget; 1 kW is the stated target, drawn hollow: it buys 183 wph, because the overheads cap the model near 196. <em>Model: Dose-limited wafer throughput 🔶.</em></figcaption>
 </figure>
 
-## The landscape in one chart
+## The landscape by source class
 
-<figure markdown="span">
-  ![Log-log chart of reported and projected average EUV and DUV source power versus wavelength. Tin laser-produced plasma points cluster at 13.5 nm between about a hundred watts and 1 kW, DUV lasers sit at tens of watts to about 120 W at 193 and 248 nm, FEL and SSMB design studies project kilowatts to tens of kilowatts, while demonstrated FELs, HHG and soft-X-ray lasers sit between nanowatts and a fraction of a watt. A shaded band marks the 250 W to 1 kW HVM requirement at 13.5 nm.](../assets/images/future/source-landscape-light.svg#only-light){ width="860" }
-  ![Log-log chart of reported and projected average EUV and DUV source power versus wavelength. Tin laser-produced plasma points cluster at 13.5 nm between about a hundred watts and 1 kW, DUV lasers sit at tens of watts to about 120 W at 193 and 248 nm, FEL and SSMB design studies project kilowatts to tens of kilowatts, while demonstrated FELs, HHG and soft-X-ray lasers sit between nanowatts and a fraction of a watt. A shaded band marks the 250 W to 1 kW HVM requirement at 13.5 nm.](../assets/images/future/source-landscape-dark.svg#only-dark){ width="860" }
-  <figcaption>Reported average power versus wavelength, with production, demonstrated and projected (design-study) values marked differently. Every point comes from a cited source. The EUV points are in-band power at IF unless marked. Discharge-plasma (DPP) points are into 2π sr at the source, which is several times more than reaches IF. The shaded band is the 250 W → 1 kW requirement at 13.5 nm. Own work, generated by docs/figures/future/make_future_figures.py from a sourced dataset kept next to the script.</figcaption>
-</figure>
+The chart above is the 13.5 nm column of a wider dataset; the all-wavelength landscape, from the DUV lasers to the table-top sources, is drawn on the [quantum and exotic](quantum-and-exotic.md#exotic-compact-sources) page.
 
-??? info "Data: the accelerator-relevant points (with sources)"
+<details markdown="1">
+<summary>Data: the accelerator-relevant points, with sources</summary>
 
-    | Source | λ (nm) | Reported average power | Status | Ref. |
-    |---|---|---|---|---|
-    | ASML tin LPP (NXE:3400B source) | 13.5 | 250 W at IF | Production (from 2017) | [1] |
-    | ASML tin LPP (NXE:3800E) | 13.5 | 500 W | Production | [3] |
-    | ASML tin LPP, highest-power industrial source | 13.5 | 600 W | Production (per ASML, 2026) | [5, 6] |
-    | ASML tin LPP, research source | 13.5 | 740 W | Demonstrated (2024) | [3] |
-    | ASML tin LPP, proof of concept | 13.5 | 1,000 W | Demonstrated (April 2025) | [4, 5] |
-    | ASML roadmap | 13.5 | 1,500–2,000 W | Projected | [5] |
-    | FLASH (DESY), SASE | 18.2 | 0.35 W (80 µJ × 4300 pulses/s) | Demonstrated | [8] |
-    | SIOM laser-wakefield FEL | 27 | ≈150 nJ per shot (maximum) | Demonstrated | [25] |
-    | Multiturn ERL FEL study | 13.5 | ≈5 kW | Proposed (design study) | [10] |
-    | DESY burst-mode SC-linac FEL | 13.5 | 1.7 kW | Proposed (design study) | [11] |
-    | KEK ERL-FEL | 13.5 | 9 kW at 9.75 mA (11 kW with 10 % taper); 18 kW at 19.5 mA (22 kW tapered) | Proposed (design study, simulated) | [13] |
-    | xLight FEL | 2–70 (tunable) | 120 kW output → 38 kW at IF for 16 scanners | Announced (company design) | [17] |
-    | SLAC SSMB design (EUV case) | 13.7 | 1.12 kW per tool | Proposed (design study) | [21] |
-    | Tsinghua SSMB-EUV target | 13.5 | > 1 kW per tool | Proposed (target) | [23] |
-    | highuvlith ICS design point | 13.5 | 71 µW in a 2 % band | Simulator projection | [ics](../sources/inverse-compton.md) |
+| Source | λ (nm) | Reported average power | Status | Ref. |
+|---|---|---|---|---|
+| ASML tin LPP (NXE:3400B source) | 13.5 | 250 W at IF | Production (from 2017) | [1] |
+| ASML tin LPP (NXE:3800E) | 13.5 | 500 W | Production | [3] |
+| ASML tin LPP, highest-power industrial source | 13.5 | 600 W | Production (per ASML, 2026) | [5, 6] |
+| ASML tin LPP, research source | 13.5 | 740 W | Demonstrated (2024) | [3] |
+| ASML tin LPP, proof of concept | 13.5 | 1,000 W | Demonstrated (April 2025) | [4, 5] |
+| ASML roadmap | 13.5 | 1,500–2,000 W | Projected | [5] |
+| FLASH (DESY), SASE | 18.2 | 0.35 W (80 µJ × 4300 pulses/s) | Demonstrated | [8] |
+| SIOM laser-wakefield FEL | 27 | ≈150 nJ per shot (maximum) | Demonstrated | [25] |
+| Multiturn ERL FEL study | 13.5 | ≈5 kW | Proposed (design study) | [10] |
+| DESY burst-mode SC-linac FEL | 13.5 | 1.7 kW | Proposed (design study) | [11] |
+| KEK ERL-FEL | 13.5 | 9 kW at 9.75 mA (11 kW with 10 % taper); 18 kW at 19.5 mA (22 kW tapered) | Proposed (design study, simulated) | [13] |
+| xLight FEL | 2–70 (tunable) | 120 kW output → 38 kW at IF for 16 scanners | Announced (company design) | [17] |
+| SLAC SSMB design (EUV case) | 13.7 | 1.12 kW per tool | Proposed (design study) | [21] |
+| Tsinghua SSMB-EUV target | 13.5 | > 1 kW per tool | Proposed (target) | [23] |
+| highuvlith ICS design point | 13.5 | 71 µW in a 2 % band | Simulator projection | [ics](../sources/inverse-compton.md) |
 
-    The full chart dataset (DUV lasers, discharge plasmas, HHG and soft-X-ray lasers
-    as well) lives next to the figure script. HHG and table-top lasers are discussed
-    on [Quantum and exotic lithography](quantum-and-exotic.md).
+The full chart dataset (DUV lasers, discharge plasmas, HHG and soft-X-ray lasers as well) lives next to the figure script. HHG and table-top lasers are discussed on [Quantum and exotic lithography](quantum-and-exotic.md).
 
-At 13.5 nm the points pile on top of each other, so the second chart spreads them out by
-source class, with production, demonstrated and projected values on separate rows.
-
-<figure markdown="span">
-  ![Horizontal dot plot of average power at 13.5 nanometres by source class. Tin laser-produced plasma: in production from 250 W in 2017 to 600 W in 2026, demonstrated from 125 W to 1 kW in 2025, roadmap 1.5 to 2 kW. Discharge plasma: xenon metrology lamps of 10 to 40 W into 2 pi, about 20 W at intermediate focus on an NXE:3100 in 2011, and 200 W to 1 kW into 2 pi at the source in the lab. Linac and ERL free-electron lasers: FLASH 20 mW at 13.7 nm demonstrated; designs from 1.7 kW to 38 kW. SSMB: no EUV power demonstrated; designs of 1 to 4 kW. Synchrotron undulator beamline: 11 mW. High-harmonic generation: 0.4 to 1 microwatt. A shaded band marks the 250 W to 1 kW requirement.](../assets/images/future/source-landscape-euv-light.svg#only-light){ width="860" }
-  ![Horizontal dot plot of average power at 13.5 nanometres by source class. Tin laser-produced plasma: in production from 250 W in 2017 to 600 W in 2026, demonstrated from 125 W to 1 kW in 2025, roadmap 1.5 to 2 kW. Discharge plasma: xenon metrology lamps of 10 to 40 W into 2 pi, about 20 W at intermediate focus on an NXE:3100 in 2011, and 200 W to 1 kW into 2 pi at the source in the lab. Linac and ERL free-electron lasers: FLASH 20 mW at 13.7 nm demonstrated; designs from 1.7 kW to 38 kW. SSMB: no EUV power demonstrated; designs of 1 to 4 kW. Synchrotron undulator beamline: 11 mW. High-harmonic generation: 0.4 to 1 microwatt. A shaded band marks the 250 W to 1 kW requirement.](../assets/images/future/source-landscape-euv-dark.svg#only-dark){ width="860" }
-  <figcaption>The 13.5 nm column of the chart above, by source class (rows within a class: in production, demonstrated, projected). Every point is a sourced row of the same dataset; the xLight point is a company design shared by 16 scanners. Own work, generated by docs/figures/future/make_future_figures.py.</figcaption>
-</figure>
+</details>
 
 The chart spans more than ten orders of magnitude, which says most of what needs saying.
 The accelerator sources that *exist* at EUV wavelengths are FEL user facilities. They
@@ -197,9 +192,11 @@ its energy to the RF field, which then accelerates the next bunches. Only the in
 energy ends up in the dump.
 
 <figure markdown="span">
-  ![Schematic of an energy-recovery-linac FEL: an injector feeds a superconducting linac through a merger; the accelerated beam is turned by an arc into a long undulator that emits EUV to one or several scanners; a return arc brings the spent beam back to the linac half an RF period late so it is decelerated before a low-energy beam dump.](../assets/images/future/erl-fel-loop-light.svg#only-light){ width="860" }
-  ![Schematic of an energy-recovery-linac FEL: an injector feeds a superconducting linac through a merger; the accelerated beam is turned by an arc into a long undulator that emits EUV to one or several scanners; a return arc brings the spent beam back to the linac half an RF period late so it is decelerated before a low-energy beam dump.](../assets/images/future/erl-fel-loop-dark.svg#only-dark){ width="860" }
-  <figcaption>Energy-recovery-linac FEL: accelerate, lase, then decelerate the same beam in the same cavities. Schematic, not to scale. Own work, generated by docs/figures/future/make_future_schematics.py.</figcaption>
+
+![An injector feeds a superconducting linac through a merger; the accelerated beam is turned by an arc into a long undulator that emits EUV to the scanners, a return arc brings the spent beam back half an RF period late so the linac decelerates it and recovers its energy before a low-energy beam dump.](../assets/images/future/erl-fel-loop-light.svg#gh-light-mode-only)
+![An injector feeds a superconducting linac through a merger; the accelerated beam is turned by an arc into a long undulator that emits EUV to the scanners, a return arc brings the spent beam back half an RF period late so the linac decelerates it and recovers its energy before a low-energy beam dump.](../assets/images/future/erl-fel-loop-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Energy-recovery-linac FEL: accelerate, lase, then decelerate the same beam in the same cavities.</strong> The spent beam returns half an RF period late and hands its energy back before a low-energy dump, so the beam current — and the average FEL power — can far exceed what single-pass RF power would allow. <em>Schematic, not to scale.</em></figcaption>
 </figure>
 
 KEK's design study shows the scale of the lever. It is an 800 MeV ERL with 60 pC
@@ -215,7 +212,10 @@ an FEL efficiency of 0.14 %: the $P \simeq \rho P_\text{beam}$ rule in action.
 
 ### A thirty-five-year-old idea with a design shelf
 
-Accelerator EUV sources are not new ideas:
+Accelerator EUV sources are not new ideas; every entry below is a proposal or a design study, and the one lasing result is in the infrared.
+
+<details markdown="1">
+<summary>The design shelf, 1991–2023 (dated)</summary>
 
 - **1991.** Newnam described XUV free-electron-laser-based projection lithography
   systems [9].
@@ -232,6 +232,8 @@ Accelerator EUV sources are not new ideas:
   an upgrade path to beyond-EUV wavelengths, and polarization control for high-NA
   imaging [14, 15].
 
+</details>
+
 None of these machines has been built at EUV. What exists at EUV wavelengths are the
 user-facility FELs. FLASH at DESY, for example, delivers 80 µJ pulses at 18.2 nm
 4300 times a second, a 350 mW average [8]. That is impressive, and three orders of
@@ -244,10 +246,15 @@ product. Its stated goal is "the world's most powerful Free Electron Lasers," an
 website claims "4X more EUV power" than today's most advanced source [17]. The dated
 milestones on its news page are:
 
+<details markdown="1">
+<summary>xLight's dated milestones</summary>
+
 - Pat Gelsinger joined as executive chairman (26 March 2025).
 - A $40 million Series B (22 July 2025).
 - A $150 million letter of intent with the US Department of Commerce under the CHIPS
   and Science Act (1 December 2025), finalized as an award on 2 June 2026 [17].
+
+</details>
 
 xLight's public SPIE Advanced Lithography 2026 slides [17] describe a dual-ERL system
 at 800 MeV. The FEL output is 120 kW, and after an assumed 25 % light transmission and
@@ -260,6 +267,8 @@ domain" beats optical splitting, and that an FEL delivers about 35 % more in-ban
 at IF than an LPP for the same projection-optics heat load. All of these are the
 company's own design claims, not measurements. The page records them as
 *announced / in development*.
+
+**An FEL removes tin debris and moves power scaling to accelerator engineering; it changes nothing after the intermediate focus and adds availability, shielding, footprint and coherence problems of its own.**
 
 !!! warning "What an FEL does not fix"
     An FEL removes tin debris and moves power scaling from plasma physics to
@@ -293,9 +302,11 @@ $\sigma_z$, $b_n = e^{-(n k \sigma_z)^2/2}$. At 13.5 nm a bunching factor of 0.1
 microbunches about 4–5 nm long.
 
 <figure markdown="span">
-  ![Schematic of an SSMB storage ring: a phase-locked laser co-propagates with the electron beam in a modulator undulator in the lower straight; the ring lattice forms microbunches at a radiator undulator in the upper straight, which emits coherent EUV at a laser harmonic; an RF cavity replaces the radiated energy; an inset shows sharp microbunches spaced by the laser wavelength.](../assets/images/future/ssmb-concept-light.svg#only-light){ width="860" }
-  ![Schematic of an SSMB storage ring: a phase-locked laser co-propagates with the electron beam in a modulator undulator in the lower straight; the ring lattice forms microbunches at a radiator undulator in the upper straight, which emits coherent EUV at a laser harmonic; an RF cavity replaces the radiated energy; an inset shows sharp microbunches spaced by the laser wavelength.](../assets/images/future/ssmb-concept-dark.svg#only-dark){ width="860" }
-  <figcaption>The SSMB concept: energy modulation by a phase-locked laser, microbunching at the radiator, re-formed on every turn. Schematic, not to scale. Own work, generated by docs/figures/future/make_future_schematics.py.</figcaption>
+
+![A phase-locked laser co-propagates with the electrons through a modulator undulator and imprints an energy modulation; the ring lattice turns it into microbunches at a radiator undulator that emits coherent EUV at a laser harmonic on every turn; inset: microbunches spaced by the laser wavelength.](../assets/images/future/ssmb-concept-light.svg#gh-light-mode-only)
+![A phase-locked laser co-propagates with the electrons through a modulator undulator and imprints an energy modulation; the ring lattice turns it into microbunches at a radiator undulator that emits coherent EUV at a laser harmonic on every turn; inset: microbunches spaced by the laser wavelength.](../assets/images/future/ssmb-concept-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>The SSMB concept.</strong> A phase-locked laser imprints an energy modulation in the modulator, the ring lattice turns it into microbunches at the radiator and re-forms them on every turn, so the beam radiates coherently at a laser harmonic (coherent power ∝ N²|bₙ|²). <em>Schematic, not to scale.</em></figcaption>
 </figure>
 
 **What has been demonstrated.** In 2021 a team led from Tsinghua University, working
@@ -329,7 +340,7 @@ is 🧪 Theoretical.
 ![Steady-state microbunching: coherent EUV power rising as the square of the bunching factor, reaching 250 W near b = 0.073 and 1 kW near 0.146, and the microbunch length that bunching factor implies, a few nanometres.](../assets/images/sim/site/site-ssmb-bunching-light.png#gh-light-mode-only)
 ![Steady-state microbunching: coherent EUV power rising as the square of the bunching factor, reaching 250 W near b = 0.073 and 1 kW near 0.146, and the microbunch length that bunching factor implies, a few nanometres.](../assets/images/sim/site/site-ssmb-bunching-dark.png#gh-dark-mode-only)
 
-<figcaption>What SSMB's kilowatt assumes (the accelerator page's example): coherent power of the <code>ssmb()</code> model versus the bunching factor b at 13.5 nm, P ∝ b² for the 1 A, 100-period, K = 1.6 radiator, and the rms microbunch length that b implies for a Gaussian bunch, b = exp(−k²σ²/2). The 1 kW preset needs b ≈ 0.146 — nanometre microbunches on every turn, which has not been demonstrated. Model: SSMB 🧪.</figcaption>
+<figcaption><strong>What SSMB's kilowatt assumes.</strong> Coherent power of the <code>ssmb()</code> model against the bunching factor b at 13.5 nm, P ∝ b² for the 1 A, 100-period, K = 1.6 radiator, and the rms microbunch length b implies for a Gaussian bunch, b = exp(−k²σ²/2) — the accelerator page's example. The 1 kW preset needs b ≈ 0.146, nanometre microbunches on every turn, which has not been demonstrated. <em>Model: SSMB 🧪.</em></figcaption>
 </figure>
 
 ## Inverse Compton scattering: compact, and very dim
@@ -346,9 +357,11 @@ only $\gamma \approx 4.4$, about 1.7 MeV electrons. That is a tabletop accelerat
 which is the whole appeal.
 
 <figure markdown="span">
-  ![Two-row schematic of inverse Compton scattering. Before: an electron bunch moving right approaches a laser pulse moving left at the interaction point. After: scattered photons leave along the electron direction in a cone of half-angle about one over gamma. The formula for the scattered wavelength and a worked example, 1030 nm and 1.72 MeV giving 13.5 nm in a cone of about 13 degrees, are shown.](../assets/images/future/ics-collision-light.svg#only-light){ width="860" }
-  ![Two-row schematic of inverse Compton scattering. Before: an electron bunch moving right approaches a laser pulse moving left at the interaction point. After: scattered photons leave along the electron direction in a cone of half-angle about one over gamma. The formula for the scattered wavelength and a worked example, 1030 nm and 1.72 MeV giving 13.5 nm in a cone of about 13 degrees, are shown.](../assets/images/future/ics-collision-dark.svg#only-dark){ width="860" }
-  <figcaption>Inverse Compton scattering, head-on. At low γ the emission cone is wide (1/γ ≈ 13° for 13.5 nm from 1030 nm), and the wavelength changes across the cone. Schematic, not to scale. Own work, generated by docs/figures/future/make_future_schematics.py.</figcaption>
+
+![Inverse Compton scattering, before and after: an electron bunch meets a counter-propagating laser pulse; scattered photons leave in a forward cone of half-angle 1 over gamma, 4 gamma squared shorter in wavelength — 1030 nm on 1.72 MeV electrons gives 13.5 nm in a 13 degree cone.](../assets/images/future/ics-collision-light.svg#gh-light-mode-only)
+![Inverse Compton scattering, before and after: an electron bunch meets a counter-propagating laser pulse; scattered photons leave in a forward cone of half-angle 1 over gamma, 4 gamma squared shorter in wavelength — 1030 nm on 1.72 MeV electrons gives 13.5 nm in a 13 degree cone.](../assets/images/future/ics-collision-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Inverse Compton scattering, head-on.</strong> A 1030 nm laser on 1.72 MeV electrons (γ ≈ 4.4) gives 13.5 nm on axis inside a cone of half-angle 1/γ ≈ 13°, and the wavelength changes across the cone. <em>Schematic, not to scale.</em></figcaption>
 </figure>
 
 The catch is the cross-section. Each electron–photon collision scatters with roughly
@@ -387,6 +400,8 @@ real, and all of it is at the proof-of-principle level:
   showing gain over an hour at 1 Hz [28]. Then over 8 h of continuous FEL operation
   without operator input, with 100 MeV beams at **1 Hz** [29].
 
+**The 2026 BELLA result ran at 1 Hz, not the "1,000 bunches per second" of the press coverage; the simulator's 1 kHz preset is an upgrade target, not a demonstrated rate.**
+
 !!! warning "Correction: 1 Hz, not 1 kHz"
     Press coverage of the 2026 BELLA result described "1,000 bunches per second" [34].
     The paper reports "100 MeV electron beams at 1 Hz" [29], and the companion gain
@@ -412,20 +427,21 @@ projection lithography. The simulator's [betatron model](../sources/betatron.md)
 exists to feed the [LIGA deep-X-ray module](../processes/liga-deep-xray.md) as a
 lab-scale alternative to a synchrotron, and reports microwatts of average power.
 
-```mermaid
-timeline
-    title Accelerator EUV sources and the tin benchmark
-    1991 : FEL-based projection lithography proposed (Newnam)
-    2010 : Steady-state microbunching proposed (Ratner and Chao)
-    2011 : Multiturn ERL-FEL study, about 5 kW (Socol et al.) : Burst-mode SC-linac FEL design, 1.7 kW (DESY)
-    2015 : KEK 10 kW-class ERL-FEL design : FLASH reports 350 mW average at 18.2 nm
-    2016 : SLAC SSMB designs above 1 kW per tool
-    2017 : Tin LPP reaches 250 W
-    2021 : SSMB mechanism shown at 1064 nm, one turn : LPA-FEL gain at 27 nm (SIOM) : cERL IR-FEL lases at 20 µm
-    2024 : 740 W tin LPP demonstrated
-    2025 : 1 kW tin LPP proof of concept : xLight Series B : LPA-FEL gain above 1000 at 420 nm
-    2026 : LPA-FEL runs over 8 h at 1 Hz : xLight CHIPS award finalized : 600 W LPP shipping
-```
+<details markdown="1">
+<summary>Accelerator EUV sources and the tin benchmark, dated</summary>
+
+- **1991 · Proposed** — FEL-based projection lithography proposed (Newnam) [9].
+- **2010 · Proposed** — steady-state microbunching proposed (Ratner and Chao) [18].
+- **2011 · Proposed** — multiturn ERL-FEL study, about 5 kW (Socol et al.) [10]; burst-mode SC-linac FEL design, 1.7 kW (DESY) [11].
+- **2015 · Proposed** — KEK 10 kW-class ERL-FEL design [13]; **Demonstrated** — FLASH reports 350 mW average at 18.2 nm [8].
+- **2016 · Proposed** — SLAC SSMB designs above 1 kW per tool [21].
+- **2017 · In production** — tin LPP reaches 250 W [1].
+- **2021 · Demonstrated** — SSMB mechanism shown at 1064 nm, one turn [19]; LPA-FEL gain at 27 nm (SIOM) [25]; cERL IR-FEL lases at 20 µm [16].
+- **2024 · Demonstrated** — 740 W tin LPP [3].
+- **2025 · Demonstrated** — 1 kW tin LPP proof of concept [4]; LPA-FEL gain above 1000 at 420 nm [28]; **Announced** — xLight Series B [17].
+- **2026 · Demonstrated** — LPA-FEL runs over 8 h at 1 Hz [29]; **Announced** — xLight CHIPS award finalized [17]; **In production** — 600 W LPP per ASML [5, 6].
+
+</details>
 
 ## How the candidates compare
 
@@ -437,151 +453,162 @@ timeline
 | ICS | none at EUV | simulator design point: 71 µW | Thomson cross-section; low γ spreads photons out of band |
 | LPA-FEL | ≈150 nJ/shot at 27 nm [25] | simulator upgrade-target preset: 5 mW | Energy spread, repetition rate, stability |
 
+## Try it in highuvlith
+
+### Every accelerator preset against the 250 W benchmark
+
+The presets are illustrative machines. Several are explicit **projections**, and
+their docstrings say so. The benchmark is the production tin source's in-band
+power at IF.
+
+<!-- verify-example -->
+```python
+import highuvlith as huv
+
+presets = {
+    "Sn LPP (production class)": huv.SourceConfig.lpp_sn_13nm5(0.9),
+    "FLASH-like SASE FEL": huv.SourceConfig.xfel_flash_13nm5(),
+    "CW-SC linac FEL (projection)": huv.SourceConfig.xfel_cw_sc_13nm5(),
+    "ERL-FEL (projection)": huv.SourceConfig.xfel_erl_13nm5(),
+    "SSMB 1 kW (projection)": huv.SourceConfig.ssmb_euv_13nm5(),
+    "ICS design point": huv.SourceConfig.ics_compact_euv_13nm5(),
+    "LPA-FEL 25 nm (projection)": huv.SourceConfig.lpa_fel_bella_25nm(0.7),
+}
+for name, src in presets.items():
+    p = src.average_power_w
+    print(f"{name:30s} {src.wavelength_nm:5.1f} nm {p:10.4g} W  {p / 250:9.2g} x 250 W")
+```
+
+??? success "Output"
+
+    ```text
+    Sn LPP (production class)       13.5 nm        250 W          1 x 250 W
+    FLASH-like SASE FEL             13.5 nm        0.1 W     0.0004 x 250 W
+    CW-SC linac FEL (projection)    13.5 nm        135 W       0.54 x 250 W
+    ERL-FEL (projection)            13.5 nm  1.054e+04 W         42 x 250 W
+    SSMB 1 kW (projection)          13.5 nm       1000 W          4 x 250 W
+    ICS design point                13.5 nm  7.123e-05 W    2.8e-07 x 250 W
+    LPA-FEL 25 nm (projection)      25.0 nm      0.005 W      2e-05 x 250 W
+    ```
+
+Expect about 250 W for tin, 0.1 W for the FLASH-like FEL, about 135 W and
+10.5 kW for the two FEL projections, 1 kW for SSMB, about 71 µW for ICS and 5 mW
+for the LPA-FEL target.
+
 <figure markdown="span">
 
 ![Horizontal log-scale bars of the average power reported by each EUV-range source preset, from below a nanowatt to above ten kilowatts, with the 250 W and 1 kW high-volume-manufacturing lines; only the tin plasma presets and the accelerator projections reach the band.](../assets/images/sim/site/site-preset-power-bars-light.png#gh-light-mode-only)
 ![Horizontal log-scale bars of the average power reported by each EUV-range source preset, from below a nanowatt to above ten kilowatts, with the 250 W and 1 kW high-volume-manufacturing lines; only the tin plasma presets and the accelerator projections reach the band.](../assets/images/sim/site/site-preset-power-bars-dark.png#gh-dark-mode-only)
 
-<figcaption>Every EUV-range source preset's <code>average_power_w</code> against the 250 W – 1 kW band (250 W at IF on the NXE:3400B chain; 1 kW the stated target). Filled bars are anchored to a shipping or demonstrated machine class, open bars are projections or design points (as labelled in each preset's documentation). Powers are defined at different planes (IF, undulator exit, laser output), so compare orders of magnitude. Source models range from ✅ to 🧪 — see each family page.</figcaption>
+<figcaption><strong>Every EUV-range source preset against the 250 W – 1 kW band.</strong> <code>average_power_w</code> of each preset on a log axis with the plane its family quotes it in (at IF for the plasma sources; radiated, collected or emitted power for the rest), so compare orders of magnitude; the NXE:3400B chain is calibrated to the published 250 W at IF, filled bars are anchored to a shipping or demonstrated machine class, hollow dashed bars are projections or design points, as each preset's documentation labels them. <em>Data chart from the presets' <code>average_power_w</code>; each family carries its own grade on its page. No model badge.</em></figcaption>
 </figure>
 
-## Try it in highuvlith
+### What SSMB's kilowatt assumes
 
-!!! example "Try it in highuvlith: every accelerator preset against the 250 W benchmark"
-    The presets are illustrative machines. Several are explicit **projections**, and
-    their docstrings say so. The benchmark is the production tin source's in-band
-    power at IF.
+`derived_quantities()` shows the physics behind a number. For SSMB the key input
+is the bunching factor, and the power scales as its square.
 
-    <!-- verify-example -->
-    ```python
-    import highuvlith as huv
+<!-- verify-example -->
+```python
+import highuvlith as huv
 
-    presets = {
-        "Sn LPP (production class)": huv.SourceConfig.lpp_sn_13nm5(0.9),
-        "FLASH-like SASE FEL": huv.SourceConfig.xfel_flash_13nm5(),
-        "CW-SC linac FEL (projection)": huv.SourceConfig.xfel_cw_sc_13nm5(),
-        "ERL-FEL (projection)": huv.SourceConfig.xfel_erl_13nm5(),
-        "SSMB 1 kW (projection)": huv.SourceConfig.ssmb_euv_13nm5(),
-        "ICS design point": huv.SourceConfig.ics_compact_euv_13nm5(),
-        "LPA-FEL 25 nm (projection)": huv.SourceConfig.lpa_fel_bella_25nm(0.7),
-    }
-    for name, src in presets.items():
-        p = src.average_power_w
-        print(f"{name:30s} {src.wavelength_nm:5.1f} nm {p:10.4g} W  {p / 250:9.2g} x 250 W")
+ssmb = huv.SourceConfig.ssmb_euv_13nm5()
+for name, value, unit, _note in ssmb.derived_quantities():
+    print(f"{name:26s} {value:12.4g} {unit}")
+
+# 1 A, 100-period, K = 1.6 radiator; the power is derived from b (P ∝ b²)
+for b in (0.02, 0.05, 0.0729, 0.1, 0.1458):
+    src = huv.SourceConfig.ssmb(bunching_factor=b)
+    sigma = src.derived_quantity("microbunch_rms_length")
+    print(f"b = {b:<6}  P = {src.average_power_w:7.1f} W   microbunch {sigma:.1f} nm rms")
+```
+
+??? success "Output"
+
+    ```text
+    photon_energy                     91.84 eV
+    harmonic_number                      78 -
+    electron_gamma                    783.8 -
+    radiator_period                   7.275 mm
+    radiator_length                  0.7275 m
+    bunching_factor                  0.1458 -
+    microbunch_rms_length             4.216 nm
+    coherent_power                     1000 W
+    power_at_full_bunching        4.704e+04 W
+    incoherent_power                  1.674 W
+    coherent_enhancement              597.5 -
+    bunching_for_projection          0.1458 -
+    bunching_for_hvm                 0.0729 -
+    projected_power                    1000 W
+    photon_rate                   6.796e+19 photons/s
+    hvm_power_ratio                       4 -
+    b = 0.02    P =    18.8 W   microbunch 6.0 nm rms
+    b = 0.05    P =   117.6 W   microbunch 5.3 nm rms
+    b = 0.0729  P =   250.0 W   microbunch 4.9 nm rms
+    b = 0.1     P =   470.4 W   microbunch 4.6 nm rms
+    b = 0.1458  P =  1000.0 W   microbunch 4.2 nm rms
     ```
 
-    ??? success "Output"
+`bunching_for_hvm` (≈0.073) is the bunching factor that gives 250 W with this
+radiator. `coherent_enhancement` (≈600) is the gain over the same beam radiating
+incoherently.
 
-        ```text
-        Sn LPP (production class)       13.5 nm        250 W          1 x 250 W
-        FLASH-like SASE FEL             13.5 nm        0.1 W     0.0004 x 250 W
-        CW-SC linac FEL (projection)    13.5 nm        135 W       0.54 x 250 W
-        ERL-FEL (projection)            13.5 nm  1.054e+04 W         42 x 250 W
-        SSMB 1 kW (projection)          13.5 nm       1000 W          4 x 250 W
-        ICS design point                13.5 nm  7.123e-05 W    2.8e-07 x 250 W
-        LPA-FEL 25 nm (projection)      25.0 nm      0.005 W      2e-05 x 250 W
-        ```
+### Power becomes throughput (or dose)
 
-    Expect about 250 W for tin, 0.1 W for the FLASH-like FEL, about 135 W and
-    10.5 kW for the two FEL projections, 1 kW for SSMB, about 71 µW for ICS and 5 mW
-    for the LPA-FEL target.
+`wafer_throughput()` is the simplified dose-limited scanner model (🔶). Its
+defaults are ten mirrors at 0.70, mask efficiency 0.65, 84 full fields,
+0.1 s per field and 10 s per wafer. A kilowatt source buys more dose at
+the same throughput. An FEL serving many scanners splits its power among them.
 
-!!! example "Try it in highuvlith: what SSMB's kilowatt assumes"
-    `derived_quantities()` shows the physics behind a number. For SSMB the key input
-    is the bunching factor, and the power scales as its square.
+<!-- verify-example -->
+```python
+import highuvlith as huv
 
-    <!-- verify-example -->
-    ```python
-    import highuvlith as huv
+sources = {
+    "Sn LPP ~250 W": huv.SourceConfig.lpp_sn_13nm5(0.9),
+    "SSMB 1 kW (projection)": huv.SourceConfig.ssmb_euv_13nm5(),
+    "ERL-FEL / 16 scanners": huv.SourceConfig.xfel_erl_13nm5(),
+}
+for dose in (30.0, 60.0, 100.0):
+    for name, src in sources.items():
+        t = src.wafer_throughput(dose_mj_cm2=dose)
+        share = 16 if "ERL" in name else 1  # one ERL feeding 16 scanners
+        wph = 3600 / (t["total_time_per_wafer_s"] + t["exposure_time_per_wafer_s"] * (share - 1))
+        print(f"{dose:5.0f} mJ/cm²  {name:24s} {wph:6.1f} wph per scanner")
+```
 
-    ssmb = huv.SourceConfig.ssmb_euv_13nm5()
-    for name, value, unit, _note in ssmb.derived_quantities():
-        print(f"{name:26s} {value:12.4g} {unit}")
+??? success "Output"
 
-    # 1 A, 100-period, K = 1.6 radiator; the power is derived from b (P ∝ b²)
-    for b in (0.02, 0.05, 0.0729, 0.1, 0.1458):
-        src = huv.SourceConfig.ssmb(bunching_factor=b)
-        sigma = src.derived_quantity("microbunch_rms_length")
-        print(f"b = {b:<6}  P = {src.average_power_w:7.1f} W   microbunch {sigma:.1f} nm rms")
+    ```text
+       30 mJ/cm²  Sn LPP ~250 W             153.9 wph per scanner
+       30 mJ/cm²  SSMB 1 kW (projection)    183.2 wph per scanner
+       30 mJ/cm²  ERL-FEL / 16 scanners     177.4 wph per scanner
+       60 mJ/cm²  Sn LPP ~250 W             126.8 wph per scanner
+       60 mJ/cm²  SSMB 1 kW (projection)    172.3 wph per scanner
+       60 mJ/cm²  ERL-FEL / 16 scanners     162.2 wph per scanner
+      100 mJ/cm²  Sn LPP ~250 W             102.7 wph per scanner
+      100 mJ/cm²  SSMB 1 kW (projection)    159.6 wph per scanner
+      100 mJ/cm²  ERL-FEL / 16 scanners     145.6 wph per scanner
     ```
 
-    ??? success "Output"
+The `wph` line spreads the ERL's power over 16 scanners by scaling each wafer's
+exposure time by 16. That is a back-of-envelope sharing model, not a feature of
+the code. In this model the 250 W tin source falls from about 154 to about
+103 wafers per hour between 30 and 100 mJ/cm². The 1 kW SSMB projection and the
+shared ERL stay at about 145–185, because overheads, not photons, dominate their
+wafer time.
 
-        ```text
-        photon_energy                     91.84 eV
-        harmonic_number                      78 -
-        electron_gamma                    783.8 -
-        radiator_period                   7.275 mm
-        radiator_length                  0.7275 m
-        bunching_factor                  0.1458 -
-        microbunch_rms_length             4.216 nm
-        coherent_power                     1000 W
-        power_at_full_bunching        4.704e+04 W
-        incoherent_power                  1.674 W
-        coherent_enhancement              597.5 -
-        bunching_for_projection          0.1458 -
-        bunching_for_hvm                 0.0729 -
-        projected_power                    1000 W
-        photon_rate                   6.796e+19 photons/s
-        hvm_power_ratio                       4 -
-        b = 0.02    P =    18.8 W   microbunch 6.0 nm rms
-        b = 0.05    P =   117.6 W   microbunch 5.3 nm rms
-        b = 0.0729  P =   250.0 W   microbunch 4.9 nm rms
-        b = 0.1     P =   470.4 W   microbunch 4.6 nm rms
-        b = 0.1458  P =  1000.0 W   microbunch 4.2 nm rms
-        ```
+<figure markdown="span">
 
-    `bunching_for_hvm` (≈0.073) is the bunching factor that gives 250 W with this
-    radiator. `coherent_enhancement` (≈600) is the gain over the same beam radiating
-    incoherently.
+![Wafers per hour versus resist dose for a 250 W tin source, a 1 kW SSMB projection and an ERL free-electron laser shared by 16 scanners; the tin source falls from about 154 to 103 wafers per hour between 30 and 100 mJ/cm2 while the others stay near the overhead-limited ceiling.](../assets/images/sim/site/site-wph-vs-dose-light.png#gh-light-mode-only)
+![Wafers per hour versus resist dose for a 250 W tin source, a 1 kW SSMB projection and an ERL free-electron laser shared by 16 scanners; the tin source falls from about 154 to 103 wafers per hour between 30 and 100 mJ/cm2 while the others stay near the overhead-limited ceiling.](../assets/images/sim/site/site-wph-vs-dose-dark.png#gh-dark-mode-only)
 
-!!! example "Try it in highuvlith: power becomes throughput (or dose)"
-    `wafer_throughput()` is the simplified dose-limited scanner model (🔶). Its
-    defaults are ten mirrors at 0.70, mask efficiency 0.65, 84 full fields,
-    0.1 s per field and 10 s per wafer. A kilowatt source buys more dose at
-    the same throughput. An FEL serving many scanners splits its power among them.
-
-    <!-- verify-example -->
-    ```python
-    import highuvlith as huv
-
-    sources = {
-        "Sn LPP ~250 W": huv.SourceConfig.lpp_sn_13nm5(0.9),
-        "SSMB 1 kW (projection)": huv.SourceConfig.ssmb_euv_13nm5(),
-        "ERL-FEL / 16 scanners": huv.SourceConfig.xfel_erl_13nm5(),
-    }
-    for dose in (30.0, 60.0, 100.0):
-        for name, src in sources.items():
-            t = src.wafer_throughput(dose_mj_cm2=dose)
-            share = 16 if "ERL" in name else 1  # one ERL feeding 16 scanners
-            wph = 3600 / (t["total_time_per_wafer_s"] + t["exposure_time_per_wafer_s"] * (share - 1))
-            print(f"{dose:5.0f} mJ/cm²  {name:24s} {wph:6.1f} wph per scanner")
-    ```
-
-    ??? success "Output"
-
-        ```text
-           30 mJ/cm²  Sn LPP ~250 W             153.9 wph per scanner
-           30 mJ/cm²  SSMB 1 kW (projection)    183.2 wph per scanner
-           30 mJ/cm²  ERL-FEL / 16 scanners     177.4 wph per scanner
-           60 mJ/cm²  Sn LPP ~250 W             126.8 wph per scanner
-           60 mJ/cm²  SSMB 1 kW (projection)    172.3 wph per scanner
-           60 mJ/cm²  ERL-FEL / 16 scanners     162.2 wph per scanner
-          100 mJ/cm²  Sn LPP ~250 W             102.7 wph per scanner
-          100 mJ/cm²  SSMB 1 kW (projection)    159.6 wph per scanner
-          100 mJ/cm²  ERL-FEL / 16 scanners     145.6 wph per scanner
-        ```
-
-    The `wph` line spreads the ERL's power over 16 scanners by scaling each wafer's
-    exposure time by 16. That is a back-of-envelope sharing model, not a feature of
-    the code. In this model the 250 W tin source falls from about 154 to about
-    103 wafers per hour between 30 and 100 mJ/cm². The 1 kW SSMB projection and the
-    shared ERL stay at about 145–185, because overheads, not photons, dominate their
-    wafer time.
+<figcaption><strong>Power becomes throughput.</strong> <code>wafer_throughput()</code> with its defaults (ten mirrors at 0.70, mask 0.65, 84 fields, 0.1 s per field and 10 s per wafer) swept over dose — the accelerator page's example; the ERL curve spreads one source over 16 scanners by multiplying each wafer's exposure time by 16, the page's back-of-envelope sharing, not a feature of the code. SSMB and ERL powers are projections. <em>Model: dose-limited throughput 🔶.</em></figcaption>
+</figure>
 
 ## Key takeaways
 
-- The target has moved. Tin LPP went from 250 W (2017) to 600 W shipping and a 1 kW
+- **The verdict:** demonstrated accelerator EUV power is sub-watt; every kilowatt figure is a design study or a company claim. The target has moved. Tin LPP went from 250 W (2017) to 600 W shipping and a 1 kW
   proof of concept (April 2025), with 1.5–2 kW on ASML's roadmap. An accelerator source
   must beat *that*, not 250 W.
 - FEL physics caps the efficiency at about $\rho \approx 10^{-3}$ of the beam power, so
@@ -595,9 +622,12 @@ timeline
   of the bunching factor.
 - ICS and laser-plasma FELs are compact but many orders of magnitude too dim for
   exposure. Their near-term value is in science and imaging, not in HVM lithography.
-- In highuvlith, the FLASH-like FEL model is ✅. The ERL/CW-SC FEL, SSMB, ICS and
-  betatron sources are 🧪 projections with derived physics, and the LPA-FEL is 🔶. Use
-  `derived_quantities()` to see exactly which assumption each number rests on.
+- In highuvlith the FLASH-like FEL model is implemented; the ERL/CW-SC FEL, SSMB, ICS and
+  betatron sources are theoretical projections with derived physics, and the LPA-FEL is
+  simplified — the table above carries the grades. Use `derived_quantities()` to see
+  exactly which assumption each number rests on.
+
+**Where next:** ← [Beyond EUV](beyond-euv.md) · [The stochastic frontier](stochastic-frontier.md) → · Related: [source families](../sources/index.md) · [LPP](../sources/lpp.md) · [XFEL](../sources/xfel.md) · [SSMB](../sources/ssmb.md) · [inverse Compton](../sources/inverse-compton.md) · [LPA-FEL](../sources/lpa-fel.md) · [betatron](../sources/betatron.md) · [capability matrix](../capability-matrix.md)
 
 ## References and further reading
 
@@ -715,11 +745,3 @@ timeline
     16 April 2026 ([link](https://phys.org/news/2026-04-laser-plasma-free-electron-hours.html)):
     cited only for its "1,000 bunches per second" wording, which the paper [29] does
     not support.
-
-Related simulator pages: [source families](../sources/index.md) ·
-[LPP](../sources/lpp.md) · [XFEL](../sources/xfel.md) · [SSMB](../sources/ssmb.md) ·
-[inverse Compton](../sources/inverse-compton.md) · [LPA-FEL](../sources/lpa-fel.md) ·
-[betatron](../sources/betatron.md) · [capability matrix](../capability-matrix.md).
-Elsewhere in this section: [Beyond EUV](beyond-euv.md) ·
-[The stochastic frontier](stochastic-frontier.md) ·
-[Quantum and exotic](quantum-and-exotic.md) · [section overview](index.md).

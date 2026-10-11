@@ -181,3 +181,92 @@ test("presets are well formed", () => {
     assert.ok(preset.wavelength > 0 && preset.na > 0 && preset.na < preset.n, preset.id);
   }
 });
+
+/* ---------------------------------------------------------------- pupilOrders (DESIGN §5.6 R4, §5.2 I2) */
+
+test("pupilOrders: the partially coherent cutoff k₁ = 1/(2(1+σ)) and the coherent cutoff 0.5", () => {
+  const conv = P.pupilOrders({ k1: 0.3, sigma: 0.7 });
+  close(conv.cutoffs.partial, 1 / 3.4, 1e-12);
+  close(conv.cutoffs.coherent, 0.5, 1e-12);
+  close(conv.spacing, 1 / 0.6, 1e-12, "orders every 1/(2k₁) pupil units");
+  close(conv.support, 1.7, 1e-12, "support circle at 1 + σ");
+  assert.equal(conv.source.kind, "conventional");
+  assert.deepEqual(conv.samples.map((s) => s.label), ["edge −σ", "on-axis", "edge +σ"]);
+  assert.equal(conv.resolved, true, "k₁ 0.30 > 0.294: the −σ source point passes the +1 order");
+  assert.equal(P.pupilOrders({ k1: 0.29, sigma: 0.7 }).resolved, false, "k₁ 0.29 < 0.294: no source point passes a first order");
+  assert.equal(P.pupilOrders({ k1: 0.5, sigma: 0 }).resolved, true, "coherent: ±1 on the rim at k₁ = 0.5");
+  assert.equal(P.pupilOrders({ k1: 0.49, sigma: 0 }).resolved, false);
+  assert.equal(P.pupilOrders({ k1: 0.5, sigma: 0 }).source.kind, "coherent");
+  // The on-axis sample holds every order with its pass/fail flag.
+  const onAxis = conv.samples[1].orders;
+  assert.deepEqual(onAxis.filter((o) => o.inside).map((o) => o.m), [0], "on axis only the zeroth order fits at k₁ 0.30");
+  assert.ok(onAxis.some((o) => o.m === 1 && !o.inside));
+});
+
+test("pupilOrders: a dipole at σc = 1/(4k₁) keeps two-beam imaging down to k₁ = 0.25", () => {
+  const floor = P.pupilOrders({ k1: 0.25, sigma: 1, fill: "dipole", poles: 1 });
+  close(floor.cutoffs.dipoleCentre, 1, 1e-12, "σc = 1/(4·0.25) = 1: the pole sits on the rim");
+  close(floor.cutoffs.dipoleFloor, 0.25, 1e-12);
+  assert.equal(floor.source.kind, "dipole");
+  close(floor.source.centre, 1, 1e-12);
+  close(floor.source.radius, 0, 1e-12, "poles = sigma: point poles");
+  assert.equal(floor.resolved, true, "pole and +1 order sit on opposite rims (tolerance 1e-9)");
+  const minus = floor.samples.filter((s) => s.label === "pole −σc")[0];
+  const inside = minus.orders.filter((o) => o.inside).map((o) => o.m);
+  assert.deepEqual(inside, [0, 1], "exactly the zeroth and +1 orders: two-beam");
+  assert.equal(P.pupilOrders({ k1: 0.24, sigma: 1, fill: "dipole", poles: 1 }).resolved, false, "below 0.25 the +1 order leaves the pupil");
+  const wide = P.pupilOrders({ k1: 0.3, sigma: 0.9, fill: "dipole", poles: 0.6 });
+  close(wide.source.centre, 0.75, 1e-12);
+  close(wide.source.radius, 0.15, 1e-12);
+  assert.equal(wide.samples.length, 6, "pole centres and both edges of each pole");
+});
+
+/* ---------------------------------------------------------------- pinned sample points (header of huv-physics.js) */
+
+test("I2 pins: the toy's contrast for the 1:1 grating at the three k₁ values of pupil-orders-anim (V1c)", () => {
+  // Independent closed forms: for |s| ≥ 0.25 the image is two-beam, I = c0² + c1² + 2 c0 c1 cos(2πx/p)
+  // with c0 = 1/2 and c1 = −1/π; for the other samples it is flat at c0². Averaging over the 41 midpoint
+  // samples in [−0.7, 0.7], 26 of which satisfy |s| ≥ 0.25 (computed here), gives
+  // contrast = (2f/π) / (1/2 + 2f/π²), f = 26/41.
+  const grating = (k1, sIn, sOut) => {
+    const wavelength = 193, na = 0.93;
+    const pitch = (2 * k1 * wavelength) / na;
+    const p = { wavelength, na, pitch, cd: pitch / 2, sigmaIn: sIn, sigmaOut: sOut };
+    return P.imageMetrics(P.aerialModel(p), p).contrast;
+  };
+  const samples = P.sourcePoints(0, 0.7, 41);
+  const f = samples.filter((s) => Math.abs(s) >= 0.25 - 1e-12).length / 41;
+  assert.equal(f, 26 / 41);
+  close(grating(0.4, 0, 0.7), (2 * f / Math.PI) / (0.5 + 2 * f / Math.PI ** 2), 1e-12, "k₁ 0.40, σ 0.7");
+  close(grating(0.4, 0, 0.7), 0.6423340364986886, 1e-12);
+  const sc = 1 / (4 * 0.3);
+  close(grating(0.3, sc, sc), (2 / Math.PI) / (0.5 + 2 / Math.PI ** 2), 1e-12, "k₁ 0.30, dipole at σc");
+  close(grating(0.3, sc, sc), 0.9060367009005803, 1e-12);
+  close(grating(0.25, 0, 0.7), 0, 1e-12, "k₁ 0.25 < 0.294: flat image");
+});
+
+test("R3 pins: three sample points per calculator for make_playground_figures.py (V5)", () => {
+  const r1 = P.rayleigh({ wavelength: 13.5, na: 0.33, k1: 0.3, k2: 1 });
+  close(r1.halfPitch, 12.272727272727272, 1e-12);
+  close(r1.dofExact, 120.49468586843871, 1e-12);
+  close(r1.dofParaxial, 123.96694214876032, 1e-12);
+  const r2 = P.rayleigh({ wavelength: 193, na: 1.35, n: 1.437, k1: 0.27, k2: 1 });
+  close(r2.halfPitch, 38.6, 1e-12);
+  close(r2.dofExact, 102.16087867683686, 1e-12);
+  close(r2.dofParaxial, 105.89849108367626, 1e-12);
+  const r3 = P.rayleigh({ wavelength: 13.5, na: 0.55, k1: 0.3, k2: 1 });
+  close(r3.halfPitch, 7.363636363636362, 1e-12);
+  close(r3.dofExact, 40.94995509872858, 1e-12);
+  close(r3.dofParaxial, 44.628099173553714, 1e-12);
+  const s1 = P.shotNoise({ wavelength: 13.5, dose: 30, area: 400 });
+  close(s1.count, 8155.269196797076, 1e-12);
+  close(s1.relSigma, 0.011073396464743732, 1e-12);
+  const s2 = P.shotNoise({ wavelength: 193, dose: 30, area: 400 });
+  close(s2.count, 116590.1448134693, 1e-12);
+  close(s2.relSigma, 0.0029286608330499554, 1e-12);
+  const s3 = P.shotNoise({ wavelength: 13.5, dose: 30, area: P.featureArea("circle", 20), absorbed: 0.3 });
+  close(s3.count, 1921.540034752862, 1e-12);
+  close(s3.relSigma, 0.022812626043228233, 1e-12);
+  const d = { wavelength: 193, na: 0.93, pitch: 187, cd: 94, sigmaOut: 0.7 };
+  close(P.imageMetrics(P.aerialModel(d), d).contrast, 0.7923451431688278, 1e-12, "the aerial toy's opening state");
+});

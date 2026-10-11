@@ -4,44 +4,92 @@ description: "Nanoimprint, directed self-assembly, electron beams, area-selectiv
 
 # Alternatives to projection lithography
 
-Nearly every leading-edge chip is patterned the same way: a scanner projects a demagnified
-image of a mask onto a thin resist, using light at 193 nm or 13.5 nm. Projection lithography
-does not own that job because it is the only way to make nanometre patterns. It owns it
-because it is the only method that combines four things at once: arbitrary layouts,
-nanometre overlay between layers, hundreds of wafers per hour, and a defect rate low enough
-for billions of transistors to work. Every alternative on this page gives up at least one of
-those four in exchange for something else, such as no optics at all, atomic precision, true
-3D shapes, or a much cheaper tool.
+<p class="huv-lead">Nearly every leading-edge chip is patterned by a scanner projecting a demagnified mask image onto a thin resist at 193 nm or 13.5 nm. Projection owns that job because it alone combines arbitrary layouts, nanometre overlay, hundreds of wafers per hour and a defect rate low enough for billions of transistors; every alternative here gives up at least one of those for something else — no optics, atomic precision, true 3D shapes or a cheaper tool. For each technology the page gives the principle and its governing equation, the best verified results, what stops it, and what highuvlith does and does not model.</p>
 
-Several alternatives already run in factories, just not on the critical layers of logic
-chips. Multi-beam electron-beam writers produce the masks that EUV scanners image.
-Displacement Talbot lithography and two-photon 3D printers are sold as production tools for
-photonics and microfabrication. Others, notably nanoimprint and directed self-assembly, have
-spent decades as "next-generation lithography" candidates. A few, such as atom-by-atom
-lithography with a scanning tunnelling microscope, are laboratory techniques whose value is
-precision, not throughput.
+**Verdict (as of September 2026):** several alternatives run in factories — multi-beam mask writers, displacement Talbot tools, two-photon printers — but none on the critical layers of logic chips; nanoimprint is unconfirmed in volume, directed self-assembly is returning as an EUV repair step, and every other method trades away layouts, overlay or throughput.
 
-For each technology this page gives the physical principle (with the equation that sets its
-resolution or speed), the best results we could verify, what stops it, and exactly what
-highuvlith does and does not model. The badges (✅ 🔶 🧪 🗺️, defined in the
-[capability matrix](../capability-matrix.md)) grade the **simulator's model**, not the
-technology. "Not modeled" means there is no code for it. The readiness words are the ones
-used across [The Future](index.md).
+<figure markdown="span">
+
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-future-narrow-light.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-future-light.svg#gh-light-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the EUV → X-ray span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-future-narrow-dark.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-future-dark.svg#gh-dark-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the EUV → X-ray span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
+
+<figcaption><strong>You are here on the axis of light.</strong> The chapter's wavelengths and eras at full strength, the rest faded; years are first tool models in litho_tools.csv; the log axis is expanded above 100 nm. <em>Data chart from litho_tools.csv; no model badge.</em></figcaption>
+</figure>
+
+**Five limits:** [k₁ ≥ 0.25](index.md#diffraction-and-the-resolution-floor) · [photons ∝ λ³/NA²](index.md#photons-and-shot-noise) · [Z-factor](index.md#resolution-roughness-and-dose) · [electron blur](index.md#electron-blur) · [throughput](index.md#throughput-and-cost)
 
 ## Readiness at a glance
 
-| Technology | Readiness (as of Sep 2026) | highuvlith model |
+<!-- huv-table: stack -->
+| Technology | Readiness (Sep 2026) | highuvlith model |
 |---|---|---|
-| Nanoimprint lithography (NIL) for chips | Announced / in development (tool at a Toshiba Memory/Kioxia NAND fab since 2017; volume production not confirmed) | Not modeled |
-| Directed self-assembly (DSA) | Demonstrated in the lab (pilot-line devices; being re-evaluated as an EUV repair step) | 🔶 analytic DSA module, Rust only ([research modules](../research-modules.md)) |
-| Multi-beam e-beam **mask** writing | In production | Not modeled (masks enter as ideal thin transmittances, see [masks & metrics](../masks-and-metrics.md)) |
-| Massively parallel e-beam writing on **wafers** | Demonstrated in the lab | Not modeled |
-| Area-selective deposition (ASD) | Demonstrated in the lab | Not modeled |
-| EUV interference lithography (EUV-IL) | Demonstrated in the lab (research and resist-screening tool) | ✅/🔶 [interference](../processes/interference-volumetric.md); 🔶 two-grating EUV-IL in [Talbot](../processes/talbot.md) |
-| Displacement / achromatic Talbot lithography | In production (DTL, for photonics, per the vendor) | 🔶 [Talbot module](../processes/talbot.md) |
-| STM hydrogen-depassivation lithography | Demonstrated in the lab | Not modeled |
-| Two-photon polymerization (2PP) | In production (commercial micro-3D printers) | ✅/🔶 two-photon kinetics and voxel writer ([interference & two-photon](../processes/interference-volumetric.md)) |
-| Tomographic and xolographic volumetric printing | Demonstrated in the lab | Not modeled |
+| Nanoimprint lithography (NIL) for chips | **Announced** (NAND fab evaluation since 2017; volume production not confirmed) | not modelled |
+| Directed self-assembly (DSA) | **Demonstrated** (pilot-line devices; re-evaluated as an EUV repair step) | 🔶 analytic [DSA module](../research-modules.md), in Python as `simulate_dsa` |
+| Multi-beam e-beam **mask** writing | **In production** | not modelled (masks enter as ideal thin transmittances, see [masks](../masks.md)) |
+| Massively parallel e-beam writing on **wafers** | **Demonstrated** | not modelled |
+| Area-selective deposition (ASD) | **Demonstrated** | not modelled |
+| EUV interference lithography (EUV-IL) | **Demonstrated** (research and resist-screening tool) | ✅ [interference](../processes/interference-volumetric.md) (🔶 absorption, interfaces); 🔶 two-grating EUV-IL in [Talbot](../processes/talbot.md) |
+| Displacement / achromatic Talbot lithography | **In production** (DTL, for photonics, per the vendor) | 🔶 [Talbot module](../processes/talbot.md) |
+| STM hydrogen-depassivation lithography | **Demonstrated** | not modelled |
+| Two-photon polymerization (2PP) | **In production** (commercial micro-3D printers) | ✅ [two-photon kinetics and voxel writer](../processes/interference-volumetric.md) (🔶 absorption, kinetics) |
+| Tomographic and xolographic volumetric printing | **Demonstrated** | not modelled |
+
+Rung words follow the [readiness ladder](index.md#readiness-ladder); chips are the simulator's grades from the [capability matrix](../capability-matrix.md). "Not modelled" means there is no code for it.
+
+<details markdown="1">
+<summary>Why these rungs</summary>
+
+| Technology | Evidence for the rung |
+|---|---|
+| Nanoimprint for chips | an FPA-1200NZ2C at Toshiba Memory's Yokkaichi plant since July 2017 [47]; the one delivery Canon announced in 2024 is for R&D and prototyping [7]; no public confirmation of volume production found |
+| DSA | device-oriented demonstrations [13]; defect densities still above the < 1/cm² target in 2023 [14]; Intel's DSA-enhanced EUV multi-patterning at 18 nm pitch [14] |
+| Multi-beam mask writing | IMS MBMW-101 production tools since 2016, MBMW-201 since 2019 [16, 17] |
+| Parallel e-beam on wafers | MAPPER built a 1,352-beam system at ~1 wafer per hour and went bankrupt in 2018 [8, 21] |
+| Area-selective deposition | reviewed by Parsons and Clark [22]; no verified public figure for volume use |
+| EUV-IL | 7, 6 and 5 nm half-pitch at PSI's XIL-II beamline [23, 25, 26] |
+| DTL | Eulitha sells DTL tools for photonics manufacturing [32] |
+| STM lithography | 1 nm lines in 1994 [36], a single-atom transistor [37], a commercial system [38]; no throughput figure |
+| Two-photon polymerization | Nanoscribe printers since 2007 [41] |
+| Volumetric printing | centimetre-scale parts in seconds [42–44]; not a rival for chip lithography |
+
+</details>
+
+## What each method gives up
+
+Qualitative, as argued on this page; a blank cell means the text makes no claim.
+
+<!-- huv-table: stack -->
+| Method | Arbitrary layouts | Overlay | Throughput | Defectivity | Rung |
+|---|---|---|---|---|---|
+| Projection (EUV, ArF immersion) | yes | nanometre | hundreds of wafers per hour | fab-grade | **In production** |
+| Nanoimprint | yes, from a 1× template | by mechanics, the named obstacle | 80–90 wafers per hour reported (2019) | template and particle defects print | **Announced** |
+| Directed self-assembly | periodic, on a lithographic guide | set by the guide | — | above the < 1/cm² target | **Demonstrated** |
+| Electron beam on wafers | yes | nanometre placement | ~1 wafer per hour (MAPPER) | — | **Demonstrated** |
+| Interference, Talbot, DTL | periodic lattices only | — | — | — | **Demonstrated**; DTL **In production** |
+| STM lithography | yes, one lattice site at a time | atomic | one tip, one pattern | — | **Demonstrated** |
+| Two-photon and volumetric printing | free-form 3D objects | — | seconds to hours per part | — | 2PP **In production** |
+
+## Choosing a method
+
+A decision tree for the question every alternative answers differently: what has to be patterned, and how many of them?
+
+```mermaid
+flowchart TD
+    Q{"What has to be patterned?"} --> PER["Only periodic arrays<br/>(gratings, dot or hole lattices)"]
+    Q --> ARB["Arbitrary 2D layouts<br/>(circuits)"]
+    Q --> T3D["Free-form 3D objects"]
+    Q --> ATOM["Individual atoms or dopants"]
+    PER --> IL["Interference / Talbot / DTL<br/>no projection lens, very large depth of field"]
+    PER --> DSA["DSA on a lithographic guide<br/>density multiplication or line rectification"]
+    ARB --> VOL{"How many wafers?"}
+    VOL -->|"high volume, critical layers"| PROJ["Projection EUV or ArF immersion<br/>(plus multipatterning)"]
+    VOL -->|"memory-like layers, cost-driven"| NIL["Nanoimprint<br/>(1x template, overlay by mechanics)"]
+    VOL -->|"one of a kind: masks, prototypes"| EB["Electron beam<br/>(multi-beam for masks)"]
+    ARB --> ASD["Self-aligned additions:<br/>area-selective deposition"]
+    T3D --> TPP["Two-photon writing<br/>sub-diffraction voxels, slow"]
+    T3D --> VAM["Tomographic or xolographic printing<br/>fast, tens to hundreds of micrometres"]
+    ATOM --> STM["STM hydrogen-depassivation lithography<br/>one lattice site, one tip"]
+```
 
 ## Nanoimprint: printing with a stamp
 
@@ -51,6 +99,9 @@ contact, by UV light or heat, and the template is lifted off. What remains is a 
 thin residual layer is cleared by a short etch. No image is ever formed, so there is no
 diffraction limit and no depth of focus to budget. The resolution is whatever the template
 carries.
+
+<details markdown="1">
+<summary>The corporate chronology, 1995–2024</summary>
 
 The idea is older than EUV production. Chou and co-workers imprinted sub-25 nm vias and
 trenches in polymers in 1995 and reported 25 nm resolution in *Science* the following year
@@ -77,6 +128,10 @@ says Toshiba "has used Canon's NIL system for the production of planar NAND," wh
 contradicts the 2018 report and Canon's own wording; we found no primary confirmation of
 it.)
 
+</details>
+
+As of September 2026 we found no public confirmation that NIL is running in volume production of NAND or of leading-edge logic; Canon describes itself as "the first in the world to commercialize" a NIL semiconductor manufacturing system, and the one delivery it has announced is for R&D and prototyping [7]. A 2019 article says Toshiba "has used Canon's NIL system for the production of planar NAND," which contradicts the 2018 report and Canon's own wording; we found no primary confirmation of it [8, 48].
+
 What limits NIL follows from the missing optics:
 
 - **1× templates.** There is no 4× reduction to hide template errors. Every template defect,
@@ -94,8 +149,10 @@ of NAND or of leading-edge logic. Canon describes itself as "the first in the wo
 NIL semiconductor manufacturing system, and the one delivery it has announced is for R&D and
 prototyping [7].
 
+**NIL has no optical limit; the limit moves to a 1× template that must stay defect-free and to overlay set by mechanics.**
+
 !!! warning "Myth: no optics means no resolution limit"
-    NIL has no *optical* limit. The limit moves to the template, which must be made at
+    NIL has no *optical* limit. The limit moves to the template, which has to be made at
     final size, stay defect-free, and survive repeated contact. It also moves to
     overlay, which is set by mechanics instead of by a stage and a lens. Canon's "5-nm-node"
     and "2-nm-node" are process-node labels, not feature sizes (see
@@ -160,8 +217,8 @@ commensurability with the strong-segregation free-energy penalty
 
 choosing the optimal number of periods for a trench. It also rejects parameters below the
 mean-field ODT ($\chi N < 10.495$). It is **not** a self-consistent-field (SCFT) solver. Its
-defect index is an uncalibrated heuristic, not a defect density. It is currently Rust-only,
-with no Python bindings.
+defect index is an uncalibrated heuristic, not a defect density. It is exposed to Python as `simulate_dsa` and `dsa_confined_lamellae`
+([Python API](../python-api.md#optimization-and-patterning)).
 
 ## Electron beams: indispensable for masks, too slow for wafers
 
@@ -185,6 +242,14 @@ wafer ($A \approx 707\ \text{cm}^2$). That is 35 mC per layer: about 10 hours at
 current of 1 µA. A scanner-like 100 wafers per hour would need about 1 mA delivered with
 nanometre placement. That target is far beyond anything shown for wafer writing.
 
+<figure markdown="span">
+
+![Electron-beam write time per 300 mm wafer, minutes to days, versus delivered current from 1 nA to 10 mA at 10, 50 and 200 µC/cm²: 50 µC/cm² at 1 µA takes about 10 hours and 100 wafers per hour needs about 1 mA; guides at 1 and 100 wafers per hour and MAPPER's reported 1 wafer per hour.](../assets/images/future/ebeam-write-time-light.svg#gh-light-mode-only)
+![Electron-beam write time per 300 mm wafer, minutes to days, versus delivered current from 1 nA to 10 mA at 10, 50 and 200 µC/cm²: 50 µC/cm² at 1 µA takes about 10 hours and 100 wafers per hour needs about 1 mA; guides at 1 and 100 wafers per hour and MAPPER's reported 1 wafer per hour.](../assets/images/future/ebeam-write-time-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Electron-beam write time is charge divided by current.</strong> t = D·A/I for a 300 mm wafer at 10, 50 and 200 µC/cm² against delivered current from 1 nA to 10 mA, with guides at 1 and 100 wafers per hour and MAPPER's reported ~1 wph; 50 µC/cm² at 1 µA is about 10 hours, and 100 wph needs about 1 mA. <em>Doses are assumed round numbers; the MAPPER current is not public.</em></figcaption>
+</figure>
+
 **Masks: in production.** A photomask is written once and printed thousands of times, at 4×
 the wafer dimensions, so e-beam speed is affordable there. It became unaffordable for
 single-beam variable-shaped-beam (VSB) tools as mask shapes grew complex. By 2018 dense layers
@@ -204,7 +269,7 @@ The company went bankrupt on 28 December 2018 with about 270 staff [21]. ASML ac
 assets but said it would not continue the technology [8].
 
 **highuvlith:** not modeled. The simulator's masks are ideal thin transmittances
-([masks & metrics](../masks-and-metrics.md)). Its OPC and ILT modules
+([masks](../masks.md)). Its OPC and ILT modules
 ([research modules](../research-modules.md)) produce the kind of corrected, increasingly
 curvilinear shapes that pushed the industry to multi-beam writers. How a writer renders those
 shapes is outside the model.
@@ -275,25 +340,28 @@ z_T = \frac{2p^2}{\lambda} \quad \text{(paraxial)}.
 ```
 
 <figure markdown="span">
-  ![Talbot carpet: intensity behind a binary amplitude grating with 25 percent open fraction versus lateral position x/p (vertical axis) and distance z/z_T (horizontal axis). The grating pattern reappears at z_T, appears shifted by half a period at z_T/2, shows half the period at z_T/4, and forms an intricate carpet of fractional images in between.](../assets/images/future/talbot-carpet-light.svg#only-light){ width="860" }
-  ![Talbot carpet: intensity behind a binary amplitude grating with 25 percent open fraction versus lateral position x/p (vertical axis) and distance z/z_T (horizontal axis). The grating pattern reappears at z_T, appears shifted by half a period at z_T/2, shows half the period at z_T/4, and forms an intricate carpet of fractional images in between.](../assets/images/future/talbot-carpet-dark.svg#only-dark){ width="860" }
-  <figcaption>The Talbot carpet behind a binary amplitude grating with 25 % open fraction, in scaled units (x/p, z/z<sub>T</sub>, z<sub>T</sub> = 2p²/λ), so the picture holds for any wavelength and period. The mask pattern returns at z<sub>T</sub> and is shifted by p/2 at z<sub>T</sub>/2. Fractional planes hold superpositions of shifted copies: behind narrow slits z<sub>T</sub>/4 shows a half-period image, while behind a 50 % open grating the two copies interleave into almost uniform intensity. Computed, not measured: scalar paraxial Fresnel propagation of the grating's Fourier series (orders ±60), thin-mask, perfectly coherent. Own work, generated by docs/figures/future/make_future_figures.py.</figcaption>
+
+![Animation: a cursor sweeps through the Talbot carpet behind a 100 nm grating (25 percent open) at 13.5 nm, its intensity profile drawn at right; it pauses where the period halves, where the image shifts by half a period and at the Talbot length, then a gap average becomes the half-period DTL image.](../assets/images/sim/anim/talbot-flythrough-anim-light.svg#gh-light-mode-only)
+![Animation: a cursor sweeps through the Talbot carpet behind a 100 nm grating (25 percent open) at 13.5 nm, its intensity profile drawn at right; it pauses where the period halves, where the image shifts by half a period and at the Talbot length, then a gap average becomes the half-period DTL image.](../assets/images/sim/anim/talbot-flythrough-anim-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Flying through a Talbot carpet.</strong> Intensity behind a 100 nm binary amplitude grating, 25 % open, at 13.5 nm (±10 orders, exact angular-spectrum propagation; 128 × 240 engine samples); the cursor's row is drawn at right and pauses at z<sub>T</sub>/4, z<sub>T</sub>/2 and z<sub>T</sub>, where the paraxial carpet halves its period (a 50 % open grating would be uniform there), shifts by p/2 and re-images the grating (z<sub>T</sub> = 1475 nm exact for the ±1 orders, 1481 nm paraxial) — at λ/p = 0.135 the higher orders are non-paraxial, so the exact revivals are approximate; past 3z<sub>T</sub>/2 the running average over the scanned gap converges to the displacement-Talbot image with half the period. <em>Model: Talbot / DTL / ATL 🔶 (scalar thin mask, coherent normal illumination, wavelength-independent grating coefficients); computed, not measured.</em></figcaption>
 </figure>
 
-??? info "Data: what the carpet shows plane by plane"
-    Paraxial Fresnel sums over orders ±200, evaluated with the same closed form as the figure
-    (intensity normalized to the incident wave; "std" is the spatial standard deviation of
-    the intensity):
+<details markdown="1">
+<summary>Data: what the carpet shows plane by plane</summary>
 
-    | Plane | 50 % open grating | 25 % open grating |
-    |---|---|---|
-    | $z = 0$ (mask) | period $p$ | period $p$ |
-    | $z_T/4$ | almost uniform (mean 0.50, std 0.016) | period $p/2$ (std 0.25) |
-    | $z_T/2$ | period $p$, shifted by $p/2$ | period $p$, shifted by $p/2$ |
-    | $z_T$ | period $p$ (self-image) | period $p$ (self-image) |
+Paraxial Fresnel sums over orders ±200, evaluated with the same closed form as the carpet (intensity normalized to the incident wave; "std" is the spatial standard deviation of the intensity):
 
-    For $p = 100$ nm at 13.5 nm, $z_T = 1481$ nm. The exact (non-paraxial) rephasing length of
-    the 0 and ±1 orders is 1475 nm (see the Talbot example below).
+| Plane | 50 % open grating | 25 % open grating |
+|---|---|---|
+| z = 0 (mask) | period p | period p |
+| z<sub>T</sub>/4 | almost uniform (mean 0.50, std 0.016) | period p/2 (std 0.25) |
+| z<sub>T</sub>/2 | period p, shifted by p/2 | period p, shifted by p/2 |
+| z<sub>T</sub> | period p (self-image) | period p (self-image) |
+
+For p = 100 nm at 13.5 nm, z<sub>T</sub> = 1481 nm. The exact (non-paraxial) rephasing length of the 0 and ±1 orders is 1475 nm (see the Talbot example below).
+
+</details>
 
 Printing at one gap is fragile, because the image changes within a fraction of $z_T$. Two
 tricks make it stationary. **Achromatic Talbot lithography** uses a broadband source and
@@ -315,6 +383,8 @@ printed arrays of 60 nm features [33]. A high-harmonic source at 29 nm (27th har
 sources are described on [Quantum and exotic](quantum-and-exotic.md) and on the simulator's
 [HHG](../sources/hhg.md) and [soft-X-ray laser](../sources/soft-xray-laser.md) pages.
 
+**Interference and Talbot methods print lattices, not circuits; their industrial niches are periodic structures.**
+
 !!! warning "Myth: interference lithography could replace the scanner"
     Interference and Talbot methods print lattices, not circuits. A chip layer needs line
     ends, cuts, vias and irregular routing. Their industrial niches are periodic structures:
@@ -323,10 +393,10 @@ sources are described on [Quantum and exotic](quantum-and-exotic.md) and on the 
 
 **highuvlith.** Two modules, both off the projection pipeline (no pupil, TCC or σ):
 
-- [Interference & two-photon](../processes/interference-volumetric.md): **✅** for the
+- [Interference & two-photon](../processes/interference-volumetric.md): implemented for the
   analytic N-beam field (vector-component sum, so polarization-mismatch contrast loss is
-  captured) and **🔶** for absorption and interfaces (scalar per-beam decay, no Fresnel
-  coefficients or substrate reflection). The Python entry point is `simulate_interference`.
+  captured); simplified for absorption and interfaces (scalar per-beam decay, no Fresnel
+  coefficients or substrate reflection). The matrix row reads ✅ (🔶 absorption, interfaces). The Python entry point is `simulate_interference`.
 - [Talbot & EUV interference](../processes/talbot.md): **🔶**. It computes the Talbot carpet
   (exact angular-spectrum or paraxial propagation), DTL and ATL stationary images in closed
   form, and two-grating EUV-IL fringes that feed the same PAC and development tiers. It
@@ -341,7 +411,7 @@ sources are described on [Quantum and exotic](quantum-and-exotic.md) and on the 
 ![The Talbot carpet behind a 100 nm grating at 13.5 nm from exact propagation and its difference from the paraxial carpet, which is large in the fine structure carried by the higher orders; beside them the DTL image with half the period and the coherent row.](../assets/images/sim/site/site-talbot-exact-vs-paraxial-light.png#gh-light-mode-only)
 ![The Talbot carpet behind a 100 nm grating at 13.5 nm from exact propagation and its difference from the paraxial carpet, which is large in the fine structure carried by the higher orders; beside them the DTL image with half the period and the coherent row.](../assets/images/sim/site/site-talbot-exact-vs-paraxial-dark.png#gh-dark-mode-only)
 
-<figcaption>Talbot carpets of a 100 nm binary amplitude grating at 13.5 nm (the alternative-patterning page's example), ±10 orders: (a) exact angular-spectrum propagation, (b) its difference from the paraxial (Fresnel) carpet, both in units of the paraxial Talbot length 2p²/λ ≈ 1481 nm (dashed). With p/λ ≈ 7 the higher orders dephase in the exact propagation, so the fine structure differs strongly even though the 0/±1 self-image only moves to ≈ 1475 nm. (c) The stationary DTL image at half the period. Model: Talbot / DTL 🔶 (scalar thin mask, coherent normal illumination).</figcaption>
+<figcaption><strong>Exact against paraxial Talbot carpets.</strong> A 100 nm binary amplitude grating at 13.5 nm, ±10 orders — the alternative-patterning page's example: (a) exact angular-spectrum propagation, (b) its difference from the paraxial (Fresnel) carpet, both in units of the paraxial Talbot length 2p²/λ ≈ 1481 nm (dashed); with p/λ ≈ 7 the higher orders dephase in the exact propagation, so the fine structure differs strongly even though the 0/±1 self-image only moves to ≈ 1475 nm; (c) the stationary DTL image at half the period. <em>Model: Talbot / DTL 🔶 (scalar thin mask, coherent normal illumination).</em></figcaption>
 </figure>
 
 ## Atomic precision with a scanning tunnelling microscope
@@ -407,10 +477,12 @@ module has a scanned two-photon voxel writer (`GaussianFocus`, `write_voxels`,
 `voxels_to_pac`). It uses a scalar, paraxial Gaussian focus with no high-NA vector
 focusing, no polymerization kinetics or oxygen inhibition, and is Rust only. It also has
 two-photon ($I^2$) kinetics for interference lattices, available in Python as
-`simulate_interference(..., two_photon=True)`. That is ✅ for the field and 🔶 for absorption
-and kinetics. The [volumetric exposure](../processes/volumetric-exposure.md) path is
+`simulate_interference(..., two_photon=True)`: implemented for the field, simplified for
+absorption and kinetics, as the readiness table above records. The [volumetric exposure](../processes/volumetric-exposure.md) path is
 z-resolved *projection* exposure, not tomographic printing. Tomographic and xolographic
 printing are not modeled.
+
+**The MNSL module explores a moiré-stacked nanosphere variant we could not find a verified publication for; read its outputs as design exploration, not as a demonstrated process.**
 
 !!! note "An exploratory module: MNSL"
     highuvlith also ships a moiré nanosphere module (MNSL, ✅ as code in the
@@ -422,125 +494,116 @@ printing are not modeled.
     moiré-stacked lithographic variant this module explores. Read its outputs as design
     exploration, not as a prediction of a demonstrated process.
 
-## Choosing a method
-
-```mermaid
-flowchart TD
-    Q{"What has to be patterned?"} --> PER["Only periodic arrays<br/>(gratings, dot or hole lattices)"]
-    Q --> ARB["Arbitrary 2D layouts<br/>(circuits)"]
-    Q --> T3D["Free-form 3D objects"]
-    Q --> ATOM["Individual atoms or dopants"]
-    PER --> IL["Interference / Talbot / DTL<br/>no projection lens, very large depth of field"]
-    PER --> DSA["DSA on a lithographic guide<br/>density multiplication or line rectification"]
-    ARB --> VOL{"How many wafers?"}
-    VOL -->|"high volume, critical layers"| PROJ["Projection EUV or ArF immersion<br/>(plus multipatterning)"]
-    VOL -->|"memory-like layers, cost-driven"| NIL["Nanoimprint<br/>(1x template, overlay by mechanics)"]
-    VOL -->|"one of a kind: masks, prototypes"| EB["Electron beam<br/>(multi-beam for masks)"]
-    ARB --> ASD["Self-aligned additions:<br/>area-selective deposition"]
-    T3D --> TPP["Two-photon writing<br/>sub-diffraction voxels, slow"]
-    T3D --> VAM["Tomographic or xolographic printing<br/>fast, tens to hundreds of micrometres"]
-    ATOM --> STM["STM hydrogen-depassivation lithography<br/>one lattice site, one tip"]
-```
-
 ## Try it in highuvlith
 
-!!! example "Try it in highuvlith: interference fringes set by geometry alone"
-    Two coherent 13.5 nm beams at the half-angle that gives a 50 nm period, recorded as a
-    photoactive-compound (PAC) volume. The printed period is read back from an FFT of the top
-    slice.
+### Interference fringes set by geometry alone
 
-    <!-- verify-example -->
-    ```python
-    import math
-    import numpy as np
-    import highuvlith as huv
+Two coherent 13.5 nm beams at the half-angle that gives a 50 nm period, recorded as a
+photoactive-compound (PAC) volume. The printed period is read back from an FFT of the top
+slice.
 
-    lam = 13.5                                     # EUV wavelength (nm)
-    theta = math.degrees(math.asin(lam / 100.0))   # half-angle giving a 50 nm period
-    pac = huv.simulate_interference(
-        "two_beam", wavelength_nm=lam, n_medium=1.0, half_angle_deg=theta,
-        nx=128, ny=4, nz=4, x_span_nm=400.0, y_span_nm=20.0, z_span_nm=20.0,
-        dose_scale=50.0,
-    )
-    row = pac.values[0, 0, :]                      # PAC along x in the top slice (nz, ny, nx)
-    k = int(np.argmax(np.abs(np.fft.rfft(row - row.mean()))))
-    print(f"printed period {400.0 / k:.1f} nm; lambda/(2 sin theta) = "
-          f"{lam / (2 * math.sin(math.radians(theta))):.1f} nm")
+<!-- verify-example -->
+```python
+import math
+import numpy as np
+import highuvlith as huv
+
+lam = 13.5                                     # EUV wavelength (nm)
+theta = math.degrees(math.asin(lam / 100.0))   # half-angle giving a 50 nm period
+pac = huv.simulate_interference(
+    "two_beam", wavelength_nm=lam, n_medium=1.0, half_angle_deg=theta,
+    nx=128, ny=4, nz=4, x_span_nm=400.0, y_span_nm=20.0, z_span_nm=20.0,
+    dose_scale=50.0,
+)
+row = pac.values[0, 0, :]                      # PAC along x in the top slice (nz, ny, nx)
+k = int(np.argmax(np.abs(np.fft.rfft(row - row.mean()))))
+print(f"printed period {400.0 / k:.1f} nm; lambda/(2 sin theta) = "
+      f"{lam / (2 * math.sin(math.radians(theta))):.1f} nm")
+```
+
+???+ success "Output"
+
+    ```text
+    printed period 50.0 nm; lambda/(2 sin theta) = 50.0 nm
     ```
 
-    ??? success "Output"
+### Talbot length and the frequency-doubled DTL image
 
-        ```text
-        printed period 50.0 nm; lambda/(2 sin theta) = 50.0 nm
-        ```
+A 100 nm binary amplitude grating at 13.5 nm. The coherent image at the Talbot length
+repeats the mask period. The displacement-Talbot (stationary) image has half the period.
 
-!!! example "Try it in highuvlith: Talbot length and the frequency-doubled DTL image"
-    A 100 nm binary amplitude grating at 13.5 nm. The coherent image at the Talbot length
-    repeats the mask period. The displacement-Talbot (stationary) image has half the period.
+<!-- verify-example -->
+```python
+import numpy as np
+from highuvlith.api import simulate_talbot
 
-    <!-- verify-example -->
-    ```python
-    import numpy as np
-    from highuvlith.api import simulate_talbot
+p, lam = 100.0, 13.5
+res = simulate_talbot(lam, p, max_order=10, n_periods=2, nx=128)
+print(f"Talbot length {res.talbot_length_nm:.0f} nm "
+      f"(2p^2/lambda = {2 * p**2 / lam:.0f} nm), "
+      f"exact 0/+-1 rephasing {res.talbot_length_exact_nm:.0f} nm")
+for name in ("coherent_image", "stationary_image"):
+    img = getattr(res, name)[0]                  # one row across two mask periods
+    k = int(np.argmax(np.abs(np.fft.rfft(img - img.mean()))))
+    print(f"{name:17s} dominant period {2 * p / k:.0f} nm")
+```
 
-    p, lam = 100.0, 13.5
-    res = simulate_talbot(lam, p, max_order=10, n_periods=2, nx=128)
-    print(f"Talbot length {res.talbot_length_nm:.0f} nm "
-          f"(2p^2/lambda = {2 * p**2 / lam:.0f} nm), "
-          f"exact 0/+-1 rephasing {res.talbot_length_exact_nm:.0f} nm")
-    for name in ("coherent_image", "stationary_image"):
-        img = getattr(res, name)[0]                  # one row across two mask periods
-        k = int(np.argmax(np.abs(np.fft.rfft(img - img.mean()))))
-        print(f"{name:17s} dominant period {2 * p / k:.0f} nm")
+???+ success "Output"
+
+    ```text
+    Talbot length 1481 nm (2p^2/lambda = 1481 nm), exact 0/+-1 rephasing 1475 nm
+    coherent_image    dominant period 100 nm
+    stationary_image  dominant period 50 nm
     ```
 
-    ??? success "Output"
+<figure markdown="span">
 
-        ```text
-        Talbot length 1481 nm (2p^2/lambda = 1481 nm), exact 0/+-1 rephasing 1475 nm
-        coherent_image    dominant period 100 nm
-        stationary_image  dominant period 50 nm
-        ```
+![A Talbot carpet: the intensity behind a 100 nm grating, 25 percent open, lit at 13.5 nm repeats itself at the Talbot length and shows shifted and frequency-doubled images in between; beside it, the displacement Talbot image averaged over the gap has half the grating period.](../assets/images/sim/talbot-carpet-light.png#gh-light-mode-only)
+![A Talbot carpet: the intensity behind a 100 nm grating, 25 percent open, lit at 13.5 nm repeats itself at the Talbot length and shows shifted and frequency-doubled images in between; beside it, the displacement Talbot image averaged over the gap has half the grating period.](../assets/images/sim/talbot-carpet-dark.png#gh-dark-mode-only)
 
-!!! example "Try it in highuvlith: two-grating EUV-IL is wavelength-independent"
-    The fringe period is $p/(2m)$ at any wavelength; only the diffraction angle and the
-    beam efficiency change. A π-phase grating puts about four times more light into the
-    first orders than an amplitude grating. A 50 % open amplitude grating has no second
-    order at all, hence the 25 % open grating for $m = 2$.
+<figcaption><strong>Talbot self-imaging at 13.5 nm.</strong> (a) Intensity behind a 100 nm-period binary amplitude grating, 25 % open (±10 orders, exact angular-spectrum propagation): the grating re-images at the Talbot length (2p²/λ ≈ 1481 nm paraxially, 1475 nm exactly for the ±1 orders) with the half-shifted and doubled images in between; a 50 % open grating is uniform at z<sub>T</sub>/4 and has no doubled image. (b) Averaging over a scanned gap (displacement Talbot lithography) gives a stationary image with half the period. <em>Model: Talbot / DTL / ATL 🔶 (scalar thin mask, coherent normal illumination, wavelength-independent grating coefficients).</em></figcaption>
+</figure>
 
-    <!-- verify-example -->
-    ```python
-    from highuvlith.api import simulate_euv_il
+### Two-grating EUV-IL is wavelength-independent
 
-    for lam in (13.5, 6.7):
-        for grating in ("amplitude", "phase"):
-            il = simulate_euv_il(100.0, lam, order=1, grating=grating)
-            print(f"{lam:4.1f} nm {grating:9s}: period {il.fringe_period_nm:.1f} nm at "
-                  f"{il.diffraction_angle_deg:.2f} deg, "
-                  f"efficiency per beam {il.beam_intensities[0]:.3f}")
-    il = simulate_euv_il(100.0, 13.5, order=2, duty_cycle=0.25)
-    print(f"order 2 (25 % open): period {il.fringe_period_nm:.1f} nm, "
-          f"efficiency per beam {il.beam_intensities[0]:.3f}")
+The fringe period is $p/(2m)$ at any wavelength; only the diffraction angle and the
+beam efficiency change. A π-phase grating puts about four times more light into the
+first orders than an amplitude grating. A 50 % open amplitude grating has no second
+order at all, hence the 25 % open grating for $m = 2$.
+
+<!-- verify-example -->
+```python
+from highuvlith.api import simulate_euv_il
+
+for lam in (13.5, 6.7):
+    for grating in ("amplitude", "phase"):
+        il = simulate_euv_il(100.0, lam, order=1, grating=grating)
+        print(f"{lam:4.1f} nm {grating:9s}: period {il.fringe_period_nm:.1f} nm at "
+              f"{il.diffraction_angle_deg:.2f} deg, "
+              f"efficiency per beam {il.beam_intensities[0]:.3f}")
+il = simulate_euv_il(100.0, 13.5, order=2, duty_cycle=0.25)
+print(f"order 2 (25 % open): period {il.fringe_period_nm:.1f} nm, "
+      f"efficiency per beam {il.beam_intensities[0]:.3f}")
+```
+
+???+ success "Output"
+
+    ```text
+    13.5 nm amplitude: period 50.0 nm at 7.76 deg, efficiency per beam 0.101
+    13.5 nm phase    : period 50.0 nm at 7.76 deg, efficiency per beam 0.405
+     6.7 nm amplitude: period 50.0 nm at 3.84 deg, efficiency per beam 0.101
+     6.7 nm phase    : period 50.0 nm at 3.84 deg, efficiency per beam 0.405
+    order 2 (25 % open): period 25.0 nm, efficiency per beam 0.025
     ```
 
-    ??? success "Output"
-
-        ```text
-        13.5 nm amplitude: period 50.0 nm at 7.76 deg, efficiency per beam 0.101
-        13.5 nm phase    : period 50.0 nm at 7.76 deg, efficiency per beam 0.405
-         6.7 nm amplitude: period 50.0 nm at 3.84 deg, efficiency per beam 0.101
-         6.7 nm phase    : period 50.0 nm at 3.84 deg, efficiency per beam 0.405
-        order 2 (25 % open): period 25.0 nm, efficiency per beam 0.025
-        ```
-
-    Expect 50 nm fringes at 7.76° (13.5 nm) and 3.84° (6.7 nm), per-beam efficiencies of
-    about 0.101 (1/π²) and 0.405 (4/π²), and 25 nm fringes for $m = 2$. The model's gratings
-    are thin and scalar. A real EUV "phase" grating has absorption, and its phase step
-    changes with wavelength.
+Expect 50 nm fringes at 7.76° (13.5 nm) and 3.84° (6.7 nm), per-beam efficiencies of
+about 0.101 (1/π²) and 0.405 (4/π²), and 25 nm fringes for $m = 2$. The model's gratings
+are thin and scalar. A real EUV "phase" grating has absorption, and its phase step
+changes with wavelength.
 
 ## Key takeaways
 
-- Projection lithography wins leading-edge chips by combining arbitrary layouts, nanometre
+- **The verdict:** several alternatives run in factories, none on the critical layers of logic chips. Projection lithography wins leading-edge chips by combining arbitrary layouts, nanometre
   overlay, high throughput and low defectivity. Each alternative trades at least one of
   these away.
 - **Nanoimprint** removes the optics and moves the limits to 1× templates, defects and
@@ -559,9 +622,11 @@ flowchart TD
   smaller than its diffraction-limited focus, and **volumetric printing** makes centimetre
   objects in tens of seconds. These are precision and 3D technologies, not wafer-throughput
   technologies.
-- highuvlith models the interference and Talbot families (✅/🔶), two-photon kinetics
-  (✅/🔶) and an analytic DSA (🔶). Nanoimprint, e-beam writing, ASD, STM lithography and
+- highuvlith models the interference and Talbot families, two-photon kinetics and an
+  analytic DSA, each graded in the table above. Nanoimprint, e-beam writing, ASD, STM lithography and
   tomographic printing are not modeled.
+
+**Where next:** ← [The stochastic frontier](stochastic-frontier.md) · [Quantum and exotic](quantum-and-exotic.md) → · Related: [interference & two-photon](../processes/interference-volumetric.md) · [Talbot & EUV interference](../processes/talbot.md) · [research modules](../research-modules.md) · [capability matrix](../capability-matrix.md)
 
 ## References and further reading
 
@@ -613,9 +678,3 @@ flowchart TD
 46. ASML, TWINSCAN NXE:3400C product page (throughput ≥170 wafers/hour at 20 mJ/cm², ≥135 at 30 mJ/cm²; NA 0.33; 13 nm resolution), [asml.com](https://www.asml.com/en/products/euv-lithography-systems/twinscan-nxe3400c).
 47. Canon Inc., news release on providing the FPA-1200NZ2C to Toshiba Memory Corporation's Yokkaichi Operations plant (20 July 2017), [global.canon](https://global.canon/en/news/2017/20170720.html).
 48. "What happened to nanoimprint litho?," *Semiconductor Engineering*, 29 March 2018, [semiengineering.com](https://semiengineering.com/what-happened-to-nanoimprint-litho/).
-
-Related pages: [The Future](index.md) · [The stochastic frontier](stochastic-frontier.md) ·
-[Beyond EUV](beyond-euv.md) · [Quantum and exotic](quantum-and-exotic.md) ·
-[Interference & two-photon](../processes/interference-volumetric.md) ·
-[Talbot & EUV interference](../processes/talbot.md) · [Research modules](../research-modules.md) ·
-[Capability matrix](../capability-matrix.md).

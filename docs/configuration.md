@@ -1,10 +1,14 @@
-# TOML Configuration Reference
+---
+description: "Every TOML table and key the highuvlith CLI reads, with its default, its validation, the subcommand that reads it and the Python name beside it; grades copied from the capability matrix."
+---
 
-**Status:** ✅ Implemented — every table and key on this page is parsed, defaulted and validated by [`crates/highuvlith-cli/src/config.rs`](../crates/highuvlith-cli/src/config.rs) and the subcommand modules in [`crates/highuvlith-cli/src/commands/`](../crates/highuvlith-cli/src/commands); the physics behind individual keys ranges from ✅ to 🧪 (badges below, authoritative grades in the [capability matrix](./capability-matrix.md)).
+# TOML configuration
 
-This page is the reference for the TOML files read by the [CLI](./cli.md). One file describes one run. The [Python API](./python-api.md) and the [GUI](./gui.md) build the same core objects programmatically and do not read these files; where a TOML key differs from the Python keyword the difference is noted.
+**Status:** ✅ Implemented — every table and key on this page is parsed, defaulted and validated by the CLI (`config.rs` and the subcommand modules); the physics behind a key keeps its own grade, copied from the matrix beside each table · [matrix](capability-matrix.md#frontends-and-infrastructure)
 
-Every key below was checked against the code at the time of writing; when a value comes from a source or optics *preset*, the preset is named and `highuvlith sources --family <type>` prints its numbers and the TOML that selects it.
+<p class="huv-lead">This page is the reference for the TOML files the command line reads: one file describes one run, every table is strict, and every key was checked against the code. It is for people writing or debugging a config; the Python API and the GUI build the same core objects programmatically and do not read these files, so each table also names the Python object or keyword it corresponds to. It is not a physics page — each table links the page that explains what the keys do.</p>
+
+**Same thing elsewhere:** Python `highuvlith.api` keywords (the Python column of each table) · CLI `highuvlith <subcommand> --config file.toml` · GUI panels build the same objects · physics → [Simulation pipeline](pipeline.md)
 
 ## File structure
 
@@ -21,15 +25,41 @@ Every key below was checked against the code at the time of writing; when a valu
 [throughput]      # `highuvlith throughput` only (optional)
 ```
 
-Every table is optional at the schema level; each subcommand requires the tables it reads and says so (`this command needs an [optics] table (e.g. [optics] na = 0.75)`).
+Every table is optional at the schema level; each subcommand requires the tables it reads and says so (`this command needs an [optics] table (e.g. [optics] na = 0.75)`). When a value comes from a source or optics *preset*, the preset is named and `highuvlith sources --family <type>` prints its numbers and the TOML that selects it.
 
-| Subcommand | Reads | Notes |
-|---|---|---|
-| `simulate`, `sweep` | `[source]` `[optics]` `[mask]` (required); `[illumination]` `[grid]` `[process]` `[imaging]` | `[deep]`, `[optimize]`, `[throughput]` are not read; each one present prints `note: [deep] is not read by simulate (ignored and not validated; the deep subcommand reads it)` on stderr and the run continues (one file may serve several subcommands; each table is validated by the subcommand that reads it). |
-| `deep` | `[deep]` (required) + the shared tables of the mode — see [`[deep]`](#deep) | A shared table the mode does not read prints `note: [optics] is not read by deep mode "liga" (ignored)`. |
-| `optimize` | `[optimize]` (required); `ilt` / `opc` / `sraf` also `[source]` `[optics]` `[mask]` `[grid]` `[process]` `[imaging]` `[illumination]` | `sadp` / `saqp` read only `[optimize]` and note any other table as ignored. |
-| `throughput` | `[source]` (required), optional `[throughput]`, `[process] dose_mj_cm2`, `[mask]` (drawn CD for photon statistics) | |
-| `sources`, `materials` | no config file | |
+## Find by task
+
+<!-- huv-table: key -->
+| I want to … | Go to |
+|---|---|
+| pick a light source and see which keys it reads | [`[source]`](#source) — the family index, then the per-family rows |
+| understand why a key was rejected | [Strict keys](#strict-keys) |
+| choose the optics and its preset | [`[optics]`](#optics) |
+| override the source's pupil fill | [`[illumination]`](#illumination) |
+| draw the pattern | [`[mask]`](#mask) |
+| control the grid, dose, focus and threshold | [`[grid]`](#grid) · [`[process]`](#process) |
+| switch the imaging model (vector, polychromatic, defocus) | [`[imaging]`](#imaging) |
+| run a LIGA, grayscale, interference, volumetric or Talbot job | [`[deep]`](#deep) — and the measured dose window under [mode: volumetric](#mode-volumetric) |
+| run ILT, OPC, SRAF or SADP/SAQP | [`[optimize]`](#optimize) |
+| estimate wafers per hour | [`[throughput]`](#throughput) |
+| find the config that shows a feature | [Examples](#examples) |
+
+## Which subcommand reads which table
+
+✓ required · ○ optional · · not read. A table a subcommand does not read is not validated; each one present prints `note: [deep] is not read by simulate (ignored and not validated; the deep subcommand reads it)` on stderr and the run continues, so one file may serve several subcommands. `sources` and `materials` read no config file.
+
+<!-- huv-table: compact -->
+| Subcommand | `[source]` | `[optics]` | `[illumination]` | `[mask]` | `[grid]` | `[process]` | `[imaging]` | own table |
+|---|---|---|---|---|---|---|---|---|
+| `simulate`, `sweep` | ✓ | ✓ | ○ | ✓ | ○ | ○ | ○ | — |
+| `deep` mode `liga` | ○ (spectrum, unless `flux_density` / `critical_energy_kev` is given) | · | · | ✓ | ○ | · | · | ✓ `[deep]` |
+| `deep` mode `grayscale` | · | · | · | · | ○ | · | · | ✓ `[deep]` |
+| `deep` mode `interference` | ✓ | · | · | · | ○ | · | · | ✓ `[deep]` |
+| `deep` mode `volumetric` | ✓ | ✓ | ○ | ✓ | ○ | ○ | ○ | ✓ `[deep]` |
+| `deep` mode `talbot` | ✓ | · | · | ✓ | ○ | · | · | ✓ `[deep]` |
+| `optimize` method `ilt`, `opc`, `sraf` | ✓ | ✓ | ○ | ✓ | ○ | ○ | ○ | ✓ `[optimize]` |
+| `optimize` method `sadp`, `saqp` | · | · | · | · | · | · | · | ✓ `[optimize]` |
+| `throughput` | ✓ | · | · | ○ (drawn CD for photon statistics) | · | ○ (`dose_mj_cm2`) | · | ○ `[throughput]` |
 
 ## Strict keys
 
@@ -69,7 +99,30 @@ One flat table for every source family, selected by `type`. Family keys are opti
 
 **Back-compatibility.** Without `type` the legacy VUV source is built: `wavelength_nm` (default 157.63), `sigma` (0.7), `bandwidth_pm` (1.1), `rep_rate_hz` (4000) — every pre-multi-source config (e.g. [`examples/sim.toml`](../examples/sim.toml)) runs unchanged.
 
-**Derived wavelengths.** For families whose wavelength is set by the machine (synchrotron undulator, HHG, X-ray tube, betatron, Smith–Purcell with a grating period, soft-X-ray-laser lines) an explicit `wavelength_nm` is a *cross-check*, rejected when it disagrees with the derived value by more than 5 % (HHG: 1 %, because adjacent harmonics are only $2/q$ apart; SXRL: 1 % of the fixed lasing line).
+**Derived wavelengths.** For families whose wavelength is set by the machine (synchrotron undulator, HHG, X-ray tube, betatron, Smith–Purcell with a grating period, soft-X-ray-laser lines) an explicit `wavelength_nm` is a *cross-check*, rejected when it disagrees with the derived value by more than 5 % (HHG: 1 %, because adjacent harmonics are only 2/q apart; SXRL: 1 % of the fixed lasing line).
+
+### Family index
+
+One row per `type`, with the family's page (linked at its TOML-keys section, where every key the CLI reads for that family is documented), the Python factories that build the same presets, and the grade copied from the [capability matrix](capability-matrix.md#light-sources). The DUV/UV heritage presets are `vuv`-family sources selected by `preset`.
+
+<!-- huv-table: stack -->
+| `type` | Family page | Python (`SourceConfig.…`) | Grade (matrix) |
+|---|---|---|---|
+| `vuv` | [VUV excimer](sources/vuv-excimer.md#toml-keys) | `f2_laser()`, `ar2_laser()` | ✅ Implemented (🧪 Ar₂ preset) |
+| `vuv` + `preset = "arf"`, `"krf"`, `"hg_i"`, `"hg_h"`, `"hg_g"` | [DUV/UV heritage](sources/duv-heritage.md#toml-keys) | `arf_laser()`, `krf_laser()`, `hg_i_line()`, `hg_h_line()`, `hg_g_line()` | ✅ Implemented (🔶 representative parameters) |
+| `lpa_fel` | [LPA-FEL](sources/lpa-fel.md#toml-keys) | `lpa_fel_bella_25nm()`, `lpa_fel(...)` | 🔶 Simplified |
+| `lpp` | [Laser-produced plasma](sources/lpp.md#toml-keys) | `lpp_sn_13nm5()`, `lpp_sn_13nm5_500w()`, `lpp_gd_6nm7()`, `lpp_tb_6nm5()` | ✅ Implemented (🔶 CE defaults, étendue; 🧪 Gd/Tb power) |
+| `dpp` | [Discharge-produced plasma](sources/dpp.md#toml-keys) | `dpp_sn_13nm5()`, `dpp_xe_13nm5()` | 🔶 Simplified |
+| `synchrotron` | [Synchrotron](sources/synchrotron.md#toml-keys) | `synchrotron_compact_euv()`, `synchrotron_undulator(...)`, `synchrotron_liga_bending_magnet()` | ✅ Implemented (🔶 coherence bound) |
+| `hhg` | [High-harmonic generation](sources/hhg.md#toml-keys) | `hhg_ne_13nm5()`, `hhg_ar_30nm()`, `hhg(...)` | ✅ Implemented (🔶 harmonic intensities) |
+| `xfel` | [XFEL](sources/xfel.md#toml-keys) | `xfel_flash_13nm5()`, `xfel_fermi_seeded()`, `xfel_cw_sc_13nm5()`, `xfel_erl_13nm5()` | ✅ Implemented (🧪 CW-SC and ERL presets) |
+| `sxrl` | [Soft X-ray laser](sources/soft-xray-laser.md#toml-keys) | `sxrl_ar_46nm9()`, `sxrl_ag_13nm9()`, … | ✅ Implemented (🔶 assumed splits, no gain) |
+| `xray_tube` | [X-ray tube](sources/xray-tube.md#toml-keys) | `xray_tube(...)` | 🔶 Simplified (✅ lines, edges, Duane–Hunt, Be window) |
+| `ics` | [Inverse Compton](sources/inverse-compton.md#toml-keys) | `ics_compact_euv_13nm5()`, `ics(...)` | 🧪 Theoretical |
+| `betatron` | [Betatron](sources/betatron.md#toml-keys) | `betatron(...)` | 🧪 Theoretical |
+| `ssmb` | [SSMB](sources/ssmb.md#toml-keys) | `ssmb_euv_13nm5()`, `ssmb(...)` | 🧪 Theoretical |
+| `smith_purcell` | [Smith–Purcell](sources/smith-purcell.md#toml-keys) | `smith_purcell(...)` | 🧪 Theoretical |
+| `entangled` | [Entangled photons](sources/entangled-photon.md#toml-keys) | `entangled_noon(...)` | 🧪 Theoretical |
 
 ### Shared keys
 
@@ -87,19 +140,19 @@ The lists are the exact key sets in `config.rs` (`*_KEYS`); a key outside the ro
 
 | `type` (status) | Keys read (besides `type`) |
 |---|---|
-| `vuv` ✅ (Ar₂ 🧪; DUV heritage ✅ with 🔶 parameters) | `preset`, `wavelength_nm`, `bandwidth_pm`, `sigma`, `rep_rate_hz`, `spectral_samples` |
+| `vuv` ✅ (🧪 Ar₂ preset; 🔶 heritage parameters) | `preset`, `wavelength_nm`, `bandwidth_pm`, `sigma`, `rep_rate_hz`, `spectral_samples` |
 | `lpa_fel` 🔶 | `wavelength_nm`, `sigma`, `bandwidth_pm`, `spectral_samples`, `electron_energy_mev`, `pulse_duration_fs`, `rep_rate_hz`, `pulse_energy_uj`, `period_mm`, `undulator_k`, `num_periods`, `peak_current_a`, `norm_emittance_um`, `electron_energy_spread_rel`, `beta_m` |
-| `lpp` ✅ (🔶 CE / étendue; Gd/Tb power 🧪) | `fuel`, `preset`, `drive_laser`, `wavelength_nm`, `bandwidth_pm`, `sigma`, `spectral_samples`, `drive_laser_power_w`, `conversion_efficiency`, `transport_efficiency`, `rep_rate_hz`, `source_diameter_um`, `source_diameter_mm`, `collection_solid_angle_sr`, `illuminator_etendue_mm2_sr` |
-| `synchrotron`, `beamline = "undulator"` ✅ (🔶 coherence) | `beamline`, `electron_energy_gev`, `period_mm`, `undulator_k`, `num_periods`, `harmonic`, `ring_current_ma`, `emittance_x_nm_rad`, `emittance_y_nm_rad`, `electron_energy_spread_rel`, `wavelength_nm`, `spectral_samples` |
+| `lpp` ✅ (🔶 CE defaults, étendue; 🧪 Gd/Tb power) | `fuel`, `preset`, `drive_laser`, `wavelength_nm`, `bandwidth_pm`, `sigma`, `spectral_samples`, `drive_laser_power_w`, `conversion_efficiency`, `transport_efficiency`, `rep_rate_hz`, `source_diameter_um`, `source_diameter_mm`, `collection_solid_angle_sr`, `illuminator_etendue_mm2_sr` |
+| `synchrotron`, `beamline = "undulator"` ✅ (🔶 coherence bound) | `beamline`, `electron_energy_gev`, `period_mm`, `undulator_k`, `num_periods`, `harmonic`, `ring_current_ma`, `emittance_x_nm_rad`, `emittance_y_nm_rad`, `electron_energy_spread_rel`, `wavelength_nm`, `spectral_samples` |
 | `synchrotron`, `beamline = "bending_magnet"` ✅ | `beamline`, `electron_energy_gev`, `field_t`, `ring_current_ma`, `wavelength_nm`, `bandwidth_pm`, `spectral_samples` |
-| `hhg` ✅/🔶 | `gas`, `driver_wavelength_nm`, `driver_intensity_w_cm2`, `harmonic`, `monochromator_bandwidth_pm`, `full_comb`, `comb_passband_nm`, `pulse_energy_nj`, `rep_rate_hz`, `pulse_duration_fs`, `driver_average_power_w`, `conversion_efficiency`, `wavelength_nm`, `spectral_samples` |
-| `xfel` ✅ (CW-SC / ERL 🧪) | `xfel_preset`, `preset`, `mode`, `pierce_parameter`, `rel_bandwidth`, `wavelength_nm`, `pulse_energy_uj`, `pulse_duration_fs`, `rep_rate_hz`, `electron_energy_mev`, `period_mm`, `undulator_length_m`, `peak_current_a`, `norm_emittance_um`, `electron_energy_spread_rel`, `beta_m`, `spectral_samples` |
+| `hhg` ✅ (🔶 harmonic intensities) | `gas`, `driver_wavelength_nm`, `driver_intensity_w_cm2`, `harmonic`, `monochromator_bandwidth_pm`, `full_comb`, `comb_passband_nm`, `pulse_energy_nj`, `rep_rate_hz`, `pulse_duration_fs`, `driver_average_power_w`, `conversion_efficiency`, `wavelength_nm`, `spectral_samples` |
+| `xfel` ✅ (🧪 CW-SC and ERL presets) | `xfel_preset`, `preset`, `mode`, `pierce_parameter`, `rel_bandwidth`, `wavelength_nm`, `pulse_energy_uj`, `pulse_duration_fs`, `rep_rate_hz`, `electron_energy_mev`, `period_mm`, `undulator_length_m`, `peak_current_a`, `norm_emittance_um`, `electron_energy_spread_rel`, `beta_m`, `spectral_samples` |
 | `ics` 🧪 | `wavelength_nm`, `laser_wavelength_nm`, `laser_a0`, `electron_energy_mev`, `collection_half_angle_mrad`, `electron_energy_spread_rel`, `pulse_energy_nj`, `rep_rate_hz`, `bunch_charge_pc`, `laser_pulse_energy_mj`, `electron_spot_um`, `laser_spot_um`, `spectral_samples` |
 | `ssmb` 🧪 | `ring_energy_mev`, `modulation_wavelength_nm`, `wavelength_nm`, `average_power_w`, `average_current_a`, `peak_current_a`, `bunching_factor`, `radiator_periods`, `radiator_k`, `spectral_samples` |
 | `entangled` 🧪 | `wavelength_nm`, `num_photons`, `fidelity`, `pair_rate_hz`, `spectral_samples` |
-| `xray_tube` 🔶/✅ | `anode`, `kvp`, `current_ma`, `be_window_um`, `wavelength_nm`, `spectral_samples` |
+| `xray_tube` 🔶 (✅ lines, edges, Duane–Hunt, Be window) | `anode`, `kvp`, `current_ma`, `be_window_um`, `wavelength_nm`, `spectral_samples` |
 | `dpp` 🔶 | `fuel`, `sigma`, `wavelength_nm`, `bandwidth_pm`, `spectral_samples`, `electrical_power_w`, `conversion_efficiency`, `source_diameter_mm`, `source_diameter_um`, `source_length_mm`, `collection_solid_angle_sr`, `collector_efficiency`, `illuminator_etendue_mm2_sr`, `rep_rate_hz` |
-| `sxrl` ✅/🔶 | `scheme`, `rel_linewidth`, `rel_bandwidth`, `pulse_energy_uj`, `rep_rate_hz`, `pulse_duration_ps`, `wavelength_nm`, `spectral_samples` |
+| `sxrl` ✅ (🔶 assumed splits, no gain) | `scheme`, `rel_linewidth`, `rel_bandwidth`, `pulse_energy_uj`, `rep_rate_hz`, `pulse_duration_ps`, `wavelength_nm`, `spectral_samples` |
 | `betatron` 🧪 | `electron_energy_mev`, `plasma_density_cm3`, `betatron_amplitude_um`, `interaction_length_mm`, `bunch_charge_pc`, `rep_rate_hz`, `pulse_duration_fs`, `wavelength_nm`, `spectral_samples` |
 | `smith_purcell` 🧪 | `wavelength_nm`, `grating_period_nm`, `electron_energy_kev`, `diffraction_order`, `observation_angle_deg`, `num_periods`, `beam_current_na`, `impact_height_nm`, `coupling_efficiency`, `collection_half_angle_mrad`, `electron_energy_spread_rel`, `spectral_samples` |
 
@@ -120,171 +173,6 @@ The lists are the exact key sets in `config.rs` (`*_KEYS`); a key outside the ro
 | XFEL seeded vs SASE | Seeded mode (`mode = "seeded"`, or the `fermi` preset) rejects `pierce_parameter`; SASE rejects `rel_bandwidth`. An explicit `pierce_parameter` disables the machine derivation, so the machine keys are then rejected. |
 | ICS collision keys | Any of `bunch_charge_pc`, `laser_pulse_energy_mj`, `electron_spot_um`, `laser_spot_um` derives the yield; `pulse_energy_nj` is then rejected. |
 | SSMB `bunching_factor` | With it the power is derived (∝ b²), so `average_power_w` is rejected. |
-
-### Family details
-
-Defaults below are the values the CLI builder uses when a key is absent; "preset" means the family constructor's reference value (print it with `highuvlith sources --family <type>`).
-
-#### `vuv` — excimer lasers and Hg lamps
-
-| Key | Default | Notes |
-|---|---|---|
-| `preset` | none (legacy explicit source) | `f2`, `ar2` (🧪), `arf`, `krf`, `hg_i` / `i_line`, `hg_h` / `h_line`, `hg_g` / `g_line`. Explicit `wavelength_nm` / `bandwidth_pm` / `rep_rate_hz` override the preset. Lamps are CW (no average power). |
-| `wavelength_nm`, `bandwidth_pm`, `rep_rate_hz` | 157.63 nm, 1.1 pm, 4000 Hz (no preset) | — |
-
-Page: [VUV excimer](./sources/vuv-excimer.md), [DUV heritage](./sources/duv-heritage.md).
-
-#### `lpa_fel` — laser-plasma-accelerator FEL
-
-| Key | Default | Units | Notes |
-|---|---|---|---|
-| `wavelength_nm` | 25.0 | nm | With an undulator: must match the derived resonance within 5 %. |
-| `period_mm`, `undulator_k` | — | mm, — | Give both or neither. |
-| `num_periods` | 200 | — | Needs the undulator. |
-| `peak_current_a`, `norm_emittance_um`, `electron_energy_spread_rel`, `beta_m` | 1000, 0.5, 0.01, 1.0 | A, µm, —, m | Beam; derive ρ, gain length and the bandwidth 2ρλ. |
-| `bandwidth_pm` | derived 2ρλ (with undulator) / preset | pm | An explicit value overrides the derived SASE bandwidth. |
-| `electron_energy_mev`, `pulse_duration_fs`, `rep_rate_hz`, `pulse_energy_uj` | preset | MeV, fs, Hz, µJ | The 25 nm / 1 kHz preset is a design projection. |
-
-Page: [LPA-FEL](./sources/lpa-fel.md).
-
-#### `lpp` — laser-produced plasma
-
-| Key | Default | Units | Notes |
-|---|---|---|---|
-| `fuel` | `"sn"` | — | `sn` (13.5 nm), `gd` (6.7 nm), `tb` (6.5 nm). |
-| `preset` | `"nxe3400b"` | — | Sn only: `nxe3400b` (250 W at IF) or `nxe3800e` (500 W at IF; the 43 kW drive power behind it is an assumed scaling). `nxe3800e` with a non-Sn fuel is rejected. |
-| `drive_laser` | CO₂ (Sn) | — | `co2`, `solid_state_1um` (`1um`, `nd_yag`), `thulium_2um` (`2um`, `thulium`); for Sn it also sets the default CE. |
-| `drive_laser_power_w`, `conversion_efficiency`, `transport_efficiency`, `rep_rate_hz` | preset | W, —, —, Hz | Power at IF = drive × CE × transport (2π → IF) × étendue fraction. |
-| `source_diameter_um` / `_mm`, `collection_solid_angle_sr`, `illuminator_etendue_mm2_sr` | NXE-like geometry when any is given | µm / mm, sr, mm² sr | Turn on the étendue check; each must be > 0. |
-
-Page: [LPP](./sources/lpp.md).
-
-#### `synchrotron`
-
-| Key | Default (undulator / bending magnet) | Units | Notes |
-|---|---|---|---|
-| `beamline` | `"undulator"` | — | or `"bending_magnet"`. |
-| `electron_energy_gev` | 0.538 / 2.5 | GeV | |
-| `period_mm`, `undulator_k`, `num_periods`, `harmonic` | 20, 1.0, 100, 1 | mm, —, —, — | Undulator; wavelength derived from the resonance condition (odd harmonics). |
-| `ring_current_ma` | preset / 200 | mA | Absolute flux and power. |
-| `emittance_x_nm_rad`, `emittance_y_nm_rad`, `electron_energy_spread_rel` | 10, 0.1, 5e-4 (when the beam is given) | nm rad, nm rad, — | Derive the transverse coherent fraction and the pupil fill; must be ≥ 0. |
-| `field_t` | 1.5 | T | Bending magnet. |
-| `wavelength_nm`, `bandwidth_pm` | 0.2 nm, 0.2 pm | | Bending magnet: the monochromator selection. |
-
-Page: [Synchrotron](./sources/synchrotron.md).
-
-#### `hhg` — high-harmonic generation
-
-| Key | Default | Units | Notes |
-|---|---|---|---|
-| `gas` | `"neon"` | — | `helium`/`he`, `neon`/`ne`, `argon`/`ar`, `krypton`/`kr`, `xenon`/`xe`. |
-| `driver_wavelength_nm`, `driver_intensity_w_cm2` | 800, 4e14 | nm, W/cm² | |
-| `harmonic` | 59 (1 with `full_comb`) | — | Odd, inside the cutoff. |
-| `monochromator_bandwidth_pm` | 15 | pm | |
-| `full_comb`, `comb_passband_nm` | false, none | —, `[min_nm, max_nm]` | Image the whole comb, optionally filtered. |
-| `driver_average_power_w` | constructor default | W | Derives the harmonic power (driver × efficiency); > 0. |
-| `conversion_efficiency` | gas/λ estimate | — | (0, 1]. |
-| `pulse_energy_nj`, `rep_rate_hz`, `pulse_duration_fs` | preset | nJ, Hz, fs | A pulse energy alone (no driver power) is used as stored. |
-
-Page: [HHG](./sources/hhg.md).
-
-#### `xfel`
-
-| Key | Default | Units | Notes |
-|---|---|---|---|
-| `xfel_preset` (`preset`) | `"flash"` | — | `flash`, `fermi` (`fermi_seeded`), `cw_sc` (🧪), `erl` (🧪). |
-| `mode` | preset's | — | `sase` or `seeded` (`self_seeded`). |
-| `pierce_parameter` | derived from the machine (3e-3 if `mode = "sase"` is forced without a machine) | — | Explicit value disables the machine derivation. |
-| `rel_bandwidth` | 5e-5 | — | Seeded mode only. |
-| `electron_energy_mev`, `period_mm`, `undulator_length_m`, `peak_current_a`, `norm_emittance_um`, `electron_energy_spread_rel`, `beta_m` | preset machine | MeV, mm, m, A, µm, —, m | Re-derive ρ, gain length, saturation power — and, unless `pulse_energy_uj` is given, the pulse energy (preset's pulse-energy-to-saturation ratio kept). A `wavelength_nm` below the K = 0 resonance is rejected. |
-| `pulse_energy_uj`, `pulse_duration_fs`, `rep_rate_hz` | preset (pulse energy rescaled by machine / `wavelength_nm` / `pulse_duration_fs` overrides) | µJ, fs, Hz | An explicit `pulse_energy_uj` is kept as given. |
-
-Page: [XFEL](./sources/xfel.md).
-
-#### `ics` — inverse Compton scattering
-
-| Key | Default | Units | Notes |
-|---|---|---|---|
-| `wavelength_nm` | 13.5 | nm | Target; the electron energy is derived from the Compton condition. |
-| `laser_wavelength_nm`, `laser_a0` | 1030, 0.1 | nm, — | |
-| `electron_energy_mev` | derived | MeV | If given, must satisfy the Compton condition within 5 %. |
-| `bunch_charge_pc`, `laser_pulse_energy_mj`, `electron_spot_um`, `laser_spot_um` | high-average-power design point | pC, mJ, µm, µm | Any of them derives the yield (Thomson luminosity × collection). |
-| `collection_half_angle_mrad` | the 2 % Mo/Si band (collision mode) | mrad | |
-| `electron_energy_spread_rel`, `pulse_energy_nj`, `rep_rate_hz` | preset | —, nJ, Hz | |
-
-Page: [Inverse Compton](./sources/inverse-compton.md).
-
-#### `ssmb` — steady-state microbunching
-
-| Key | Default | Units | Notes |
-|---|---|---|---|
-| `ring_energy_mev`, `modulation_wavelength_nm`, `wavelength_nm`, `average_power_w` | 400, 1053, 13.5, 1000 | MeV, nm, nm, W | The radiated wavelength must be an integer harmonic of the modulation. |
-| `average_current_a`, `peak_current_a`, `bunching_factor`, `radiator_periods`, `radiator_k` | 1.0, = average, (required b), 100, 1.6 | A, A, —, —, — | Any of them derives the coherent power; without `bunching_factor` the b that `average_power_w` needs is reported. |
-
-Page: [SSMB](./sources/ssmb.md).
-
-#### `entangled` — N00N source
-
-| Key | Default | Units | Notes |
-|---|---|---|---|
-| `wavelength_nm`, `num_photons`, `fidelity` | 157.63, 2, 1.0 | nm, —, — | |
-| `pair_rate_hz` | preset | Hz | ≥ 0. |
-
-Page: [Entangled photon](./sources/entangled-photon.md).
-
-#### `xray_tube`
-
-| Key | Default | Units | Notes |
-|---|---|---|---|
-| `anode` | `"w"` | — | `w` (60 kV / 30 mA), `mo` (50 / 40), `cu` (40 / 40), `rh` (50 / 40). |
-| `kvp` | anode preset | kV | = maximum photon energy (keV). |
-| `current_ma` (`tube_current_ma`) | anode preset | mA | |
-| `be_window_um` | preset | µm | |
-| `wavelength_nm` | derived (photon-weighted mean) | nm | Cross-check, 5 %. |
-
-Absolute flux at the mask for LIGA: `[deep] source_distance_m` (see [`[deep]` LIGA](#mode-liga)). Page: [X-ray tube](./sources/xray-tube.md).
-
-#### `dpp` — discharge-produced plasma
-
-| Key | Default | Units | Notes |
-|---|---|---|---|
-| `fuel` | `"sn"` | — | `sn` (laser-assisted) or `xe`. |
-| `electrical_power_w`, `conversion_efficiency`, `collector_efficiency`, `rep_rate_hz` | preset | W, —, —, Hz | Power at IF = P_elec × CE (2π) × collector × étendue cut. |
-| `source_diameter_mm` (`_um`), `source_length_mm`, `collection_solid_angle_sr`, `illuminator_etendue_mm2_sr` | preset | mm, mm, sr, mm² sr | |
-
-Page: [DPP](./sources/dpp.md).
-
-#### `sxrl` — plasma soft-X-ray laser
-
-| Key | Default | Units | Notes |
-|---|---|---|---|
-| `scheme` | `"ar_46nm9"` | — | `ar_46nm9`, `ag_13nm9`, `cd_13nm2`, `mo_18nm9` (fixed lasing lines). |
-| `rel_linewidth` (`rel_bandwidth`) | preset | — | Δλ/λ. |
-| `pulse_energy_uj`, `rep_rate_hz`, `pulse_duration_ps` | preset | µJ, Hz, ps | |
-| `wavelength_nm` | the line | nm | Must be within 1 % of the scheme's line. |
-
-Page: [Soft-X-ray laser](./sources/soft-xray-laser.md).
-
-#### `betatron` — laser-wakefield betatron X-rays
-
-| Key | Default | Units | Notes |
-|---|---|---|---|
-| `electron_energy_mev`, `plasma_density_cm3`, `betatron_amplitude_um`, `interaction_length_mm`, `bunch_charge_pc`, `rep_rate_hz` | 200, 1e19, 1.0, 3.0, 50, 10 | MeV, cm⁻³, µm, mm, pC, Hz | Derive the critical energy, photon number and wavelength. |
-| `pulse_duration_fs` | preset | fs | |
-| `wavelength_nm` | derived (hc / mean photon energy) | nm | Cross-check, 5 %. |
-
-Page: [Betatron](./sources/betatron.md).
-
-#### `smith_purcell`
-
-| Key | Default | Units | Notes |
-|---|---|---|---|
-| `electron_energy_kev`, `diffraction_order`, `observation_angle_deg` | 30, 1, 90 | keV, —, deg | |
-| `grating_period_nm` | derived for `wavelength_nm` | nm | Given: the wavelength $\lambda = (a/m)(1/\beta - \cos\theta)$ is derived and cross-checked (5 %). |
-| `wavelength_nm` | 13.5 (without a period) | nm | |
-| `num_periods`, `beam_current_na`, `impact_height_nm`, `coupling_efficiency`, `collection_half_angle_mrad`, `electron_energy_spread_rel` | preset | —, nA, nm, —, mrad, — | Power is a theoretical projection (EUV emission undemonstrated). |
-
-Page: [Smith–Purcell](./sources/smith-purcell.md).
 
 ### Presets at a glance
 
@@ -313,6 +201,8 @@ Optional pupil fill that **overrides** the source family's own fill (e.g. the ne
 | `dipole` | `sigma_center`, `sigma_radius`, `orientation_deg` | poles at `orientation_deg` and `orientation_deg` + 180° (default 0 = poles on x); `sigma_radius` ≤ `sigma_center`, `sigma_center + sigma_radius` ≤ 1 |
 | `quadrupole` | `sigma_center`, `sigma_radius`, `opening_angle_deg` | same pole checks; opening angle in (0, 90], default 90 |
 
+Python: `SourceConfig.with_illumination(shape, *params)` with the same shape names and parameters in the same order (`with_illumination("dipole", sigma_center, sigma_radius, orientation_deg)`); `[source] sigma` corresponds to the `sigma` argument of the family factories (`f2_laser(sigma=0.7)`). Grade: illumination pupil fills ✅ Implemented ([matrix](capability-matrix.md#core-imaging)).
+
 ## `[optics]`
 
 Selected by `type` (default `"refractive"`). Keys of another type are rejected naming the owner.
@@ -334,7 +224,17 @@ Selected by `type` (default `"refractive"`). Keys of another type are rejected n
 
 Validation: `flare_fraction` and `central_obscuration` in [0, 1); `mirror_reflectivity`, `transmission` in [0, 1]; dry NA in (0, 1); with `immersion_index` (≥ 1) NA ≤ 0.95 × index; Zernike indices 1–37 (Fringe); zone plate: `na` **or** `outer_zone_width_nm`, not both. `mirror_reflectivity` and `transmission` matter only for `[imaging] normalization = "absolute"`.
 
-Status: refractive ✅, immersion ✅, Schwarzschild ✅, zone plate ✅, EUV projection 🔶 (isotropic wafer-side pupil; the High-NA 0.2·NA obscuration is an assumption; anamorphic magnification and mask 3D not modeled). See [Optics](./optics.md).
+Grades are copied from the [capability matrix](capability-matrix.md#optical-systems); the physics is on [Optics](./optics.md).
+
+<!-- huv-table: stack -->
+| `type` (preset) | Grade (matrix) | Python |
+|---|---|---|
+| `refractive` | ✅ Implemented | `OpticsConfig(numerical_aperture=0.75, reduction=4.0, flare_fraction=0.02)` — `na` is `numerical_aperture`; `zernike` is `add_aberration(fringe_index, coefficient_waves)` |
+| `refractive`, `preset = "immersion_193i"` | ✅ Implemented | `OpticsConfig.immersion_193i()` (`immersion_index` 1.437, NA 1.35) |
+| `schwarzschild` | ✅ Implemented | `OpticsConfig.schwarzschild(...)` |
+| `euv_projection` (`nxe`, `high_na`) | 🔶 Simplified — isotropic wafer-side pupil; the High-NA 0.2·NA obscuration is an assumption; anamorphic magnification and mask 3D not modeled | `OpticsConfig.euv_nxe()`, `OpticsConfig.euv_high_na()` |
+| `zone_plate` | ✅ Implemented | `OpticsConfig.zone_plate(...)` |
+| `[optics.multilayer_pupil]` | 🔶 Simplified — user-supplied angle maps | `OpticsConfig.with_multilayer_pupil(...)` |
 
 The opt-in angle-dependent **multilayer pupil** (🔶) is the `[optics.multilayer_pupil]` sub-table (Schwarzschild and EUV projection only; same parameters as Python `OpticsConfig.with_multilayer_pupil`):
 
@@ -373,7 +273,14 @@ Selected by `pattern` (default `"line_space"`).
 
 `[[mask.features]]` entries are tagged by `type` (same names as the Python `MaskConfig.from_features` dicts): `rect` (`x`, `y`, `w`, `h`), `polygon` (`vertices = [[x, y], ...]`, even-odd fill), `gray_rect` (`x`, `y`, `w`, `h`, `transmittance` in [0, 1]), `line_space` (`cd`, `pitch`, optional `orientation`, `offset`), `rect_array` (`w`, `h`, `pitch_x`, `pitch_y`, optional `offset_x`, `offset_y`).
 
-Status: thin Kirchhoff mask 🔶 (binary + attenuated PSM), exact analytic spectra ✅ — see [Masks and metrics](./masks-and-metrics.md).
+Python: `MaskConfig.line_space(...)`, `MaskConfig.contact_hole(...)` and `MaskConfig.from_features(features, dark_field=False, mask_type="binary", transmission=0.06, phase_deg=180.0)` take the same names as the keys above. Grades copied from the [capability matrix](capability-matrix.md#masks-metrics-and-process-window); the model is on [Masks](./masks.md) and the metrics on [Metrics and process window](./metrics-and-process-window.md).
+
+<!-- huv-table: key -->
+| Capability | Grade (matrix) |
+|---|---|
+| Mask model and types (binary, attenuated PSM) | 🔶 Simplified |
+| Exact thin-mask spectrum | ✅ Implemented |
+| Antialiased rasterization | ✅ Implemented |
 
 ## `[grid]`
 
@@ -382,6 +289,8 @@ Status: thin Kirchhoff mask 🔶 (binary + attenuated PSM), exact analytic spect
 | `size` | integer | 256 | pixels | power of two |
 | `pixel_nm` | float | 1.0 | nm | > 0 |
 | `commensurate` | bool | true | — | see below |
+
+Python: `GridConfig(size=512, pixel_nm=1.0)` (the Python default size is 512, the TOML default 256) and `GridConfig.commensurate(...)` / `MaskConfig.commensurate_grid(...)` for the adjustment below; `MaskConfig.check_commensurate(grid)` raises instead of adjusting. Grade: commensurate periodic grids ✅ Implemented ([matrix](capability-matrix.md#masks-metrics-and-process-window)).
 
 The FFT makes the field periodic, so an incommensurate field images a truncated grating. With `commensurate = true` (default) the pixel is adjusted so the field holds a whole number of mask periods, never coarser unless one period does not fit, and a note is printed:
 
@@ -405,7 +314,7 @@ Constant-threshold resist (🔶): at dose $d$ the printed contour is the intensi
 I_{\mathrm{print}}(d) = \mathrm{threshold} \cdot \frac{d_{\mathrm{nominal}}}{d}
 ```
 
-which is how `simulate --dose` and the `sweep` dose axis move the edge.
+which is how `simulate --dose` and the `sweep` dose axis move the edge. Python: `ProcessConfig(dose_mj_cm2=30.0, focus_nm=0.0, development_time_s=60.0)`; the threshold is the `threshold` keyword of `simulate_line_space` and `process_window`. Grade: process window / ED analysis 🔶 Simplified ([matrix](capability-matrix.md#masks-metrics-and-process-window)).
 
 ## `[imaging]`
 
@@ -419,9 +328,19 @@ which is how `simulate --dose` and the `sweep` dose axis move the edge.
 | `normalization` | string | `"clear_field"` | `clear_field` (clear mask = 1) or `absolute` (relative to the incident illumination; includes mirror reflectivity / transmission) |
 | `vector` | table | absent (scalar) | `[imaging.vector]`, below |
 
+Python: the same settings are the keywords of `SimulationEngine(source, optics, mask, resist=None, grid=None, max_kernels=30, defocus_model="exact", kernel_energy_fraction=1.0, source_points_per_axis=None, vector=None, normalization="clear_field")` — note the engine's Python default of 30 kernels against the CLI's 20; `spectrum` selects `compute_aerial_image`, `compute_polychromatic` or `compute_multiwavelength`. Grades copied from the [capability matrix](capability-matrix.md#core-imaging):
+
+<!-- huv-table: key -->
+| Setting | Grade (matrix) |
+|---|---|
+| `defocus_model = "exact"` | ✅ Implemented (defocus / through-focus imaging); `kernel_phase` is the 🔶 legacy approximation |
+| `spectrum = "per_wavelength"` | ✅ Implemented (broadband imaging) |
+| `spectrum = "narrow_band"` | 🔶 Simplified (narrow-band polychromatic) |
+| `[imaging.vector]` | ✅ Implemented (vector high-NA imaging) |
+
 ### `[imaging.vector]`
 
-Present (even empty) = vector (polarized) imaging ✅; absent = scalar. Keys (strict):
+Present (even empty) = vector (polarized) imaging; absent = scalar. Python: `vector=VectorSettings(polarization=..., ...)`. Keys (strict):
 
 | Key | Default | Meaning |
 |---|---|---|
@@ -441,19 +360,20 @@ See [Vector imaging](./vector-imaging.md).
 
 ## `[deep]`
 
-Selected by `mode` (required): `liga`, `grayscale`, `interference`, `volumetric`, `talbot`. Shared tables read per mode:
+Selected by `mode` (required): `liga`, `grayscale`, `interference`, `volumetric`, `talbot`. The shared tables each mode reads are in the [subcommand table](#which-subcommand-reads-which-table) above; the grades are copied from the [capability matrix](capability-matrix.md#deep-layer-and-non-projection-processes) and the Python entry points take the same key names as keywords.
 
-| Mode | Shared tables read |
-|---|---|
-| `liga` | `[source]` `[mask]` `[grid]` (only `[mask]` `[grid]` with `flux_density` or `critical_energy_kev`) |
-| `grayscale` | `[grid]` |
-| `interference` | `[source]` `[grid]` |
-| `volumetric` | `[source]` `[optics]` `[mask]` `[grid]` `[process]` `[imaging]` `[illumination]` |
-| `talbot` | `[source]` `[mask]` `[grid]` |
+<!-- huv-table: stack -->
+| Mode | Grade (matrix) | Python | Page |
+|---|---|---|---|
+| `liga` | depth dose and exposure time ✅ Implemented; proximity diffraction ✅ Implemented (🔶 thin-screen absorber) | `simulate_liga(...)` | [LIGA](./processes/liga-deep-xray.md) |
+| `grayscale` | 🔶 Simplified | `simulate_grayscale(...)` | [Grayscale](./processes/grayscale.md) |
+| `interference` | ✅ Implemented (🔶 two-photon, scalar absorption) | `simulate_interference(...)` | [Interference / volumetric](./processes/interference-volumetric.md) |
+| `volumetric` | exposure 🔶 Simplified; fast-marching development ✅ Implemented; level set ✅ Implemented (🔶 first-order front) | `simulate_volumetric(...)` | [Volumetric exposure](./processes/volumetric-exposure.md) |
+| `talbot` | 🔶 Simplified (Talbot / DTL / ATL and two-grating EUV-IL) | `simulate_talbot(...)`, `simulate_euv_il(...)` | [Talbot](./processes/talbot.md) |
 
 ### mode: liga
 
-Deep-X-ray shadow printing (✅ depth dose and exposure time; ✅/🔶 Fresnel proximity). See [LIGA](./processes/liga-deep-xray.md).
+Deep-X-ray shadow printing: the spectral depth dose with absolute exposure time, and scalar Fresnel proximity diffraction of the absorber field (grades in the mode table above). See [LIGA](./processes/liga-deep-xray.md).
 
 | Key | Default | Units | Notes |
 |---|---|---|---|
@@ -480,7 +400,7 @@ Spectrum precedence: `flux_density` → `critical_energy_kev` → `[source]` (be
 
 ### mode: grayscale
 
-2.5D height map (🔶). See [Grayscale](./processes/grayscale.md).
+2.5D height map from a log-linear contrast curve (grade in the mode table above). See [Grayscale](./processes/grayscale.md).
 
 | Key | Default | Units | Notes |
 |---|---|---|---|
@@ -495,7 +415,7 @@ Keys of another `target` are rejected.
 
 ### mode: interference
 
-Multi-beam holographic recording (✅/🔶). See [Interference / volumetric](./processes/interference-volumetric.md).
+Multi-beam holographic recording (grade in the mode table above). See [Interference / volumetric](./processes/interference-volumetric.md).
 
 | Key | Default | Units |
 |---|---|---|
@@ -508,7 +428,7 @@ Multi-beam holographic recording (✅/🔶). See [Interference / volumetric](./p
 
 ### mode: volumetric
 
-z-resolved Dill exposure, bake and development (🔶 exposure; ✅ FMM; ✅/🔶 level set). See [Volumetric exposure](./processes/volumetric-exposure.md) and [Resist models](./processes/resist-models.md).
+z-resolved Dill exposure, bake and development (grades in the mode table above). See [Volumetric exposure](./processes/volumetric-exposure.md) and [Resist models](./processes/resist-models.md).
 
 | Key | Default | Units | Notes |
 |---|---|---|---|
@@ -524,21 +444,31 @@ z-resolved Dill exposure, bake and development (🔶 exposure; ✅ FMM; ✅/🔶
 | `lateral_boundary` | `"periodic"` | — | or `reflecting`; needs a bake or development |
 | `depletion` | `"none"` | — | `exponential` (`depletion_time_constant_s`), `loading` (`loading_capacity_nm`), `local_loading` (`loading_capacity_nm`, `loading_length_nm`); `level_set` only |
 
-**Choosing the dose.** No fixed volumetric dose suits every config: the window depends on the pattern, the optics, the stack and the development time. The 30 mJ/cm² fallback is the nominal dose of the threshold resist and Python's default; since the exposing intensity in the resist was corrected for its index (×1.65 for the default stack, 2026-10-01) it over-develops the default stack. Measured with the defaults (F2 157.63 nm, NA 0.75, 150/300 nm L/S, 150 nm resist on Si, Gaussian bake 30 nm, `develop = "fmm"` or `"level_set"` for 60 s, 64 × 9.375 nm grid, `nz` = 16; `fmm` and `level_set` give the same CDs at these doses):
+**Choosing the dose.** No fixed volumetric dose suits every config: the window depends on the pattern, the optics, the stack and the development time. The 30 mJ/cm² fallback is the nominal dose of the threshold resist and Python's default; since the exposing intensity in the resist was corrected for its index (×1.65 for the default stack, 2026-10-01) it over-develops the default stack. The figure and the table are computed from the same `simulate_volumetric` runs at the documented defaults (F₂ 157.63 nm, NA 0.75, 150/300 nm L/S, 150 nm resist on Si, Gaussian bake 30 nm, `develop = "fmm"` or `"level_set"` for 60 s, 64 × 9.375 nm grid, `nz` = 16; `fmm` and `level_set` give the same CDs at these doses):
 
+<figure markdown="span">
+
+![Developed resist-line width at mid-height and at the substrate, and the mean remaining resist height, against dose for the default volumetric stack; the spaces clear just above the open-frame dose-to-clear, the line then narrows with dose and the 30 mJ/cm2 fallback leaves under 10 nm of resist.](assets/images/sim/config-volumetric-dose-window-light.png#gh-light-mode-only)
+![Developed resist-line width at mid-height and at the substrate, and the mean remaining resist height, against dose for the default volumetric stack; the spaces clear just above the open-frame dose-to-clear, the line then narrows with dose and the 30 mJ/cm2 fallback leaves under 10 nm of resist.](assets/images/sim/config-volumetric-dose-window-dark.png#gh-dark-mode-only)
+
+<figcaption><strong>Why no single volumetric dose fits.</strong> The documented default stack (F<sub>2</sub> 157.63 nm, NA 0.75, 150/300 nm lines, 150 nm resist on Si, Gaussian bake 30 nm, fast-marching development for 60 s, 64 × 9.375 nm grid, nz 16) against dose: the spaces clear only above the open-frame dose-to-clear, the resist line then narrows with dose and the 30 mJ/cm² fallback leaves under 10 nm of resist; the dots are the rows of the dose table. <em>Model: volumetric exposure 🔶 · post-exposure bake ✅ · 3D development (fast marching) ✅; illustrative low-contrast resist; computed, not transcribed.</em></figcaption>
+</figure>
+
+<!-- dose-table:start -->
 | Dose (mJ/cm²) | Developed CD mid / bottom (nm) | Mean remaining height (nm) |
 |---|---|---|
-| 6 | n/a / n/a (spaces do not clear) | 130–131 |
-| 10 | 169 / 188 | 78 |
+| 6 | n/a / n/a (spaces do not clear) | 130 |
+| 10 | 169 / 188 | 77 |
 | 12 | 131 / 131 | 61 |
-| 15 | 113 / 94 | 44 |
-| 30 (fallback) | 56 / 19 | 8.8 |
+| 15 | 112 / 94 | 44 |
+| 30 (fallback) | 56 / 19 | 9 |
+<!-- dose-table:end -->
 
-The open-frame dose-to-clear of this stack is 6.7 mJ/cm² at 60 s (9.0 at 30 s). After `fmm` or `level_set` development the run prints `note: under-developed: …` when nothing clears to the substrate, and `note: over-developed? only N % of the resist volume remains …` when less than a quarter of the resist remains (legitimate only for mostly clear patterns). Both notes name the dose and where it came from; the JSON carries them in `developed.notes`, with `max_remaining_height_nm` and `min_remaining_height_nm`, and Python `simulate_volumetric` returns the same checks in `.notes`. The GUI Volume tab starts from its own tuned set (15 mJ/cm², σxy 10 / σz 20 nm bake, 30 s), see [GUI](./gui.md).
+The open-frame dose-to-clear of this stack with the table's settings is about 6.6 mJ/cm² at 60 s and 8.8 at 30 s (6.7 and 8.9 at `nz` = 64; bisected on an empty bright field). After `fmm` or `level_set` development the run prints `note: under-developed: …` when nothing clears to the substrate, and `note: over-developed? only N % of the resist volume remains …` when less than a quarter of the resist remains (legitimate only for mostly clear patterns). Both notes name the dose and where it came from; the JSON carries them in `developed.notes`, with `max_remaining_height_nm` and `min_remaining_height_nm`, and Python `simulate_volumetric` returns the same checks in `.notes`. The GUI Volume tab starts from its own tuned set; the three front ends' defaults are stated once, side by side, under [Defaults by front end](reference/index.md#defaults-by-front-end).
 
 ### mode: talbot
 
-Talbot / DTL / ATL / two-grating EUV-IL (🔶). See [Talbot](./processes/talbot.md).
+Talbot / DTL / ATL / two-grating EUV-IL (grade in the mode table above). See [Talbot](./processes/talbot.md).
 
 | Key | Default | Units | Sub-modes |
 |---|---|---|---|
@@ -556,7 +486,15 @@ Talbot / DTL / ATL / two-grating EUV-IL (🔶). See [Talbot](./processes/talbot.
 
 ## `[optimize]`
 
-Selected by `method` (required): `ilt` ✅, `opc` ✅, `sraf` 🔶, `sadp` / `saqp` 🔶 (geometric). Key names follow the Python keyword arguments. See [Research modules](./research-modules.md).
+Selected by `method` (required). Key names follow the Python keyword arguments; grades are copied from the [capability matrix](capability-matrix.md#optimization-and-patterning) and the models are on [Research modules](./research-modules.md).
+
+<!-- huv-table: stack -->
+| `method` | Grade (matrix) | Python |
+|---|---|---|
+| `ilt` | ✅ Implemented | `optimize_ilt(...)` |
+| `opc` | ✅ Implemented | `fragment_opc(...)` |
+| `sraf` | 🔶 Simplified | `insert_srafs(...)` |
+| `sadp`, `saqp` | 🔶 Simplified (geometric) | `sadp(...)`, `saqp(...)` |
 
 **Print threshold** (`ilt` with `cost = "resist"`, `opc`, `sraf`): `threshold`, or `dose_to_size_cd_nm` (anchors the threshold so a line on the horizontal cut at (`cut_x_nm`, `cut_y_nm`), default (0, 0), prints this wide in focus), else `[process] threshold`. `threshold` and `dose_to_size_cd_nm` together are an error; the cut keys need `dose_to_size_cd_nm`. Imaging methods use the centre wavelength only (`[imaging] spectrum` must be `monochromatic`).
 
@@ -582,7 +520,7 @@ Selected by `method` (required): `ilt` ✅, `opc` ✅, `sraf` 🔶, `sadp` / `sa
 
 ## `[throughput]`
 
-Optional overrides of the dose-limited scanner model (🔶; preset scanner numbers are illustrative assumptions, not vendor data).
+Optional overrides of the dose-limited scanner model — 🔶 Simplified in the [capability matrix](capability-matrix.md#light-sources); preset scanner numbers are illustrative assumptions, not vendor data. Python: `wafer_throughput(...)` applies the same bands and presets.
 
 | Key | Default | Units | Notes |
 |---|---|---|---|
@@ -620,3 +558,5 @@ Every file in [`examples/`](https://github.com/sonoransun/highuvlith/tree/main/e
 | [`optimize_ilt.toml`](../examples/optimize_ilt.toml), [`optimize_opc.toml`](../examples/optimize_opc.toml), [`optimize_sraf.toml`](../examples/optimize_sraf.toml), [`optimize_sadp.toml`](../examples/optimize_sadp.toml) | `optimize` | ILT, fragment OPC, SRAF, SADP |
 
 Any `simulate` config also works with `sweep` and `throughput`. For the commands and output formats see the [CLI reference](./cli.md).
+
+**Read next:** [CLI](cli.md) · [Python API](python-api.md) · [Reference](reference/index.md) · [matrix rows](capability-matrix.md#frontends-and-infrastructure)

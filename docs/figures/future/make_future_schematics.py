@@ -1,202 +1,74 @@
 #!/usr/bin/env python3
-"""SVG schematics for "The Future" section of the highuvlith site (docs/future/).
+"""SVG schematics for "The Future" section (docs/future/) — svgkit, standard library only.
 
-Run from the repository root (standard library only):
+Every drawing is an :class:`registry.AssetSpec` (``kind="schematic"`` or ``"strip"``),
+written as a light/dark pair into ``docs/assets/images/future/`` through
+``svgkit.write_pair`` with the site's tokens (ink, series, materials), ``<title>`` +
+``<desc>`` = the alt, no ``<a>``, no SMIL. Platform independent: the nightly regenerates
+and diffs them byte for byte.
 
-    python docs/figures/future/make_future_schematics.py
+* ``anamorphic-why``   — incident / reflected cones at an EUV mask for 0.33 NA · 4×, 0.55 NA · 4×
+  (overlap) and 0.55 NA · 8× in scan; half-angles ``asin(NA/M)`` are computed, every angle is
+  drawn ``ANGLE_GAIN`` × larger, the 6° chief-ray angle is illustrative.
+* ``ssmb-concept``     — the steady-state-microbunching storage ring.
+* ``erl-fel-loop``     — the energy-recovery-linac FEL loop.
+* ``ics-collision``    — inverse Compton scattering, head-on, before / after.
+* ``five-limits`` (N15, strip + narrow twin) — the five constraints of ``future/index.md``
+  as tiles with their equations as text; the page carries the link row under it.
+* ``field-size`` (N19) — 26 × 33 mm at 4×, the 26 × 16.5 mm anamorphic half field with a
+  stitching seam, the 6 × 12-inch mask restoring 26 × 33; press-reported wph; announced dates.
 
-Every figure is written twice into ``docs/assets/images/future/``: ``<name>-light.svg``
-and ``<name>-dark.svg`` (transparent background, ink chosen for Material's light and
-"slate" schemes); pages select one with the ``#only-light`` / ``#only-dark`` suffixes.
-
-These are schematics, not to scale. The only computed geometry is in
-``anamorphic-why``: the mask-side cone half-angle asin(NA / M) and its position around
-the chief-ray angle, drawn with every angle multiplied by ``ANGLE_GAIN`` (stated on
-the figure) so that degree-scale gaps are visible.
+    python docs/figures/future/make_future_schematics.py            # write every pair
+    python docs/figures/future/make_future_schematics.py --check    # the geometry asserts
+    python docs/figures/future/make_future_schematics.py five-limits field-size   # a subset
 """
 
 from __future__ import annotations
 
 import math
+import sys
 from pathlib import Path
 
-OUT = Path(__file__).resolve().parents[2] / "assets" / "images" / "future"
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
 
-FONT = "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif"
+import registry  # noqa: E402
+import svgkit as K  # noqa: E402
 
-# The site's content column is ~690 px wide, so a 960-unit-wide drawing is shown at ~0.72x.
-# All text sizes below are multiplied by FONT_SCALE to stay legible at that width.
-FONT_SCALE = 1.3
-
-THEMES = {
-    "light": {
-        "ink": "#1d1c1a",
-        "ink2": "#52514e",
-        "muted": "#6b6a66",
-        "line": "#52514e",
-        "faint": "#d9d8d2",
-        "panel": "#f5f4f0",
-        "ebeam": "#2a78d6",
-        "ebeam_fill": "#dbe9fa",
-        "laser": "#d4521f",
-        "laser_fill": "#fbe0d3",
-        "euv": "#0e7490",
-        "euv_fill": "#cdeef5",
-        "duv": "#5b36c9",
-        "duv_fill": "#e6dffb",
-        "bad": "#c62828",
-        "bad_fill": "#f8d7d7",
-        "magnet_a": "#8a8780",
-        "magnet_b": "#d9d8d2",
-        "rf_fill": "#e3eefb",
-        "rf": "#2a78d6",
-        "mask_fill": "#c9c7bf",
-        "mask": "#52514e",
-    },
-    "dark": {
-        "ink": "#f1f0ee",
-        "ink2": "#c3c2b7",
-        "muted": "#a3a29b",
-        "line": "#c3c2b7",
-        "faint": "#4a4852",
-        "panel": "#2a2834",
-        "ebeam": "#6aa6ee",
-        "ebeam_fill": "#1f3552",
-        "laser": "#f08a5d",
-        "laser_fill": "#5a2a16",
-        "euv": "#22d3ee",
-        "euv_fill": "#0f3d48",
-        "duv": "#b5a1ff",
-        "duv_fill": "#352a66",
-        "bad": "#ff7b7b",
-        "bad_fill": "#5a1f24",
-        "magnet_a": "#a3a29b",
-        "magnet_b": "#4a4852",
-        "rf_fill": "#1f3552",
-        "rf": "#6aa6ee",
-        "mask_fill": "#4a4852",
-        "mask": "#c3c2b7",
-    },
-}
-
-
-def esc(s: str) -> str:
-    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-
-
-class Svg:
-    """Minimal SVG writer with arrowheads and multi-line text."""
-
-    def __init__(self, w: int, h: int, theme: str, title: str, desc: str):
-        self.w, self.h = w, h
-        self.t = THEMES[theme]
-        self.title, self.desc = title, desc
-        self.parts: list[str] = []
-        self.markers: dict[str, str] = {}
-
-    def add(self, s: str) -> None:
-        self.parts.append(s)
-
-    def arrow_marker(self, color: str) -> str:
-        mid = "arr" + color.lstrip("#")
-        self.markers[mid] = color
-        return f"url(#{mid})"
-
-    def line(self, x1, y1, x2, y2, color=None, width=2.0, arrow=False, dash=None, opacity=1.0) -> None:
-        color = color or self.t["line"]
-        extra = f' marker-end="{self.arrow_marker(color)}"' if arrow else ""
-        if dash:
-            extra += f' stroke-dasharray="{dash}"'
-        if opacity != 1.0:
-            extra += f' stroke-opacity="{opacity}"'
-        self.add(
-            f'<line x1="{x1:.1f}" y1="{y1:.1f}" x2="{x2:.1f}" y2="{y2:.1f}" stroke="{color}" '
-            f'stroke-width="{width}" stroke-linecap="round"{extra}/>'
-        )
-
-    def path(self, d, stroke=None, width=2.0, fill="none", arrow=False, dash=None, opacity=1.0, fill_opacity=1.0):
-        stroke = stroke or self.t["line"]
-        extra = f' marker-end="{self.arrow_marker(stroke)}"' if arrow else ""
-        if dash:
-            extra += f' stroke-dasharray="{dash}"'
-        if opacity != 1.0:
-            extra += f' stroke-opacity="{opacity}"'
-        if fill_opacity != 1.0:
-            extra += f' fill-opacity="{fill_opacity}"'
-        self.add(
-            f'<path d="{d}" stroke="{stroke}" stroke-width="{width}" fill="{fill}" '
-            f'stroke-linecap="round" stroke-linejoin="round"{extra}/>'
-        )
-
-    def poly(self, pts, fill, stroke="none", width=1.5, fill_opacity=1.0) -> None:
-        s = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
-        fo = f' fill-opacity="{fill_opacity}"' if fill_opacity != 1.0 else ""
-        self.add(f'<polygon points="{s}" fill="{fill}" stroke="{stroke}" stroke-width="{width}"{fo} stroke-linejoin="round"/>')
-
-    def rect(self, x, y, w, h, fill, stroke="none", width=1.5, rx=0.0) -> None:
-        self.add(
-            f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="{rx}" '
-            f'fill="{fill}" stroke="{stroke}" stroke-width="{width}"/>'
-        )
-
-    def circle(self, cx, cy, r, fill, stroke="none", width=1.5) -> None:
-        self.add(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="{r:.1f}" fill="{fill}" stroke="{stroke}" stroke-width="{width}"/>')
-
-    def ellipse(self, cx, cy, rx, ry, fill, stroke="none", width=1.5) -> None:
-        self.add(
-            f'<ellipse cx="{cx:.1f}" cy="{cy:.1f}" rx="{rx:.1f}" ry="{ry:.1f}" fill="{fill}" '
-            f'stroke="{stroke}" stroke-width="{width}"/>'
-        )
-
-    def text(self, x, y, s, size=14, anchor="middle", color=None, weight="normal", italic=False, lh=1.25):
-        color = color or self.t["ink"]
-        size = round(size * FONT_SCALE, 1)
-        style = ' font-style="italic"' if italic else ""
-        lines = s.split("\n")
-        if len(lines) == 1:
-            self.add(
-                f'<text x="{x:.1f}" y="{y:.1f}" font-size="{size}" text-anchor="{anchor}" '
-                f'fill="{color}" font-weight="{weight}"{style}>{esc(s)}</text>'
-            )
-            return
-        tsp = "".join(
-            f'<tspan x="{x:.1f}" dy="{0 if i == 0 else size * lh:.1f}">{esc(t)}</tspan>' for i, t in enumerate(lines)
-        )
-        self.add(
-            f'<text x="{x:.1f}" y="{y:.1f}" font-size="{size}" text-anchor="{anchor}" '
-            f'fill="{color}" font-weight="{weight}"{style}>{tsp}</text>'
-        )
-
-    def render(self) -> str:
-        defs = "".join(
-            f'<marker id="{mid}" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" '
-            f'orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="{c}"/></marker>'
-            for mid, c in self.markers.items()
-        )
-        return (
-            f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {self.w} {self.h}" '
-            f'width="{self.w}" height="{self.h}" role="img" aria-labelledby="t d" '
-            f'font-family="{FONT}">'
-            f'<title id="t">{esc(self.title)}</title><desc id="d">{esc(self.desc)}</desc>'
-            f"<defs>{defs}</defs>" + "".join(self.parts) + "</svg>\n"
-        )
+OUT = registry.IMAGES / "future"
+GENERATOR = "docs/figures/future/make_future_schematics.py"
+PAGES_FUTURE = "future/"
 
 
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
-def undulator(s: Svg, x: float, y: float, length: float, periods: int, gap: float = 16.0, mh: float = 9.0) -> None:
+
+
+def euv_color(s: K.Svg) -> str:
+    """EUV light: brand cyan, deep on the light page and bright on the dark one."""
+    return K.tokens.BRAND["cyan700"] if s.theme == "light" else K.tokens.BRAND["cyan300"]
+
+
+def mtext(s: K.Svg, x, y, text: str, size=K.LABEL, anchor="middle", color="ink", weight=400, lh=1.25, **kw) -> float:
+    """Multi-line text (``\\n``); returns the y of the last line."""
+    yy = y
+    for i, line in enumerate(text.split("\n")):
+        yy = y + i * size * lh
+        s.text(x, yy, line, size=size, anchor=anchor, color=color, weight=weight, **kw)
+    return yy
+
+
+def undulator(s: K.Svg, x: float, y: float, length: float, periods: int, gap: float = 16.0, mh: float = 9.0) -> None:
     """Row of alternating magnet blocks above and below a beam axis at height y."""
     w = length / periods
     for i in range(periods):
-        top = s.t["magnet_a"] if i % 2 == 0 else s.t["magnet_b"]
-        bot = s.t["magnet_b"] if i % 2 == 0 else s.t["magnet_a"]
-        s.rect(x + i * w, y - gap / 2 - mh, w - 1.2, mh, top)
-        s.rect(x + i * w, y + gap / 2, w - 1.2, mh, bot)
+        top, bot = ("ink2", "axis") if i % 2 == 0 else ("axis", "ink2")
+        s.rect(x + i * w, y - gap / 2 - mh, w - 1.2, mh, fill=top, opacity=0.8 if top == "axis" else 0.75)
+        s.rect(x + i * w, y + gap / 2, w - 1.2, mh, fill=bot, opacity=0.8 if bot == "axis" else 0.75)
 
 
 def wavy(x1: float, y: float, x2: float, amp: float, wl: float) -> str:
-    """Path string of a sine wave along +x (a light wave or wiggle)."""
     n = max(8, int(abs(x2 - x1) / 2))
     pts = []
     for i in range(n + 1):
@@ -206,7 +78,6 @@ def wavy(x1: float, y: float, x2: float, amp: float, wl: float) -> str:
 
 
 def packet(x_center: float, y: float, half_len: float, amp: float, wl: float) -> str:
-    """Gaussian-envelope wave packet (a short laser pulse)."""
     n = int(4 * half_len)
     pts = []
     for i in range(n + 1):
@@ -216,317 +87,443 @@ def packet(x_center: float, y: float, half_len: float, amp: float, wl: float) ->
     return "M" + " L".join(pts)
 
 
+def panel(s: K.Svg, x, y, w, h, rx=10) -> None:
+    s.rect(x, y, w, h, fill="band", rx=rx)
+
+
 # ---------------------------------------------------------------------------
-# 1. Why High-NA is anamorphic: incident and reflected cones at the mask
+# 1. Why High-NA is anamorphic
 # ---------------------------------------------------------------------------
 ANGLE_GAIN = 3.0
-# Illumination (chief-ray) angle at the reticle. ~6 degrees is the commonly quoted value for
-# 0.33 NA tools (SemiEngineering, "Gearing Up For High-NA EUV", 2021; Levinson, JJAP 61,
-# SD0803 (2022)). We draw ALL panels at this illustrative 6 degrees: the EXE value is not
-# verified here, and the point of the figure (cone overlap iff asin(NA/M) > chief-ray angle)
-# does not depend on it.
+#: Illumination (chief-ray) angle at the reticle: ~6° is the commonly quoted value for 0.33 NA
+#: tools (SemiEngineering 2021; Levinson, JJAP 61, SD0803 (2022)). Illustrative in every panel.
 CRA_DEG = 6.0
+PANELS_ANAMORPHIC = [
+    ("NXE: NA 0.33, 4×", 0.33, 4.0, "cones separate", False),
+    ("NA 0.55 at 4× (not built)", 0.55, 4.0, "cones overlap: the mask would\nshadow its own light path", True),
+    ("EXE: NA 0.55, 8× in scan", 0.55, 8.0, "cones separate again", False),
+]
 
 
-def fig_anamorphic_why(theme: str) -> Svg:
-    s = Svg(
-        960,
-        560,
-        theme,
-        "Why High-NA EUV optics are anamorphic",
-        "Three panels show the cone of light that illuminates a reflective EUV mask and the cone "
-        "it reflects, around the mask normal. Left: 0.33 NA at 4x reduction, the mask-side cone "
-        "half-angle is 4.7 degrees and, tilted by a 6 degree chief-ray angle, the two cones do not "
-        "overlap. Middle: 0.55 NA at 4x would need a 7.9 degree half-angle, so the incident and "
-        "reflected cones overlap around the normal. Right: with 8x reduction in the scan direction "
-        "the half-angle drops to 3.9 degrees and the cones separate again; the other direction keeps "
-        "4x. All panels use an illustrative 6 degree illumination angle. Angles are drawn three times "
-        "larger than real.",
-    )
-    t = s.t
-    panels = [
-        ("NXE: NA 0.33, 4×", 0.33, 4.0, CRA_DEG, "cones separate", False),
-        ("NA 0.55 at 4× (not built)", 0.55, 4.0, CRA_DEG, "cones overlap: the mask would\nshadow its own light path", True),
-        ("EXE: NA 0.55, 8× in scan", 0.55, 8.0, CRA_DEG, "cones separate again", False),
-    ]
+def half_angle_deg(na: float, mag: float) -> float:
+    return math.degrees(math.asin(na / mag))
+
+
+ANAMORPHIC_ALT = ("Incident and reflected light cones at an EUV mask in three panels: separate at NA 0.33 and 4x (mask-side "
+                  "half-angle 4.7 degrees), overlapping around the normal at NA 0.55 and 4x (7.9 degrees), separate again with "
+                  "8x in the scan direction (3.9 degrees); angles drawn three times larger than real.")
+ANAMORPHIC_CAPTION = ("<strong>Why High-NA optics are anamorphic.</strong> The mask-side half-angles asin(NA/M) are computed — "
+                      "4.7° (0.33 NA, 4×), 7.9° (0.55 NA, 4×), 3.9° (0.55 NA, 8× in scan); every panel uses the same "
+                      "illustrative 6° chief-ray angle and every angle is drawn 3× larger than real. "
+                      "<em>Schematic, not to scale.</em>")
+
+
+def draw_anamorphic(theme: str) -> str:
+    s = K.Svg(960, 560, theme, "Why High-NA EUV optics are anamorphic", ANAMORPHIC_ALT, generator=GENERATOR)
+    euv = euv_color(s)
     pw = 300
-    for i, (label, na, mag, cra, verdict, bad) in enumerate(panels):
+    for i, (label, na, mag, verdict, bad) in enumerate(PANELS_ANAMORPHIC):
         x0 = 30 + i * (pw + 15)
         cx = x0 + pw / 2
-        ym = 370  # mask surface
-        s.rect(x0, 20, pw, 455, t["panel"], rx=10)
-        s.text(cx, 50, label, size=14.5, weight="bold")
-        alpha = math.degrees(math.asin(na / mag))
-        s.text(
-            cx,
-            74,
-            f"cone half-angle asin(NA/M) = {alpha:.1f}°\nillumination ≈ {cra:g}° (illustrative)",
-            size=11.5,
-            color=t["ink2"],
-        )
+        ym = 370
+        panel(s, x0, 20, pw, 455)
+        s.text(cx, 50, label, size=15, weight=600)
+        alpha = half_angle_deg(na, mag)
+        mtext(s, cx, 74, f"cone half-angle asin(NA/M) = {alpha:.1f}°\nillumination ≈ {CRA_DEG:g}° (illustrative)",
+              size=K.SMALL, color="ink2")
         # mask
-        s.rect(cx - 120, ym, 240, 16, t["mask_fill"], stroke=t["mask"], width=1.2)
+        s.rect(cx - 120, ym, 240, 16, "substrate", sw=1.2)
         for k in range(1, 4):
-            s.line(cx - 120, ym + 4 * k, cx + 120, ym + 4 * k, color=t["mask"], width=0.6, opacity=0.6)
-        s.text(cx, ym + 34, "reflective multilayer mask", size=11, color=t["muted"])
-        # normal
-        s.line(cx, ym, cx, 118, color=t["muted"], width=1.2, dash="4 4")
-        s.text(cx + 4, 128, "normal", size=10, color=t["muted"], anchor="start")
+            s.line(cx - 120, ym + 4 * k, cx + 120, ym + 4 * k, "ink2", 0.6, opacity=0.5)
+        s.text(cx, ym + 36, "reflective multilayer mask", size=K.SMALL, color="muted")
+        s.line(cx, ym, cx, 118, "muted", 1.2, dash="4 4")
+        s.text(cx + 4, 130, "normal", size=K.SMALL, color="muted", anchor="start")
         length = 225.0
 
         def ray(theta_deg: float) -> tuple[float, float]:
             th = math.radians(ANGLE_GAIN * theta_deg)
             return cx + length * math.sin(th), ym - length * math.cos(th)
 
-        # incident cone (from upper left) and reflected cone (to upper right)
-        inc = [(cx, ym), ray(-cra - alpha), ray(-cra + alpha)]
-        ref = [(cx, ym), ray(cra - alpha), ray(cra + alpha)]
-        s.poly(inc, t["duv_fill"], stroke=t["duv"], width=1.5, fill_opacity=0.85)
-        s.poly(ref, t["euv_fill"], stroke=t["euv"], width=1.5, fill_opacity=0.85)
-        # chief rays
-        xi, yi = ray(-cra)
-        xr, yr = ray(cra)
-        s.line(xi, yi, cx, ym, color=t["duv"], width=2, arrow=True)
-        s.line(cx, ym, xr, yr, color=t["euv"], width=2, arrow=True)
-        s.text(cx - 58, 142, "from\nilluminator", size=11, color=t["ink2"], anchor="end")
-        s.text(cx + 58, 142, "to projection\noptics", size=11, color=t["ink2"], anchor="start")
+        inc = [(cx, ym), ray(-CRA_DEG - alpha), ray(-CRA_DEG + alpha)]
+        ref = [(cx, ym), ray(CRA_DEG - alpha), ray(CRA_DEG + alpha)]
+        s.polyline(inc, "violet", 1.5, fill=s.tint("violet", 0.22), close=True)
+        s.polyline(ref, euv, 1.5, fill=K.tokens.mix(euv, s.t["surface"], 0.22), close=True)
+        xi, yi = ray(-CRA_DEG)
+        xr, yr = ray(CRA_DEG)
+        s.line(xi, yi, cx, ym, "violet", 2, arrow="end")
+        s.line(cx, ym, xr, yr, euv, 2, arrow="end")
+        mtext(s, cx - 58, 142, "from\nilluminator", size=K.SMALL, color="ink2", anchor="end")
+        mtext(s, cx + 58, 142, "to projection\noptics", size=K.SMALL, color="ink2", anchor="start")
         if bad:
-            ov = [(cx, ym), ray(-(alpha - cra)), ray(alpha - cra)]
-            s.poly(ov, t["bad_fill"], stroke=t["bad"], width=2)
-        vcol = t["bad"] if bad else t["ink"]
-        s.text(cx, 430, verdict, size=12, color=vcol, weight="bold")
-    s.text(
-        480,
-        494,
-        f"Plane of incidence = scan direction; angles drawn {ANGLE_GAIN:g}× larger than real.\n"
-        "Across the slit the optics keep 4× (no overlap problem there), so the wafer field\n"
-        "is 26 mm wide but only 16.5 mm long in the scan direction.",
-        size=11,
-        color=t["muted"],
-    )
-    return s
+            ov = [(cx, ym), ray(-(alpha - CRA_DEG)), ray(alpha - CRA_DEG)]
+            s.polyline(ov, "red", 2, fill=s.tint("red", 0.3), close=True)
+        mtext(s, cx, 432, verdict, size=K.LABEL, color="red" if bad else "ink", weight=600)
+    mtext(s, 480, 496,
+          f"Plane of incidence = scan direction; angles drawn {ANGLE_GAIN:g}× larger than real.\n"
+          "Across the slit the optics keep 4× (no overlap problem there), so the wafer field\n"
+          "is 26 mm wide but only 16.5 mm long in the scan direction.", size=K.SMALL, color="muted")
+    return s.render()
 
 
 # ---------------------------------------------------------------------------
 # 2. SSMB storage ring concept
 # ---------------------------------------------------------------------------
-def fig_ssmb_concept(theme: str) -> Svg:
-    s = Svg(
-        960,
-        540,
-        theme,
-        "Steady-state microbunching (SSMB) storage-ring concept",
-        "A racetrack storage ring. In the lower straight a phase-locked laser, steered onto the beam "
-        "axis by a mirror, co-propagates with the electrons through a modulator undulator and imprints "
-        "an energy modulation at the laser wavelength. The ring lattice turns that energy modulation into "
-        "density microbunches, much shorter than the laser wavelength, at a radiator undulator in the "
-        "upper straight, where the beam radiates coherently at a harmonic of the laser; the lattice then "
-        "undoes and re-forms the bunching on every turn. An RF cavity replaces the radiated energy. An "
-        "inset shows electron density versus position with sharp microbunches spaced by the laser wavelength.",
-    )
-    t = s.t
+SSMB_ALT = ("A phase-locked laser co-propagates with the electrons through a modulator undulator and imprints an energy "
+            "modulation; the ring lattice turns it into microbunches at a radiator undulator that emits coherent EUV at a laser "
+            "harmonic on every turn; inset: microbunches spaced by the laser wavelength.")
+SSMB_CAPTION = ("<strong>The SSMB concept.</strong> A phase-locked laser imprints an energy modulation in the modulator, the "
+                "ring lattice turns it into microbunches at the radiator and re-forms them on every turn, so the beam "
+                "radiates coherently at a laser harmonic (coherent power ∝ N²|bₙ|²). <em>Schematic, not to scale.</em>")
+
+
+def draw_ssmb(theme: str) -> str:
+    s = K.Svg(960, 540, theme, "Steady-state microbunching (SSMB) storage-ring concept", SSMB_ALT, generator=GENERATOR)
+    euv = euv_color(s)
     x1, x2, yt, yb, r = 190, 590, 140, 380, 120
     d = f"M{x1},{yb} L{x2},{yb} A{r},{r} 0 0 0 {x2},{yt} L{x1},{yt} A{r},{r} 0 0 0 {x1},{yb} Z"
-    s.path(d, stroke=t["ebeam"], width=3)
-    s.line(250, yb, 280, yb, color=t["ebeam"], width=3, arrow=True)
-    s.line(560, yt, 530, yt, color=t["ebeam"], width=3, arrow=True)
-    
-    # RF cavity (lower-left straight)
-    s.rect(196, yb - 14, 44, 28, t["rf_fill"], stroke=t["rf"], width=1.5, rx=6)
-    s.text(218, yb + 36, "RF cavity", size=12, color=t["ink2"])
-    # modulator in lower straight
+    s.path(d, stroke="blue", sw=3)
+    s.line(250, yb, 280, yb, "blue", 3, arrow="end")
+    s.line(560, yt, 530, yt, "blue", 3, arrow="end")
+    s.rect(196, yb - 14, 44, 28, fill=s.tint("blue", 0.18), stroke="blue", sw=1.5, rx=6)
+    s.text(218, yb + 36, "RF cavity", size=K.SMALL, color="ink2")
     undulator(s, 390, yb, 150, 10)
-    s.text(465, yb - 30, "modulator", size=14, weight="bold")
-    # laser: source box below, mirror, then collinear through the modulator
-    s.rect(262, yb + 38, 96, 28, t["laser_fill"], stroke=t["laser"], width=1.5, rx=5)
-    s.text(310, yb + 57, "laser", size=12.5)
-    s.path(wavy(310, yb + 38, 310, 0, 10) + f" L310,{yb + 6}", stroke=t["laser"], width=2)
-    s.line(300, yb + 16, 322, yb - 6, color=t["ink2"], width=2.5)  # mirror
-    s.path(wavy(316, yb, 545, 3.5, 16), stroke=t["laser"], width=2)
-    s.text(
-        372,
-        yb + 60,
-        "phase-locked, ≈ 1 µm: imprints\nan energy modulation",
-        size=12,
-        anchor="start",
-        color=t["ink2"],
-    )
-    # radiator in upper straight
+    s.text(465, yb - 30, "modulator", size=K.BASE, weight=600)
+    s.rect(262, yb + 38, 96, 28, fill=s.tint("orange", 0.2), stroke="orange", sw=1.5, rx=5)
+    s.text(310, yb + 57, "laser", size=K.SMALL)
+    s.path(wavy(310, yb + 38, 310, 0, 10) + f" L310,{yb + 6}", stroke="orange", sw=2)
+    s.line(300, yb + 16, 322, yb - 6, "ink2", 2.5)
+    s.path(wavy(316, yb, 545, 3.5, 16), stroke="orange", sw=2)
+    mtext(s, 372, yb + 60, "phase-locked, ≈ 1 µm: imprints\nan energy modulation", size=K.SMALL, anchor="start", color="ink2")
     undulator(s, 300, yt, 170, 12)
-    s.text(385, yt + 44, "radiator", size=14, weight="bold")
-    s.path(wavy(300, yt - 32, 480, 3, 7), stroke=t["euv"], width=2)
-    s.line(470, yt - 32, 930, yt - 32, color=t["euv"], width=3, arrow=True)
-    s.text(940, yt - 84, "coherent EUV at a laser harmonic\n(simulator preset: 1053 nm / 78 = 13.5 nm)", size=12, anchor="end", color=t["ink2"])
-    s.text(
-        390,
-        250,
-        "ring lattice (longitudinal focusing):\nenergy modulation → microbunches at the radiator,\nundone and re-formed on every turn",
-        size=13,
-    )
-    # inset: microbunched density
+    s.text(385, yt + 44, "radiator", size=K.BASE, weight=600)
+    s.path(wavy(300, yt - 32, 480, 3, 7), stroke=euv, sw=2)
+    s.line(470, yt - 32, 930, yt - 32, euv, 3, arrow="end")
+    mtext(s, 940, yt - 84, "coherent EUV at a laser harmonic\n(simulator preset: 1053 nm / 78 = 13.5 nm)", size=K.SMALL,
+          anchor="end", color="ink2")
+    mtext(s, 390, 250, "ring lattice (longitudinal focusing):\nenergy modulation → microbunches at the radiator,\n"
+          "undone and re-formed on every turn", size=K.LABEL)
     ix, iy, iw, ih = 735, 250, 205, 150
-    s.rect(ix, iy, iw, ih, t["panel"], rx=8)
-    s.text(ix + iw / 2, iy + 22, "density at the radiator", size=12.5, weight="bold")
+    panel(s, ix, iy, iw, ih, rx=8)
+    s.text(ix + iw / 2, iy + 22, "density at the radiator", size=K.SMALL, weight=600)
     base = iy + ih - 32
-    s.line(ix + 12, base, ix + iw - 12, base, color=t["muted"], width=1)
+    s.line(ix + 12, base, ix + iw - 12, base, "muted", 1)
     pts = []
     n = 220
     for k in range(n + 1):
         xx = ix + 12 + (iw - 24) * k / n
         ph = 2 * math.pi * 4.3 * k / n
         val = math.exp(-(((ph % (2 * math.pi)) - math.pi) ** 2) / 0.02)
-        pts.append(f"{xx:.1f},{base - 78 * val:.1f}")
-    s.path("M" + " L".join(pts), stroke=t["ebeam"], width=1.8)
-    s.text(ix + iw / 2, base + 20, "spacing = laser wavelength", size=11.5, color=t["ink2"])
-    s.text(
-        30,
-        510,
-        "The stored beam (hundreds of MeV) passes both undulators on every turn. Coherent power ∝ N²|bₙ|² (N electrons,\n"
-        "bunching factor bₙ at harmonic n) versus ∝ N without microbunching. Schematic, not to scale.",
-        size=12,
-        anchor="start",
-        color=t["muted"],
-    )
-    return s
+        pts.append((xx, base - 78 * val))
+    s.polyline(pts, "blue", 1.8)
+    s.text(ix + iw / 2, base + 20, "spacing = laser wavelength", size=K.SMALL, color="ink2")
+    mtext(s, 30, 510, "The stored beam (hundreds of MeV) passes both undulators on every turn. Coherent power ∝ N²|bₙ|² "
+          "(N electrons,\nbunching factor bₙ at harmonic n) versus ∝ N without microbunching. Schematic, not to scale.",
+          size=K.SMALL, anchor="start", color="muted")
+    return s.render()
 
 
 # ---------------------------------------------------------------------------
 # 3. Energy-recovery-linac FEL loop
 # ---------------------------------------------------------------------------
-def fig_erl_fel_loop(theme: str) -> Svg:
-    s = Svg(
-        960,
-        520,
-        theme,
-        "Energy-recovery linac (ERL) driven free-electron laser",
-        "An electron injector feeds a superconducting linac through a merger. The beam is accelerated, "
-        "turned by an arc, and lased in a long undulator that emits EUV. A return arc brings the spent "
-        "beam back to the linac half an RF period late, so it is decelerated and hands its energy back to "
-        "the RF field before going to a low-energy beam dump.",
-    )
-    t = s.t
+ERL_ALT = ("An injector feeds a superconducting linac through a merger; the accelerated beam is turned by an arc into a long "
+           "undulator that emits EUV to the scanners, a return arc brings the spent beam back half an RF period late so the "
+           "linac decelerates it and recovers its energy before a low-energy beam dump.")
+ERL_CAPTION = ("<strong>Energy-recovery-linac FEL: accelerate, lase, then decelerate the same beam in the same cavities.</strong> "
+               "The spent beam returns half an RF period late and hands its energy back before a low-energy dump, so the beam "
+               "current — and the average FEL power — can far exceed what single-pass RF power would allow. "
+               "<em>Schematic, not to scale.</em>")
+
+
+def draw_erl(theme: str) -> str:
+    s = K.Svg(960, 520, theme, "Energy-recovery linac (ERL) driven free-electron laser", ERL_ALT, generator=GENERATOR)
+    euv = euv_color(s)
     yb, yt = 370, 140
     xr = 760
-    s.rect(300, yb - 26, 330, 52, t["rf_fill"], stroke=t["rf"], width=1.5, rx=10)
+    s.rect(300, yb - 26, 330, 52, fill=s.tint("blue", 0.18), stroke="blue", sw=1.5, rx=10)
     for k in range(8):
-        s.ellipse(330 + k * 41, yb, 14, 18, "none", stroke=t["rf"], width=1.2)
-    s.text(470, yb - 52, "superconducting linac: accelerates on pass 1,\ndecelerates on pass 2", size=12.5)
-    s.rect(40, yb + 46, 100, 40, t["panel"], stroke=t["line"], width=1.2, rx=6)
-    s.text(90, yb + 71, "injector", size=13)
-    s.path(f"M140,{yb + 66} C200,{yb + 66} 240,{yb + 6} 300,{yb + 6}", stroke=t["ebeam"], width=2.5, arrow=True)
-    s.text(218, yb + 62, "merger", size=11.5, color=t["ink2"], anchor="start")
-    s.line(630, yb - 6, xr, yb - 6, color=t["ebeam"], width=2.5)
-    s.path(f"M{xr},{yb - 6} A{(yb - 6 - yt) / 2},{(yb - 6 - yt) / 2} 0 0 0 {xr},{yt}", stroke=t["ebeam"], width=2.5)
-    s.line(xr, yt, 250, yt, color=t["ebeam"], width=2.5)
-    s.path(f"M250,{yt} A{(yb - 6 - yt) / 2},{(yb - 6 - yt) / 2} 0 0 0 250,{yb - 6}", stroke=t["ebeam"], width=2.5)
-    s.line(250, yb - 6, 300, yb - 6, color=t["ebeam"], width=2.5, arrow=True)
-    s.line(700, yt, 670, yt, color=t["ebeam"], width=2.5, arrow=True)
-    s.text(xr - 14, 234, "arc", size=12, color=t["ink2"], anchor="end")
-    s.text(264, 226, "return arc:\narrives ½ RF period late", size=12, color=t["ink2"], anchor="start")
+        s.ellipse(330 + k * 41, yb, 14, 18, fill="none", stroke="blue", sw=1.2)
+    mtext(s, 470, yb - 52, "superconducting linac: accelerates on pass 1,\ndecelerates on pass 2", size=K.SMALL)
+    s.rect(40, yb + 46, 100, 40, fill="band", stroke="ink2", sw=1.2, rx=6)
+    s.text(90, yb + 71, "injector", size=K.LABEL)
+    s.path(f"M140,{yb + 66} C200,{yb + 66} 240,{yb + 6} 300,{yb + 6}", stroke="blue", sw=2.5, arrow="end")
+    s.text(218, yb + 62, "merger", size=K.SMALL, color="ink2", anchor="start")
+    s.line(630, yb - 6, xr, yb - 6, "blue", 2.5)
+    rr = (yb - 6 - yt) / 2
+    s.path(f"M{xr},{yb - 6} A{rr},{rr} 0 0 0 {xr},{yt}", stroke="blue", sw=2.5)
+    s.line(xr, yt, 250, yt, "blue", 2.5)
+    s.path(f"M250,{yt} A{rr},{rr} 0 0 0 250,{yb - 6}", stroke="blue", sw=2.5)
+    s.line(250, yb - 6, 300, yb - 6, "blue", 2.5, arrow="end")
+    s.line(700, yt, 670, yt, "blue", 2.5, arrow="end")
+    s.text(xr - 14, 234, "arc", size=K.SMALL, color="ink2", anchor="end")
+    mtext(s, 264, 226, "return arc:\narrives ½ RF period late", size=K.SMALL, color="ink2", anchor="start")
     undulator(s, 330, yt, 280, 18)
-    s.text(470, yt + 44, "undulator (FEL)", size=14, weight="bold")
-    s.path(wavy(330, yt - 34, 610, 3, 7), stroke=t["euv"], width=2)
-    s.line(600, yt - 34, 930, yt - 34, color=t["euv"], width=3, arrow=True)
-    s.text(930, yt - 58, "EUV to one or several scanners", size=12.5, anchor="end", color=t["ink2"])
-    s.line(630, yb + 6, 820, yb + 6, color=t["ebeam"], width=2.5, arrow=True)
-    s.rect(825, yb - 12, 100, 36, t["panel"], stroke=t["line"], width=1.2, rx=6)
-    s.text(875, yb + 11, "beam dump", size=12.5)
-    s.text(875, yb + 44, "(low energy)", size=11.5, color=t["ink2"])
-    s.text(
-        30,
-        486,
-        "Energy recovery lets the beam current (and so the average FEL power) be far higher\n"
-        "than the RF power a single-pass linac could supply. Schematic, not to scale.",
-        size=12,
-        anchor="start",
-        color=t["muted"],
-    )
-    return s
+    s.text(470, yt + 44, "undulator (FEL)", size=K.BASE, weight=600)
+    s.path(wavy(330, yt - 34, 610, 3, 7), stroke=euv, sw=2)
+    s.line(600, yt - 34, 930, yt - 34, euv, 3, arrow="end")
+    s.text(930, yt - 58, "EUV to one or several scanners", size=K.SMALL, anchor="end", color="ink2")
+    s.line(630, yb + 6, 820, yb + 6, "blue", 2.5, arrow="end")
+    s.rect(825, yb - 12, 100, 36, fill="band", stroke="ink2", sw=1.2, rx=6)
+    s.text(875, yb + 11, "beam dump", size=K.SMALL)
+    s.text(875, yb + 44, "(low energy)", size=K.SMALL, color="ink2")
+    mtext(s, 30, 486, "Energy recovery lets the beam current (and so the average FEL power) be far higher\n"
+          "than the RF power a single-pass linac could supply. Schematic, not to scale.", size=K.SMALL, anchor="start",
+          color="muted")
+    return s.render()
 
 
 # ---------------------------------------------------------------------------
 # 4. Inverse Compton scattering, head-on
 # ---------------------------------------------------------------------------
-def fig_ics_collision(theme: str) -> Svg:
-    s = Svg(
-        960,
-        470,
-        theme,
-        "Inverse Compton scattering, head-on geometry",
-        "Top row, before the collision: an electron bunch travelling to the right and a laser pulse "
-        "travelling to the left approach the interaction point. Bottom row, after: photons scattered "
-        "off the relativistic electrons leave in a forward cone of half-angle about one over gamma, their "
-        "wavelength shortened by about four gamma squared. Example: a 1030 nm laser and 1.72 MeV electrons "
-        "give 13.5 nm on axis, in a cone of about 13 degrees.",
-    )
-    t = s.t
-    # --- before
+ICS_LASER_NM = 1030.0
+ICS_E_MEV = 1.72
+ICS_GAMMA = 1.0 + ICS_E_MEV / 0.51099895
+ICS_ALT = ("Inverse Compton scattering, before and after: an electron bunch meets a counter-propagating laser pulse; scattered "
+           "photons leave in a forward cone of half-angle 1 over gamma, 4 gamma squared shorter in wavelength — 1030 nm on "
+           "1.72 MeV electrons gives 13.5 nm in a 13 degree cone.")
+ICS_CAPTION = ("<strong>Inverse Compton scattering, head-on.</strong> A 1030 nm laser on 1.72 MeV electrons (γ ≈ 4.4) gives "
+               "13.5 nm on axis inside a cone of half-angle 1/γ ≈ 13°, and the wavelength changes across the cone. "
+               "<em>Schematic, not to scale.</em>")
+
+
+def ics_on_axis_nm(laser_nm: float = ICS_LASER_NM, gamma: float = ICS_GAMMA) -> float:
+    return laser_nm / (4 * gamma * gamma)
+
+
+def draw_ics(theme: str) -> str:
+    s = K.Svg(960, 470, theme, "Inverse Compton scattering, head-on geometry", ICS_ALT, generator=GENERATOR)
+    euv = euv_color(s)
     y1 = 95
-    s.text(30, 36, "before", size=13, anchor="start", color=t["muted"], weight="bold")
-    s.ellipse(230, y1, 60, 22, t["ebeam_fill"], stroke=t["ebeam"], width=2)
+    s.text(30, 36, "before", size=K.LABEL, anchor="start", color="muted", weight=600)
+    s.ellipse(230, y1, 60, 22, fill=s.tint("blue", 0.18), stroke="blue", sw=2)
     for k in range(14):
-        s.circle(190 + (k * 37) % 80, y1 - 12 + (k * 23) % 24, 3, t["ebeam"])
-    s.line(300, y1, 360, y1, color=t["ebeam"], width=3, arrow=True)
-    s.text(230, y1 + 45, "electron bunch, Lorentz factor γ", size=13.5)
-    s.path(packet(680, y1, 70, 18, 16), stroke=t["laser"], width=2.2)
-    s.line(600, y1, 540, y1, color=t["laser"], width=3, arrow=True)
-    s.text(680, y1 + 45, "laser pulse, wavelength λₗ", size=13.5)
-    s.circle(460, y1, 6, "none", stroke=t["ink"], width=1.5)
-    s.text(460, y1 - 22, "interaction point", size=12.5, color=t["ink2"])
-    s.line(30, 172, 930, 172, color=t["faint"], width=1)
-    # --- after
+        s.circle(190 + (k * 37) % 80, y1 - 12 + (k * 23) % 24, 3, fill="blue", stroke="none")
+    s.line(300, y1, 360, y1, "blue", 3, arrow="end")
+    s.text(230, y1 + 45, "electron bunch, Lorentz factor γ", size=K.LABEL)
+    s.path(packet(680, y1, 70, 18, 16), stroke="orange", sw=2.2)
+    s.line(600, y1, 540, y1, "orange", 3, arrow="end")
+    s.text(680, y1 + 45, "laser pulse, wavelength λₗ", size=K.LABEL)
+    s.circle(460, y1, 6, fill="none", stroke="ink", sw=1.5)
+    s.text(460, y1 - 22, "interaction point", size=K.SMALL, color="ink2")
+    s.line(30, 172, 930, 172, "grid", 1)
     y2 = 280
-    s.text(30, 200, "after", size=13, anchor="start", color=t["muted"], weight="bold")
-    half = math.radians(13.0)
+    s.text(30, 200, "after", size=K.LABEL, anchor="start", color="muted", weight=600)
+    half = math.radians(math.degrees(1 / ICS_GAMMA))
     L = 400
     cx = 460
-    s.poly(
-        [(cx, y2), (cx + L * math.cos(half), y2 - L * math.sin(half)), (cx + L * math.cos(half), y2 + L * math.sin(half) * 0.001 + L * math.sin(half))],
-        t["euv_fill"],
-        stroke=t["euv"],
-        width=1.5,
-        fill_opacity=0.6,
-    )
-    s.line(cx, y2, cx + L, y2, color=t["euv"], width=1.2, dash="5 4")
-    s.ellipse(cx + 250, y2, 40, 16, t["ebeam_fill"], stroke=t["ebeam"], width=1.5)
-    s.text(cx + 250, y2 + 36, "electrons (slightly slower)", size=12, color=t["ink2"])
-    s.text(cx + L - 12, y2 - 60, "scattered photons,\ncone half-angle ≈ 1/γ", size=13, anchor="end")
-    s.path(packet(300, y2, 60, 14, 16), stroke=t["laser"], width=2, opacity=0.5)
-    s.text(300, y2 + 40, "unscattered laser light", size=12, color=t["ink2"])
-    s.text(
-        480,
-        390,
-        "λₓ ≈ λₗ (1 + a₀²/2 + γ²θ²) / 4γ²",
-        size=17,
-        weight="bold",
-    )
-    s.text(
-        480,
-        418,
-        "e.g. 1030 nm laser, 1.72 MeV electrons (γ ≈ 4.37) → 13.5 nm on axis; 1/γ ≈ 0.23 rad ≈ 13°",
-        size=13,
-        color=t["ink2"],
-    )
-    s.text(480, 452, "Head-on, single scattering; a₀ = laser strength parameter. Schematic, not to scale.", size=12, color=t["muted"])
-    return s
+    s.polyline([(cx, y2), (cx + L * math.cos(half), y2 - L * math.sin(half)), (cx + L * math.cos(half), y2 + L * math.sin(half))],
+               euv, 1.5, fill=K.tokens.mix(euv, s.t["surface"], 0.2), close=True)
+    s.line(cx, y2, cx + L, y2, euv, 1.2, dash="5 4")
+    s.ellipse(cx + 250, y2, 40, 16, fill=s.tint("blue", 0.18), stroke="blue", sw=1.5)
+    s.text(cx + 250, y2 + 36, "electrons (slightly slower)", size=K.SMALL, color="ink2")
+    mtext(s, cx + L - 12, y2 - 60, "scattered photons,\ncone half-angle ≈ 1/γ", size=K.LABEL, anchor="end")
+    s.path(packet(300, y2, 60, 14, 16), stroke="orange", sw=2, opacity=0.5)
+    s.text(300, y2 + 40, "unscattered laser light", size=K.SMALL, color="ink2")
+    s.text(480, 390, "λₓ ≈ λₗ (1 + a₀²/2 + γ²θ²) / 4γ²", size=17, weight=600)
+    s.text(480, 418, f"e.g. {ICS_LASER_NM:.0f} nm laser, {ICS_E_MEV:g} MeV electrons (γ ≈ {ICS_GAMMA:.2f}) → "
+           f"{ics_on_axis_nm():.1f} nm on axis; 1/γ ≈ {1 / ICS_GAMMA:.2f} rad ≈ {math.degrees(1 / ICS_GAMMA):.0f}°",
+           size=K.LABEL, color="ink2")
+    s.text(480, 452, "Head-on, single scattering; a₀ = laser strength parameter. Schematic, not to scale.", size=K.SMALL,
+           color="muted")
+    return s.render()
 
 
-FIGURES = {
-    "anamorphic-why": fig_anamorphic_why,
-    "ssmb-concept": fig_ssmb_concept,
-    "erl-fel-loop": fig_erl_fel_loop,
-    "ics-collision": fig_ics_collision,
+# ---------------------------------------------------------------------------
+# 5. N15 — the five limits strip
+# ---------------------------------------------------------------------------
+LIMITS = [
+    ("Diffraction", "HP = k₁ λ / NA", "k₁ ≥ 0.25 single exposure"),
+    ("Photons", "N ∝ λ³ / NA²", "at fixed dose and k₁"),
+    ("Resist trade-off", "Z = HP³ · LER² · D", "pick two of three"),
+    ("Electron blur", "σ ≈ 2 nm", "set by transport, not λ"),
+    ("Throughput", "t = t₀ + D·A / P", "dose buys output"),
+]
+LIMITS_ALT = ("Five tiles, one per constraint: diffraction HP = k1 lambda over NA with k1 at least 0.25; photons per feature "
+              "proportional to lambda cubed over NA squared; the resist trade-off Z = HP cubed times LER squared times dose; "
+              "electron blur of about 2 nm; throughput t = t0 plus dose times area over power.")
+LIMITS_CAPTION = ("<strong>Five constraints frame every page of this section.</strong> Diffraction (k₁ ≥ 0.25), photons per "
+                  "feature ∝ λ³/NA², the resolution–roughness–dose trade-off Z = HP³·LER²·D, an electron blur of about 2 nm "
+                  "that does not shrink with λ, and a throughput t = t₀ + D·A/P that dose buys. "
+                  "<em>Equations only; no model badge.</em>")
+
+
+def draw_limits(theme: str, narrow: bool = False) -> str:
+    if not narrow:
+        W, H, cols = 960, 180, 5
+        tw, gap, m, y0, th = 176, 12, 20, 28, 124
+    else:
+        W, H, cols = 600, 360, 3
+        tw, gap, m, y0, th = 186, 11, 10, 20, 150
+    s = K.Svg(W, H, theme, "The five limits that frame the future of lithography", LIMITS_ALT, generator=GENERATOR)
+    hue = s.c("hue:future")
+    for i, (title, eq, note) in enumerate(LIMITS):
+        row, col = divmod(i, cols)
+        if narrow and row == 1:
+            x = m + (col + 0.5) * (tw + gap)  # the last two tiles centred on the second row
+        else:
+            x = m + col * (tw + gap)
+        y = y0 + row * (th + gap)
+        s.rect(x, y, tw, th, fill="band", rx=8)
+        s.rect(x, y, tw, 3, fill=hue, rx=0)
+        s.text(x + 12, y + 28, f"{i + 1}", size=K.SMALL, anchor="start", color="muted", weight=600)
+        s.text(x + 30, y + 28, title, size=K.LABEL, anchor="start", weight=600)
+        s.text(x + tw / 2, y + 68, eq, size=17 if not narrow else 18, weight=600, color="ink")
+        s.text(x + tw / 2, y + 96, note, size=K.SMALL, color="ink2")
+    return s.render()
+
+
+# ---------------------------------------------------------------------------
+# 6. N19 — field size
+# ---------------------------------------------------------------------------
+FIELD_FULL_MM = (26.0, 33.0)
+FIELD_HALF_MM = (26.0, 16.5)
+WPH_UNSTITCHED, WPH_STITCHED = 175, 125  # press-reported (Tom's Hardware), see high-na-and-hyper-na.md
+FIELD_ALT = ("Three wafer fields to scale: 26 by 33 mm from a 6-inch mask at 4x, a 26 by 16.5 mm anamorphic half field with a "
+             "stitching seam for larger dies, and 26 by 33 mm restored by a 6 by 12-inch mask; stitching is press-reported to "
+             "cut 175 wafers per hour to about 125; the dates are announced plans.")
+FIELD_CAPTION = ("<strong>Half the field, then a new mask to get it back.</strong> A 6-inch mask exposes 26 × 33 mm at 4×, "
+                 "anamorphic optics 26 × 16.5 mm (dies larger than a half field are stitched across a seam), and a 6 × 12-inch "
+                 "mask restores 26 × 33 mm; 175 → ~125 wafers per hour with stitching is press-reported and TSMC's 2030–33 "
+                 "dates are announced plans. <em>Stitching throughput is press-reported; dates are plans.</em>")
+
+
+def draw_field(theme: str) -> str:
+    s = K.Svg(960, 470, theme, "High-NA field size: full field, anamorphic half field, 6 × 12-inch mask", FIELD_ALT,
+              generator=GENERATOR)
+    scale = 7.0  # px per mm
+    fw, fh = FIELD_FULL_MM[0] * scale, FIELD_FULL_MM[1] * scale
+    hh = FIELD_HALF_MM[1] * scale
+    cols = [
+        ("NXE · 0.33 NA · 4×", "6-inch mask", f"{FIELD_FULL_MM[0]:g} × {FIELD_FULL_MM[1]:g} mm", "full", "In production", ""),
+        ("EXE · 0.55 NA · 4× / 8×", "6-inch mask", f"{FIELD_HALF_MM[0]:g} × {FIELD_HALF_MM[1]:g} mm", "half", "In production", "selected layers"),
+        ("EXE · 0.55 NA · 4× / 8×", "6 × 12-inch mask", f"{FIELD_FULL_MM[0]:g} × {FIELD_FULL_MM[1]:g} mm", "restored", "Announced", "TSMC: pilot line 2031, production 2033"),
+    ]
+    for i, (tool, mask, size, kind, rung, qual) in enumerate(cols):
+        cx = 170 + i * 310
+        s.text(cx, 36, tool, size=K.BASE, weight=600)
+        s.text(cx, 56, mask, size=K.SMALL, color="ink2")
+        x, y = cx - fw / 2, 80
+        # the wafer field outline (full) and what one exposure covers
+        s.rect(x, y, fw, fh, fill="none", stroke="axis", sw=1.2, dash="4 3" if kind == "half" else None)
+        if kind == "half":
+            s.rect(x, y, fw, hh, fill=s.tint("violet", 0.22), stroke="violet", sw=1.5)
+            s.rect(x, y + hh, fw, hh, fill=s.tint("violet", 0.1), stroke="violet", sw=1.5, dash="3 3")
+            s.line(x - 8, y + hh, x + fw + 8, y + hh, "red", 2)
+            s.text(x + fw / 2, y + hh + 15, "stitching seam", size=K.SMALL, anchor="middle", color="red", halo=True)
+            s.text(cx, y + hh / 2 + 5, "exposure 1", size=K.SMALL, color="ink2")
+            s.text(cx, y + hh + hh / 2 + 12, "exposure 2 (stitched)", size=K.SMALL, color="ink2")
+            s.dim_v(x - 18, y, y + hh, f"{FIELD_HALF_MM[1]:g} mm", size=K.SMALL)
+        else:
+            fill = s.tint("violet", 0.22) if kind == "full" else s.tint("aqua", 0.3)
+            s.rect(x, y, fw, fh, fill=fill, stroke="violet" if kind == "full" else "aqua", sw=1.5)
+            s.text(cx, y + fh / 2 + 5, "one exposure", size=K.SMALL, color="ink2")
+            s.dim_v(x - 18, y, y + fh, f"{FIELD_FULL_MM[1]:g} mm", size=K.SMALL)
+        s.dim_h(x, x + fw, y + fh + 16, f"{FIELD_FULL_MM[0]:g} mm", size=K.SMALL, above=False)
+        s.text(cx, y + fh + 52, size + " per exposure", size=K.LABEL, weight=600)
+        K.chip(s, cx, y + fh + 76, rung, outlined=True, anchor="middle", size=K.SMALL)
+        if qual:
+            s.text(cx, y + fh + 100, qual, size=K.SMALL, color="muted")
+    mtext(s, 480, 426, f"Stitched dies: ≥ {WPH_UNSTITCHED} wph (ASML spec, unstitched half fields) → about {WPH_STITCHED} wph "
+          "with stitching, press-reported; no ASML publication found.\nThe 6 × 12-inch format doubles the mask along the 8× "
+          "direction. TSMC: 6 × 6-inch High-NA volume in 2030,\n6 × 12-inch pilot line 2031, production 2033 — announced "
+          "plans, not delivered results.", size=K.SMALL, color="muted", lh=1.35)
+    return s.render()
+
+
+# ---------------------------------------------------------------------------
+# generators + registry
+# ---------------------------------------------------------------------------
+
+
+def gen_anamorphic() -> list[Path]:
+    return K.write_pair("anamorphic-why", draw_anamorphic, OUT)
+
+
+def gen_ssmb() -> list[Path]:
+    return K.write_pair("ssmb-concept", draw_ssmb, OUT)
+
+
+def gen_erl() -> list[Path]:
+    return K.write_pair("erl-fel-loop", draw_erl, OUT)
+
+
+def gen_ics() -> list[Path]:
+    return K.write_pair("ics-collision", draw_ics, OUT)
+
+
+def gen_limits() -> list[Path]:
+    return K.write_pair("five-limits", draw_limits, OUT, narrow=lambda t: draw_limits(t, narrow=True))
+
+
+def gen_field() -> list[Path]:
+    return K.write_pair("field-size", draw_field, OUT)
+
+
+def _spec(name, kind, alt, caption, pages, gen, **kw) -> registry.AssetSpec:
+    return registry.AssetSpec(name=name, kind=kind, group="future", subdir="future", fmt="svg", alt=alt, caption=caption,
+                              pages=pages, generator=gen, platform_independent=True, **kw)
+
+
+registry.register(_spec("anamorphic-why", "schematic", ANAMORPHIC_ALT, ANAMORPHIC_CAPTION,
+                        ("future/high-na-and-hyper-na.md",), gen_anamorphic), module="make_future_schematics.py")
+registry.register(_spec("ssmb-concept", "schematic", SSMB_ALT, SSMB_CAPTION,
+                        ("future/accelerator-light-sources.md", "sources/ssmb.md"), gen_ssmb), module="make_future_schematics.py")
+registry.register(_spec("erl-fel-loop", "schematic", ERL_ALT, ERL_CAPTION,
+                        ("future/accelerator-light-sources.md", "sources/xfel.md"), gen_erl), module="make_future_schematics.py")
+registry.register(_spec("ics-collision", "schematic", ICS_ALT, ICS_CAPTION,
+                        ("future/accelerator-light-sources.md", "sources/inverse-compton.md"), gen_ics), module="make_future_schematics.py")
+registry.register(_spec("five-limits", "strip", LIMITS_ALT, LIMITS_CAPTION, ("future/index.md",), gen_limits, narrow=True),
+                  module="make_future_schematics.py")
+registry.register(_spec("field-size", "schematic", FIELD_ALT, FIELD_CAPTION, ("future/high-na-and-hyper-na.md",), gen_field),
+                  module="make_future_schematics.py")
+
+GENERATORS = {
+    "anamorphic-why": gen_anamorphic, "ssmb-concept": gen_ssmb, "erl-fel-loop": gen_erl, "ics-collision": gen_ics,
+    "five-limits": gen_limits, "field-size": gen_field,
 }
 
 
-def main() -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
-    for name, fn in FIGURES.items():
-        for theme in ("light", "dark"):
-            path = OUT / f"{name}-{theme}.svg"
-            path.write_text(fn(theme).render())
-            print("wrote", path.relative_to(OUT.parents[2]))
+def check() -> tuple[list[str], list[str]]:
+    """Geometry asserts: the computed half-angles and the ICS example match the captions."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    want = {(0.33, 4.0): 4.7, (0.55, 4.0): 7.9, (0.55, 8.0): 3.9}
+    for (na, mag), deg in want.items():
+        got = round(half_angle_deg(na, mag), 1)
+        if got != deg:
+            errors.append(f"anamorphic-why: asin({na}/{mag:g}) = {got}°, caption says {deg}°")
+    if abs(ics_on_axis_nm() - 13.5) > 0.2:
+        errors.append(f"ics-collision: {ICS_LASER_NM} nm / 4γ² = {ics_on_axis_nm():.2f} nm, not 13.5")
+    if round(math.degrees(1 / ICS_GAMMA)) != 13:
+        errors.append(f"ics-collision: 1/γ = {math.degrees(1 / ICS_GAMMA):.1f}°, caption says 13°")
+    if FIELD_HALF_MM[1] * 2 != FIELD_FULL_MM[1]:
+        errors.append("field-size: the half field is not half the full field")
+    page = registry.DOCS / "future" / "index.md"
+    if page.exists():
+        text = page.read_text(encoding="utf-8")
+        for needle in ("k_1 \\ge 0.25", "LER", "2 nm", "t_0 + D A"):
+            if needle not in text:
+                warnings.append(f"five-limits: future/index.md no longer states {needle!r}")
+    return errors, warnings
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if "--check" in argv:
+        e, w = check()
+        for x in w:
+            print("warning:", x)
+        for x in e:
+            print("error:", x)
+        print(f"future schematics check: {len(e)} error(s), {len(w)} warning(s)")
+        return 1 if e else 0
+    only = [a for a in argv if not a.startswith("--")]
+    for name, fn in GENERATORS.items():
+        if only and name not in only:
+            continue
+        for p in fn():
+            print(f"wrote {registry.rel_to_repo(p)} ({p.stat().st_size / 1024:.1f} KB)")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

@@ -1,16 +1,62 @@
-# Laser-Wakefield Betatron X-rays
+---
+description: "The laser-wakefield betatron X-ray source: a planar-orbit, synchrotron-like model (plasma and betatron frequencies, K, critical energy, S(y) spectrum) of a keV broadband imaging source that feeds LIGA like a bending magnet."
+---
 
-**Status:** 🧪 Theoretical — LWFA betatron X-rays are keV, broadband, ~10 Hz sources used for imaging, not lithography (µW average power, tens-of-percent shot-to-shot fluctuation); the formula layer of this planar-orbit, synchrotron-like model (plasma and betatron frequencies, strength parameter K, critical energy, photons per period, S(y) spectrum) is textbook physics, fixture-tested against an independent evaluation.
+# Betatron
 
-## Overview
+**Status:** 🧪 Theoretical — a planar-orbit, synchrotron-like model (ω_p, ω_β, K, E_c, photons per period, S(y)) that is textbook physics, fixture-tested; the source itself is a keV broadband ~10 Hz imaging source with 3.5 µW average X-ray power, not a lithography source · [matrix](../capability-matrix.md#light-sources)
 
-In a laser-wakefield accelerator (LWFA) an intense, short laser pulse drives a plasma wave; in the blow-out ("bubble") regime the electrons are expelled from behind the pulse, leaving a column of ions. Electrons injected into this cavity are accelerated to hundreds of MeV over mm distances and, because the uniform ion column pulls them back towards the axis with a linear restoring force, they also oscillate transversely — **betatron oscillations**. The plasma is thereby a µm-amplitude, mm-long wiggler, and the electrons radiate a femtosecond, synchrotron-like burst of keV X-rays from a µm-size source into a ~10 mrad cone (first observed from a laser-plasma accelerator by Rousse et al., 2004; betatron radiation from an electron-beam-driven plasma had been reported earlier).
+<p class="huv-lead">In a laser-wakefield accelerator an intense short pulse drives a plasma wave; in the blow-out ("bubble") regime the electrons are expelled from behind the pulse, leaving a column of ions. Electrons trapped in that cavity reach hundreds of MeV over millimetres and, because the ion column pulls them back towards the axis with a linear force, they oscillate transversely — betatron oscillations. The plasma is thereby a µm-amplitude, mm-long wiggler, and the electrons radiate a femtosecond, synchrotron-like burst of keV X-rays from a µm-size source into a ~10 mrad cone (Rousse et al. 2004).</p>
 
-Betatron sources are compact and ultrafast, and their small source size gives excellent spatial resolution — they are used for (phase-contrast) **imaging, not lithography**. They deliver ~10⁸–10⁹ photons per shot at ≲10 Hz with 100-TW-class drivers, i.e. µW of average X-ray power. For lithography they are at most a curiosity for LIGA-style shadow printing; the model exists to put numbers on that.
+<div class="huv-physics" markdown>
 
-`BetatronSource` in [source_models/betatron.rs](../../crates/highuvlith-core/src/source_models/betatron.rs) derives everything from the plasma density, electron energy, oscillation amplitude, interaction length and bunch charge.
+<figure markdown="span">
 
-## Generation physics
+![Two lanes ending in shadow printing with no pupil: electrons accelerated to the kVp hit a thick W, Mo, Cu or Rh anode, giving the Kramers continuum and K and L lines that a Be window hardens; a 100 TW laser drives a plasma bubble whose electrons oscillate and emit a femtosecond keV burst.](../assets/images/diagrams/sources-cluster-labxray-light.svg#gh-light-mode-only)
+![Two lanes ending in shadow printing with no pupil: electrons accelerated to the kVp hit a thick W, Mo, Cu or Rh anode, giving the Kramers continuum and K and L lines that a Be window hardens; a 100 TW laser drives a plasma bubble whose electrons oscillate and emit a femtosecond keV burst.](../assets/images/diagrams/sources-cluster-labxray-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Mechanism.</strong> X-ray tube: thermionic electrons accelerated through the kVp strike a thick anode where about 99 % of the power becomes heat and the rest the Kramers continuum up to E₀ = eV plus the K and L lines the anode's edges allow; the Be window removes the soft photons and the flux spreads as 1/(4πd²) to the LIGA mask. Betatron: a 100 TW pulse blows out a plasma bubble, trapped electrons reach γ ≈ 400 and oscillate in the ion cavity at ω_β = ω_p/√(2γ), radiating a synchrotron-like femtosecond keV burst. Both are shadow-printed: no projection pupil. <em>Schematic, not to scale; no model badge.</em></figcaption>
+</figure>
+
+<figure markdown="span">
+
+![Log-log betatron flux density against E/E_c for E_c = 8.07 keV: the engine's spectrum inside the 0.1–8 E_c window the LIGA module samples, holding 46 % of the photons, the universal synchrotron shape dashed outside it and the mean photon energy at 0.308 E_c.](../assets/images/sim/sources-betatron-spectrum-light.png#gh-light-mode-only)
+![Log-log betatron flux density against E/E_c for E_c = 8.07 keV: the engine's spectrum inside the 0.1–8 E_c window the LIGA module samples, holding 46 % of the photons, the universal synchrotron shape dashed outside it and the mean photon energy at 0.308 E_c.](../assets/images/sim/sources-betatron-spectrum-dark.png#gh-dark-mode-only)
+
+<figcaption><strong>A synchrotron spectrum from a plasma wiggler.</strong> The preset's <code>spectral_flux_density(1000 mm)</code> on the log-energy bins of the [0.1, 8] E<sub>c</sub> window the LIGA module samples (E<sub>c</sub> = 8.07 keV, K = 8.3, 10 periods), with the universal S(y)/y shape continued outside it: the window holds 46 % of the photons and the mean photon energy is 0.308 E<sub>c</sub>, both evaluated from the K<sub>5/3</sub> integral and checked against the engine's bins. One electron energy, one amplitude, a flat-top cone of half-angle K/γ. <em>Model: Laser-wakefield betatron X-rays 🧪.</em></figcaption>
+</figure>
+
+<!-- huv-table: stack -->
+
+| What is modeled | Grade | Dominant approximation | Details |
+|---|---|---|---|
+| Laser-wakefield betatron X-rays | 🧪 Theoretical | planar sinusoidal orbits, one electron energy and amplitude, constant γ, a flat-top cone of half-angle K/γ | [Key equations](#key-equations) |
+| LIGA / deep X-ray depth dose and exposure time | ✅ Implemented | the beam feeds LIGA as `XraySpectrum::BendingMagnet { critical_energy_kev }`; absolute exposure only from an explicit flux density | [What the model does](#what-the-model-does) |
+| Machine-parameter physics layer | ✅ Implemented | ω_p, ω_β, K, E_c, N_γ ≈ 3.31×10⁻² K and the S(y) spectrum, fixture-tested | [Derived quantities](#derived-quantities) |
+| Illumination pupil fills | ✅ Implemented | not a projection source: `intensity_at()` is reached only if forced through projection imaging | [What the model does](#what-the-model-does) |
+
+</div>
+
+<p class="huv-lead">Betatron sources are compact and ultrafast, and their small source size gives excellent spatial resolution — they are used for phase-contrast imaging, not lithography. They deliver ~10⁸–10⁹ photons per shot at ≲ 10 Hz with 100-TW-class drivers, i.e. µW of average X-ray power; for lithography they are at most a curiosity for LIGA-style shadow printing, and `BetatronSource` exists to put numbers on that, deriving everything from the plasma density, electron energy, oscillation amplitude, interaction length and bunch charge. The betatron lane of the mechanism drawing is this page's; the tube lane has its own page.</p>
+
+<div class="huv-glance" markdown>
+
+| Property | Value |
+|---|---|
+| Wavelength | 0.499 nm at the mean photon energy 2.48 keV = 0.308 E_c (E_c = 8.07 keV for the preset) — bookkeeping, Δλ/λ = 1 |
+| Band / class | lab white beam · synchrotron-like S(E/E_c) continuum from a plasma wiggler (K = 8.3), fs bursts at 10 Hz |
+| Coherence → pupil | incoherent (ζ = 0; the 3.5×10⁻⁶ coherent fraction is reported, not used); shadow-printed, no projection pupil |
+| Power | 3.5 µW **average X-ray power into the K/γ cone at the source** (0.35 µJ per shot × 10 Hz); ×7×10⁷ short of 250 W |
+| Presets | `betatron()` = `lwfa_100tw` (200 MeV, 10¹⁹ cm⁻³, 1 µm, 3 mm, 50 pC, 10 Hz), any custom set of the six inputs |
+| Grade | 🧪 Theoretical |
+| Compare with | [X-ray tube](xray-tube.md) · [Synchrotron](synchrotron.md) (bending-magnet S(y)) · [LPA-FEL](lpa-fel.md) (the same accelerator driving an undulator) |
+
+**Same thing elsewhere:** Python `SourceConfig.betatron()` · TOML `[source] type = "betatron"` · CLI `highuvlith sources --family betatron` · GUI Source panel
+
+</div>
+
+<details markdown="1">
+<summary>How the light is made (flowchart)</summary>
 
 ```mermaid
 flowchart LR
@@ -21,120 +67,110 @@ flowchart LR
     E --> F["fs keV X-ray burst<br/><i>synchrotron-like S(E/E_c),<br/>cone θ ≈ K/γ</i>"]
 ```
 
-Plasma frequency and wavelength (practical form $\omega_p \approx 5.64\times10^4 \sqrt{n_e[\mathrm{cm^{-3}}]}$ rad/s):
+</details>
+
+## Key equations
+
+Plasma frequency (practical form ω_p ≈ 5.64×10⁴ √n_e[cm⁻³] rad/s), the betatron frequency in the ion channel (γ ≫ 1) and the strength parameter (K ≈ 1.33×10⁻¹⁰ √(γ n_e[cm⁻³]) r_β[µm]):
 
 ```math
-\omega_p = \sqrt{\frac{n_e e^2}{\varepsilon_0 m_e}}, \qquad \lambda_p = \frac{2\pi c}{\omega_p}
+\omega_p = \sqrt{\frac{n_e e^2}{\varepsilon_0 m_e}}, \qquad \omega_\beta = \frac{\omega_p}{\sqrt{2\gamma}}, \qquad \lambda_\beta = \lambda_p\sqrt{2\gamma}, \qquad K = \gamma\, k_\beta\, r_\beta = \frac{\gamma\,\omega_\beta\, r_\beta}{c}
 ```
 
-Betatron frequency in the ion channel ($\gamma \gg 1$) and period:
-
-```math
-\omega_\beta = \frac{\omega_p}{\sqrt{2\gamma}}, \qquad \lambda_\beta = \lambda_p\sqrt{2\gamma}
-```
-
-Strength parameter (practical form $K \approx 1.33\times10^{-10} \sqrt{\gamma n_e[\mathrm{cm^{-3}}]} r_\beta[\mu\mathrm{m}]$):
-
-```math
-K = \gamma\, k_\beta\, r_\beta = \frac{\gamma\,\omega_\beta\, r_\beta}{c}
-```
-
-Critical energy in the wiggler regime ($K \gg 1$), from the synchrotron result $\omega_c = \tfrac{3}{2}\gamma^3 c/\rho$ at the orbit's minimum radius of curvature $1/\rho = r_\beta k_\beta^2$:
+Critical energy in the wiggler regime (K ≫ 1), from the synchrotron result ω_c = (3/2)γ³c/ρ at the orbit's minimum radius of curvature 1/ρ = r_β k_β²:
 
 ```math
 \hbar\omega_c = \frac{3}{2}\,\frac{\gamma^3\,\hbar\,\omega_\beta^2\, r_\beta}{c} = \frac{3}{2}\,K\gamma^2\,\hbar\omega_\beta
 \;\approx\; 5.24\times10^{-24}\,\gamma^2\, n_e[\mathrm{cm^{-3}}]\, r_\beta[\mu\mathrm{m}]\ \ \mathrm{keV}
 ```
 
-(Note the $\gamma^3$: the form $\tfrac{3}{2}\gamma^2\hbar\omega_\beta^2 r_\beta/c$ is dimensionally consistent but low by a factor $\gamma$.) At fixed $n_e$ and $r_\beta$, $E_c \propto \gamma^2$: doubling the electron energy quadruples the critical energy.
-
-**Photons per period — a planar-orbit result.** For a planar sinusoidal orbit $x = r_\beta \sin(\omega_\beta t)$ the Larmor energy radiated per period is $W = e^2\gamma^2K^2\omega_\beta/(6\varepsilon_0 c)$; dividing by the mean photon energy of a synchrotron spectrum, $\langle\hbar\omega\rangle = \tfrac{8}{15\sqrt3}\hbar\omega_c = 0.3079 \hbar\omega_c$, gives
-
-```math
-N_\gamma = \frac{5\pi\sqrt3}{6}\,\alpha K \approx 3.31\times10^{-2}\,K
-```
-
-photons per period per electron. A helical (circular) orbit of the same amplitude would radiate twice the energy and twice the photons per period; the model's round flat-top cone stands for an ensemble of randomly oriented orbit planes, not for helical orbits.
-
-Photons per shot $= (Q/e) (L/\lambda_\beta) N_\gamma$. The photon spectrum per shot follows the bending-magnet universal function $S(y) = y\int_y^\infty K_{5/3}$ (shared with the [synchrotron](./synchrotron.md) family):
-
-```math
-\frac{dN}{dE} = N_\text{shot}\,\frac{S(E/E_c)}{E\,(5\pi/3)}, \qquad \int_0^\infty \frac{S(y)}{y}\,dy = \frac{5\pi}{3}
-```
-
-with divergence half-angle $\theta \approx K/\gamma$.
-
-## Real-machine parameters
-
-Typical published ranges (order of magnitude; see the review by Corde et al., 2013):
-
-| Quantity | Typical range |
-|---|---|
-| Plasma density | 10¹⁸–10¹⁹ cm⁻³ |
-| Electron energy | ~100 MeV to several hundred MeV |
-| Betatron amplitude | ~µm |
-| Critical energy | ~1 to tens of keV |
-| Photons per shot | ~10⁸–10⁹ |
-| Divergence | ~10 mrad |
-| Source size / duration | ~µm / ~fs to tens of fs |
-| Repetition rate | ≲10 Hz (100-TW class drivers) |
-
-Model preset `lwfa_100tw` (illustrative, within those ranges) — every number derived by the code:
-
-| Input | Value | Derived | Value |
-|---|---|---|---|
-| Electron energy | 200 MeV (γ = 392.4) | ω_p, λ_p | 1.784×10¹⁴ rad/s, 10.56 µm |
-| Plasma density | 1×10¹⁹ cm⁻³ | λ_β | 295.8 µm |
-| Amplitude r_β | 1 µm | K | 8.34 |
-| Interaction length | 3 mm (10.1 periods) | E_c | 8.07 keV |
-| Bunch charge | 50 pC (3.1×10⁸ e⁻) | N_γ per period per e⁻ | 0.276 |
-| Repetition rate | 10 Hz | photons per shot | 8.7×10⁸ |
-| Pulse duration | 10 fs | mean photon energy | 2.48 keV |
-| Shot-to-shot rms | 30% (assumed) | X-ray energy per shot / average power | 0.35 µJ / 3.5 µW |
-| | | divergence K/γ | 21.2 mrad |
-| | | coherent fraction (Kim's form, both planes) | 3.5×10⁻⁶ |
-| | | gap to 250 W | ×7×10⁷ |
-
-## Simulation model
-
-`BetatronSource` implements `LithographySource`:
-
-- **Formula layer** — `plasma_frequency_rad_s`, `betatron_frequency_rad_s`, `betatron_strength`, `betatron_critical_energy_kev`, `photons_per_period_per_electron` are public free functions; the struct methods compose them (`strength_k()`, `critical_energy_kev()`, `num_periods()`, `photons_per_shot()`, `mean_photon_energy_kev()`, `xray_energy_per_shot_j()`, `divergence_mrad()`, `coherent_fraction()`).
-- **Spectrum** — `photon_spectrum(n)` bins photons per shot on log-spaced energy bins over [0.1, 8] E_c, the window the LIGA module uses for a bending magnet (it holds 46 % of the photons: 53 % of a synchrotron-like photon spectrum lies below 0.1 E_c). `spectral_flux_density(distance_mm, n_bins)` gives the on-axis `(E_keV, photons s⁻¹ mm⁻² keV⁻¹)`, spreading each shot uniformly over a flat-top cone of half-angle K/γ (assumption) and averaging over the repetition rate.
-- **LIGA coupling** — `xray_spectrum()` returns `XraySpectrum::BendingMagnet { critical_energy_kev }` (relative: no exposure time), so the betatron beam feeds the [LIGA module](../processes/liga-deep-xray.md) exactly like a bending magnet; `highuvlith deep` accepts `[source] type = "betatron"` directly ([examples/sim_betatron.toml](../../examples/sim_betatron.toml), 100 µm PMMA: top/bottom dose ratio 4.59). For an absolute exposure pass `spectral_flux_density` as a flux-density table.
-- **Trait mapping** — `wavelength_nm()` is $hc/\langle E\rangle$, the wavelength at the mean photon energy 0.3079 E_c (the photon-weighted mean *wavelength* of a synchrotron spectrum diverges); `bandwidth_pm()` is nominal Δλ/λ = 1; `spectral_weights()` is the photon spectrum on `spectral_samples` (default 16) log bins. Pulse metadata (energy per shot, rate, duration) is live, and `shot_to_shot_rms()` feeds the stochastic dose jitter. `transverse_coherence()` stays 0 (the ~3.5×10⁻⁶ coherent fraction — Kim's per-plane form `eps_r / (eps + eps_r)` with the photon emittance r_β·K/γ in both planes — is reported as a derived quantity).
-- **Validation** — `validate()` rejects K < 1 (undulator regime, whose narrow harmonics this model does not describe), electron energies below 10 MeV (γ ≫ 1 is assumed), and overdense plasma (n_e above the 1.74×10²¹ cm⁻³ critical density of a 0.8 µm driver).
-- **Presets** — `BetatronSource::lwfa_100tw()` and `new(electron_energy_mev, plasma_density_cm3, betatron_amplitude_um, interaction_length_mm, bunch_charge_pc, rep_rate_hz)`.
-
-Assumptions of this **planar-orbit, synchrotron-like (S(y)) model**: planar sinusoidal orbits (randomly oriented across the bunch, hence the round flat-top cone of half-angle K/γ; helical orbits would double the photon count); a single electron energy and amplitude and a constant γ over the interaction length (real spectra are ensemble averages over energy, amplitude and acceleration history, usually fitted with an effective synchrotron-like E_c — which is what this model provides); and a photon count evaluated at the peak critical energy (the orbit-averaged spectrum is somewhat softer).
+Note the γ³: the form (3/2)γ²ħω_β²r_β/c is dimensionally consistent but low by a factor γ. At fixed n_e and r_β, E_c ∝ γ²: doubling the electron energy quadruples the critical energy.
 
 <figure markdown="span">
 
-![Two log-scale spectra: tungsten, molybdenum and copper X-ray tube presets show a bremsstrahlung continuum ending at the tube voltage with sharp characteristic lines; the betatron preset shows a smooth synchrotron-like spectrum around its critical energy.](../assets/images/sim/sources-xray-spectra-light.png#gh-light-mode-only)
-![Two log-scale spectra: tungsten, molybdenum and copper X-ray tube presets show a bremsstrahlung continuum ending at the tube voltage with sharp characteristic lines; the betatron preset shows a smooth synchrotron-like spectrum around its critical energy.](../assets/images/sim/sources-xray-spectra-dark.png#gh-dark-mode-only)
+![Log-log critical energy against electron energy from 10 to 1000 MeV at plasma densities of 10¹⁸ and 10¹⁹ cm⁻³ and 1 µm amplitude: two γ² lines, the preset at 200 MeV and 8.07 keV, and dotted low-energy ends where the strength parameter K drops below one.](../assets/images/sim/sources-betatron-scaling-light.png#gh-light-mode-only)
+![Log-log critical energy against electron energy from 10 to 1000 MeV at plasma densities of 10¹⁸ and 10¹⁹ cm⁻³ and 1 µm amplitude: two γ² lines, the preset at 200 MeV and 8.07 keV, and dotted low-energy ends where the strength parameter K drops below one.](../assets/images/sim/sources-betatron-scaling-dark.png#gh-dark-mode-only)
 
-<figcaption>Hard X-ray spectra of the LIGA-class presets from <code>spectral_flux_density(100 mm)</code>. (a) X-ray tubes: Kramers bremsstrahlung ending at the Duane–Hunt limit (eV<sub>tube</sub>), anode K/L lines gated by their edges, 250 µm Be window — line energies, edges, Duane–Hunt limit and Be filtration ✅; continuum shape and absolute flux 🔶 (Kramers thick target, no self-absorption, heel effect or backscatter; empirical line yields ±×2). (b) Laser-wakefield betatron: synchrotron-like spectrum from the critical energy E<sub>c</sub> of a single-energy, single-amplitude bunch, flat-top cone — 🧪.</figcaption>
+<figcaption><strong>Doubling the electron energy quadruples the critical energy.</strong> <code>betatron(electron_energy_mev=…, plasma_density_cm3=…)</code> at the preset's 1 µm amplitude: E<sub>c</sub> = (3/2) K γ² ħω<sub>β</sub> ∝ γ² n<sub>e</sub> r<sub>β</sub>, so the two densities are parallel lines a decade apart; the model accepts a point only in the wiggler regime K ≥ 1 and the dotted ends are the closed form where it refuses. <em>Model: Laser-wakefield betatron X-rays 🧪.</em></figcaption>
 </figure>
 
-## Model coverage
+**Photons per period — a planar-orbit result.** For a planar sinusoidal orbit the Larmor energy radiated per period is W = e²γ²K²ω_β/(6ε₀c); dividing by the mean photon energy of a synchrotron spectrum, ⟨ħω⟩ = (8/15√3) ħω_c = 0.3079 ħω_c, gives N_γ ≈ 3.31×10⁻² K photons per period per electron. Photons per shot = (Q/e)(L/λ_β)N_γ, and the photon spectrum follows the bending-magnet universal function S(y) = y∫_y^∞ K₅/₃ (shared with the [synchrotron](./synchrotron.md) family):
+
+```math
+N_\gamma = \frac{5\pi\sqrt3}{6}\,\alpha K, \qquad
+\frac{dN}{dE} = N_\text{shot}\,\frac{S(E/E_c)}{E\,(5\pi/3)}, \qquad \int_0^\infty \frac{S(y)}{y}\,dy = \frac{5\pi}{3}
+```
+
+with divergence half-angle θ ≈ K/γ. A helical orbit of the same amplitude would radiate twice the energy and twice the photons per period; the model's round flat-top cone stands for an ensemble of randomly oriented orbit planes, not for helical orbits.
+
+## Real machines
+
+<!-- huv-table: stack -->
+
+| Quantity | Typical range (Corde et al. 2013) | `lwfa_100tw` preset | provenance |
+|---|---|---|---|
+| Plasma density | 10¹⁸–10¹⁹ cm⁻³ | 1×10¹⁹ cm⁻³ | order of magnitude · illustrative |
+| Electron energy | ~100 MeV to several hundred MeV | 200 MeV (γ = 392.4) | order of magnitude · illustrative |
+| Betatron amplitude, interaction length | ~µm, ~mm | 1 µm, 3 mm (10.1 periods) | order of magnitude · illustrative |
+| Critical energy | ~1 to tens of keV | 8.07 keV (derived) | reported · this model |
+| Photons per shot | ~10⁸–10⁹ | 8.7×10⁸ (derived from 50 pC) | reported · this model |
+| Divergence | ~10 mrad | 21.2 mrad = K/γ (derived) | reported · this model |
+| Repetition rate, shot-to-shot rms | ≲ 10 Hz (100-TW class), tens of percent | 10 Hz, 30 % (assumed) | reported · assumed |
+
+The preset is illustrative within the published ranges, not a specific machine; every derived column is computed by the code from the six inputs.
+
+<figure markdown="span">
+
+![Log-power bars for the laser-wakefield betatron preset: 3.5 µW of average X-ray power at 10 Hz and its coherent part near ten picowatts.](../assets/images/sim/sources-power-chain-betatron-light.png#gh-light-mode-only)
+![Log-power bars for the laser-wakefield betatron preset: 3.5 µW of average X-ray power at 10 Hz and its coherent part near ten picowatts.](../assets/images/sim/sources-power-chain-betatron-dark.png#gh-dark-mode-only)
+
+<figcaption><strong>Microwatts of keV X-rays, incoherent.</strong> 8.7 × 10⁸ photons per shot at a mean energy of 2.48 keV, ten times a second, give 3.5 µW; the K = 8.3 wiggler regime leaves a coherent fraction of 3.5 × 10⁻⁶. The preset is illustrative within published ranges, not a specific machine; it feeds LIGA as a synchrotron-like spectrum, not projection imaging. <em>Model: Laser-wakefield betatron X-rays 🧪.</em></figcaption>
+</figure>
+
+## What the model does
+
+`BetatronSource` ([`source_models/betatron.rs`](../../crates/highuvlith-core/src/source_models/betatron.rs)) implements `LithographySource`:
+
+- **Formula layer** — `plasma_frequency_rad_s`, `betatron_frequency_rad_s`, `betatron_strength`, `betatron_critical_energy_kev`, `photons_per_period_per_electron` are public free functions; the struct methods compose them (`strength_k()`, `critical_energy_kev()`, `num_periods()`, `photons_per_shot()`, `mean_photon_energy_kev()`, `xray_energy_per_shot_j()`, `divergence_mrad()`, `coherent_fraction()`).
+- **Spectrum** — `photon_spectrum(n)` bins photons per shot on log-spaced energies over [0.1, 8] E_c, the window the LIGA module uses for a bending magnet (46 % of the photons; 53 % lie below 0.1 E_c); `spectral_flux_density(distance_mm, n_bins)` spreads each shot uniformly over the K/γ cone (assumption) and averages over the repetition rate.
+- **LIGA coupling** — `xray_spectrum()` returns `XraySpectrum::BendingMagnet { critical_energy_kev }` (relative: no exposure time), so `highuvlith deep` accepts `[source] type = "betatron"` directly ([`examples/sim_betatron.toml`](../../examples/sim_betatron.toml), 100 µm PMMA: top/bottom dose ratio 4.59); pass `spectral_flux_density` as a flux-density table for an absolute exposure.
+- **Trait mapping** — `wavelength_nm()` is hc/⟨E⟩ at the mean photon energy 0.3079 E_c (the photon-weighted mean *wavelength* of a synchrotron spectrum diverges); `bandwidth_pm()` is nominal Δλ/λ = 1; `spectral_weights()` the photon spectrum on 16 log bins; pulse metadata is live and `shot_to_shot_rms()` feeds the stochastic dose jitter; `transverse_coherence()` stays 0.
+- **Validation** — `validate()` rejects K < 1 (undulator regime, whose narrow harmonics this model does not describe), energies below 10 MeV and overdense plasma (above the 1.74×10²¹ cm⁻³ critical density of a 0.8 µm driver).
+- Assumptions: planar sinusoidal orbits randomly oriented across the bunch (helical orbits would double the photon count); a single electron energy and amplitude and constant γ over the interaction length (real spectra are ensemble averages fitted with an effective E_c — which is what this model provides); the photon count evaluated at the peak critical energy (the orbit-averaged spectrum is somewhat softer).
 
 | Field | Unit | Consumed by | Status |
 |---|---|---|---|
-| `electron_energy_mev` | MeV | γ → ω_β, K, E_c, divergence | live |
-| `plasma_density_cm3` | cm⁻³ | ω_p → ω_β, K, E_c | live |
-| `betatron_amplitude_um` | µm | K, E_c, coherent fraction | live |
-| `interaction_length_mm` | mm | number of periods → photons per shot | live |
-| `bunch_charge_pc` | pC | electrons per bunch → photons per shot | live |
-| `rep_rate_hz` | Hz | average power, flux density | live |
-| `pulse_duration_fs` | fs | `pulse_duration_s()` | live |
-| `shot_to_shot_rms` | — | `shot_to_shot_rms()` → stochastic dose jitter | live |
-| `spectral_samples` | count | bins of `spectral_weights()` | live |
-| `illumination` | enum | `intensity_at()` (not a projection-imaging source) | live |
+| `electron_energy_mev`, `plasma_density_cm3`, `betatron_amplitude_um` | MeV, cm⁻³, µm | γ, ω_p → ω_β, K, E_c, divergence, coherent fraction | live |
+| `interaction_length_mm`, `bunch_charge_pc` | mm, pC | number of periods and electrons per bunch → photons per shot | live |
+| `rep_rate_hz`, `pulse_duration_fs`, `shot_to_shot_rms` | Hz, fs, — | average power and flux density; `pulse_duration_s()`; stochastic dose jitter | live |
+| `spectral_samples`, `illumination` | count, enum | bins of `spectral_weights()`; `intensity_at()` (not a projection source) | live |
 | energy / amplitude distributions, γ evolution | — | — | planned |
 
-## Usage
+## Derived quantities
 
-Python:
+`derived_quantities()` (Python `derived_quantity(name)`; printed by `highuvlith simulate`) for the `lwfa_100tw` preset:
+
+| Name | Value | Unit | Meaning |
+|---|---|---|---|
+| `plasma_wavelength_um` | 10.56 | µm | λ_p = 2πc/ω_p (ω_p = 1.784×10¹⁴ rad/s) |
+| `betatron_wavelength_um` | 295.8 | µm | λ_β = λ_p √(2γ) |
+| `betatron_strength_k` | 8.34 | — | K = γ k_β r_β (≫ 1: wiggler regime) |
+| `critical_energy_kev` | 8.07 | keV | (3/2) K γ² ħω_β |
+| `photons_per_shot` | 8.7×10⁸ | photons | N_e × N_β × N_γ (0.276 per period per electron, 10.1 periods) |
+| `mean_photon_energy_kev` | 2.48 | keV | 0.3079 E_c |
+| `average_power_w` | 3.5×10⁻⁶ | W | 0.35 µJ per shot × 10 Hz |
+| `coherent_fraction` | 3.5×10⁻⁶ | — | Kim's ε_r/(ε + ε_r) per plane, both planes |
+
+<details markdown="1">
+<summary>The other 6 derived quantities</summary>
+
+`plasma_frequency_rad_s` 1.784×10¹⁴ · `photons_per_electron_per_period` 0.276 · `betatron_periods` 10.1 · `xray_energy_per_shot_uj` 0.348 · `divergence_half_angle_mrad` 21.2 (K/γ) · `hvm_power_gap` 7.2×10⁷ (context only: 250 W / the average X-ray power).
+
+</details>
+
+## Use it
+
+### Python
 
 <!-- verify-example -->
 ```python
@@ -145,51 +181,54 @@ src = huv.SourceConfig.betatron(
     interaction_length_mm=3.0, bunch_charge_pc=50.0, rep_rate_hz=10.0,
 )
 dq = {name: value for name, value, *_ in src.derived_quantities()}
-print(dq["betatron_strength_k"], dq["critical_energy_kev"], dq["photons_per_shot"])  # 8.34, 8.07, 8.7e8
+print(f"{dq['betatron_strength_k']:.3g} {dq['critical_energy_kev']:.3g} keV {dq['photons_per_shot']:.3g}")
+print(f"{src.wavelength_nm:.3g} nm {src.average_power_w:.3g} W")   # mean-energy wavelength, average power
 spectrum = src.xray_spectrum(n_bins=64)                 # [(E_keV, photon fraction)] over [0.1, 8] E_c
 flux = src.spectral_flux_density(1000.0, n_bins=64)     # on-axis photons/s/mm^2/keV at 1 m
 ```
 
-??? success "Output"
+???+ success "Output"
 
     ```text
-    8.335178919998581 8.06911259510957 872985923.518901
+    8.34 8.07 keV 8.73e+08
+    0.499 nm 3.48e-06 W
     ```
 
-TOML ([examples/sim_betatron.toml](../../examples/sim_betatron.toml)):
+### TOML keys
 
-```toml
-[source]
-type                  = "betatron"
-electron_energy_mev   = 200.0
-plasma_density_cm3    = 1.0e19
-betatron_amplitude_um = 1.0
-interaction_length_mm = 3.0
-bunch_charge_pc       = 50.0
-rep_rate_hz           = 10.0
+Example: [`examples/sim_betatron.toml`](../../examples/sim_betatron.toml) (`highuvlith deep --config examples/sim_betatron.toml` with `[deep] mode = "liga"`); an absolute exposure needs `[deep] source_distance_m` (point source, inverse square) — see [LIGA deep X-ray](../processes/liga-deep-xray.md).
 
-[deep]
-mode = "liga"      # highuvlith deep --config examples/sim_betatron.toml
-```
+| Key | Default | Units | Notes |
+|---|---|---|---|
+| `type` | — | — | `"betatron"` |
+| `electron_energy_mev`, `plasma_density_cm3`, `betatron_amplitude_um`, `interaction_length_mm`, `bunch_charge_pc`, `rep_rate_hz` | 200, 1e19, 1.0, 3.0, 50, 10 | MeV, cm⁻³, µm, mm, pC, Hz | Derive the critical energy, photon number and wavelength; K < 1 is rejected. |
+| `pulse_duration_fs` | preset | fs | |
+| `wavelength_nm` | derived (hc / mean photon energy) | nm | Cross-check, 5 %. |
+| `spectral_samples` | 16 | count | Log bins of `spectral_weights()`. |
 
-## Validation
+<details markdown="1">
+<summary>Validation — 12 tests</summary>
 
-Rust unit tests in [betatron.rs](../../crates/highuvlith-core/src/source_models/betatron.rs), fixture numbers from an independent NumPy evaluation (SI constants; K_{5/3} from its integral representation):
+- [`betatron.rs`](../../crates/highuvlith-core/src/source_models/betatron.rs), fixtures from an independent NumPy evaluation (SI constants; K₅/₃ from its integral representation): `test_plasma_frequency_fixture` (ω_p(10¹⁹ cm⁻³) = 1.78399×10¹⁴ rad/s, λ_p = 10.5587 µm), `test_betatron_frequency_and_strength_fixture` (λ_β = 295.79 µm, K = 8.3352, 10.14 periods), `test_critical_energy_fixture_and_forms` (E_c = 8.0691 keV), `test_critical_energy_scaling_laws` (∝ γ², linear in n_e and r_β), `test_photon_yield_fixture` (N_γ = 0.27581, 8.7299×10⁸ photons per shot, 3.4752 µW), `test_spectrum_normalization_and_shape` (window fraction 0.462807), `test_derived_quantities_and_metadata` (coherent fraction 3.4815×10⁻⁶), `test_spectral_flux_density_scaling`, `test_trait_wavelength_is_mean_photon_energy`, `test_validation`.
+- CLI: `test_betatron_undulator_regime_rejected` and the LIGA end-to-end test; Python: `tests/python/test_sources_new.py::TestBetatron`.
 
-- `test_plasma_frequency_fixture` — ω_p(10¹⁹ cm⁻³) = 1.78399×10¹⁴ rad/s, λ_p = 10.5587 µm, ω_p ∝ √n_e.
-- `test_betatron_frequency_and_strength_fixture` — γ, ω_β, λ_β = 295.79 µm, K = 8.3352 (and the 1.33×10⁻¹⁰ practical form), 10.14 periods.
-- `test_critical_energy_fixture_and_forms` — E_c = 8.0691 keV, equal to (3/2)Kγ²ħω_β and to the 5.24×10⁻²⁴ practical form.
-- `test_critical_energy_scaling_laws` — E_c ∝ γ² at fixed n_e, r_β; linear in n_e and in r_β.
-- `test_photon_yield_fixture` — N_γ = 0.27581 (3.31×10⁻² K), 8.7299×10⁸ photons per shot, 3.4752 µW.
-- `test_spectrum_normalization_and_shape` — the [0.1, 8] E_c photon fraction 0.462807; weights normalized; BM hand-off at E_c.
-- `test_derived_quantities_and_metadata` — coherent fraction 3.4815×10⁻⁶ (Kim's form, both planes).
-- `test_spectral_flux_density_scaling`, `test_trait_wavelength_is_mean_photon_energy`, `test_validation`.
+</details>
 
-CLI: `test_betatron_undulator_regime_rejected` and the LIGA end-to-end test; Python: `tests/python/test_sources_new.py::TestBetatron`.
+<details markdown="1">
+<summary>Changes</summary>
+
+No behaviour change is recorded for this family; the shared tube-and-betatron spectra chart that this page and the X-ray tube page used to embed is replaced by the per-family figures above. Dated entries, if any, live in the [capability matrix](../capability-matrix.md#audit-log) audit log.
+
+</details>
+
+## See also
+
+[Synchrotron](synchrotron.md) (bending-magnet S(y) and critical energy) · [LPA-FEL](lpa-fel.md) (the same accelerator driving an undulator) · [X-ray tube](xray-tube.md) · [LIGA deep X-ray](../processes/liga-deep-xray.md) · [Accelerator light sources](../future/accelerator-light-sources.md) · [Beyond EUV](../future/beyond-euv.md) · [Sources index](index.md) · [TOML configuration](../configuration.md) · [`examples/sim_betatron.toml`](../../examples/sim_betatron.toml)
 
 ## References
 
 1. S. Corde et al., "Femtosecond x rays from laser-plasma accelerators," *Rev. Mod. Phys.* **85**, 1 (2013).
 2. A. Rousse et al., "Production of a keV X-ray beam from synchrotron radiation in relativistic laser-plasma interaction," *Phys. Rev. Lett.* **93**, 135005 (2004).
 3. E. Esarey et al., "Synchrotron radiation from electron beams in plasma-focusing channels," *Phys. Rev. E* **65**, 056505 (2002).
-4. Related pages: [synchrotron](./synchrotron.md) (bending-magnet S(y) and critical energy), [LPA-FEL](./lpa-fel.md) (the same accelerator driving an undulator), [X-ray tube](./xray-tube.md), [capability matrix](../capability-matrix.md).
+
+**Where next:** ← [X-ray tube](xray-tube.md) · [Entangled photons](entangled-photon.md) → · [Sources](index.md) · [Accelerator light sources](../future/accelerator-light-sources.md)

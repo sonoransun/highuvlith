@@ -1,58 +1,64 @@
 #!/usr/bin/env python3
-"""Data charts for "The Future" section of the highuvlith site (docs/future/).
+"""Data charts for "The Future" section (docs/future/), drawn through the site's tokens.
 
-Writes light and dark SVG variants into ``docs/assets/images/future/``; pages pick
-the right one with the ``#only-light`` / ``#only-dark`` URL suffixes. Backgrounds
-are transparent; ink and series colours are chosen for Material's light (white)
-and dark ("slate", hsl(250 15% 14%) = #201e29) schemes. Series colours are the
-site's chart palette (slots 1-3 of the dataviz reference palette), validated
-all-pairs for both surfaces with the palette validator.
+Every chart is an :class:`registry.AssetSpec` written as a light/dark pair into
+``docs/assets/images/future/``. The matplotlib charts render through
+``docs/figures/sim/style.py`` (``style.use(theme)`` rcParams: ``tokens`` chrome and series,
+outlined text, ``svg.hashsalt``) and get ``<title>``/``<desc>`` = the alt injected; the
+readiness matrix is scripted SVG (svgkit, standard library, platform independent).
 
-Charts:
+* ``readiness-matrix`` (N4) — seven rung columns × six family rows from ``readiness.csv``;
+  each technology a chip (2–4 words + its model glyph(s), grey ∅ = not modelled), drawn with
+  ``svgkit.chip`` geometry; rung headers are outlined slate chips; no links (the collapsed
+  ladder table under it carries them). A narrow twin lists the rungs as rows.
+* ``photons-per-feature`` — photons on a (half-pitch)² square at 30 mJ/cm² vs half-pitch
+  at 193 / 13.5 / 6.7 nm (CODATA constants, ASML resolution specs, hypothetical hollow points).
+* ``noon-fringes``         — one-photon, classical two-photon (I²) and ideal N = 2 NOON fringes.
+* ``source-landscape``     — average power vs wavelength, every sourced row of
+  ``../sim/data/source_power_vs_wavelength.csv`` (the one dataset shared with ``fig_sources.py``).
+* ``source-landscape-euv`` — the 13.5 nm rows as a dot plot by source class.
+* ``multilayer-reflectance`` — best measured normal-incidence peak reflectance per class and
+  what ``N_REFLECTIONS`` reflections leave.
+* ``poisson-floor`` (N16)  — exact Poisson P(X ≤ μ/2) vs μ with the page's example counts.
+* ``two-routes`` (N17)     — Hyper-NA at 13.5 nm vs BEUV at 6.7 nm at k₁ = 0.30, three dumbbells.
+* ``ebeam-write-time`` (N18) — t = D·A/I for a 300 mm wafer vs delivered current.
 
-* ``photons-per-feature``   -- photons that land in a (half-pitch)^2 square at a
-  fixed dose, vs half-pitch, at 193 / 13.5 / 6.7 nm. Pure arithmetic from CODATA
-  constants plus ASML's published resolution specs (cited in ``TOOLS``).
-* ``polarization-contrast`` -- two-beam interference contrast for TE, TM and
-  unpolarized light vs the sine of the beam half-angle in the recording medium.
-  Closed-form optics (the same closed forms WP-A2 pins in tests/vector_pupil.rs).
-* ``noon-fringes``          -- one-photon fringe, classical two-photon exposure of
-  the same fringe, and an ideal N = 2 NOON fringe. Closed forms.
-* ``talbot-carpet``         -- scalar paraxial Fresnel self-imaging behind a
-  binary grating with 25 % open fraction (Fourier-series evaluation, no measured data).
-* ``source-landscape``      -- reported / projected average power vs wavelength for
-  every sourced row of ``source_power_vs_wavelength.csv`` (production / demonstrated /
-  projected marked differently; EUV HVM band).
-* ``source-landscape-euv``  -- the 13.5 nm rows as a horizontal dot plot by source class.
-* ``multilayer-reflectance`` -- best measured normal-incidence multilayer peak
-  reflectance per wavelength class, and what ~11 reflections leave.
+Two earlier pairs (the polarization-contrast panel and the base64 Talbot carpet) are no
+longer generated or registered (DESIGN §5.7: the first duplicated panel (a) of
+``imaging-vector-te-tm``, the second was replaced by the sim ``talbot-carpet``); INT
+deleted their files (§9.0 rule 7).
 
-Run with the project venv (numpy + matplotlib):
-
-    /path/to/.venv/bin/python docs/figures/future/make_future_figures.py
-
-Pass ``--preview DIR`` to also write PNG previews (needs ``rsvg-convert``).
+    PYTHONPATH=python <project python> docs/figures/future/make_future_figures.py            # all
+    PYTHONPATH=python <project python> docs/figures/future/make_future_figures.py --check    # the asserts
+    python3 docs/figures/future/make_future_figures.py readiness-matrix      # the svgkit one needs no matplotlib
 """
 
 from __future__ import annotations
 
-import argparse
-import shutil
-import subprocess
+import csv
+import io
+import math
+import re
+import sys
 from pathlib import Path
 
-import matplotlib
+HERE = Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+sys.path.insert(0, str(HERE.parent / "reference"))
+sys.path.insert(0, str(HERE.parent / "sim"))
+sys.path.insert(0, str(HERE))
 
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt  # noqa: E402
-import numpy as np  # noqa: E402
-from matplotlib.colors import LinearSegmentedColormap  # noqa: E402
+import registry  # noqa: E402
+import svgkit as K  # noqa: E402
+import tokens  # noqa: E402
 
-OUT = Path(__file__).resolve().parents[2] / "assets" / "images" / "future"
+OUT = registry.IMAGES / "future"
+GENERATOR = "docs/figures/future/make_future_figures.py"
+DATA_CSV = HERE.parent / "sim" / "data" / "source_power_vs_wavelength.csv"
 
 # --- physical constants (CODATA 2018) ---------------------------------------
-HC_EV_NM = 1239.84193  # h*c in eV*nm
-E_CHARGE = 1.602176634e-19  # J per eV
+HC_EV_NM = 1239.84193
+E_CHARGE = 1.602176634e-19
 
 
 def photon_energy_ev(wavelength_nm: float) -> float:
@@ -60,343 +66,208 @@ def photon_energy_ev(wavelength_nm: float) -> float:
 
 
 def photons_per_nm2_per_mj_cm2(wavelength_nm: float) -> float:
-    """Photons per nm^2 carried by 1 mJ/cm^2 (= 10 J/m^2 = 1e-17 J/nm^2)."""
+    """Photons per nm² carried by 1 mJ/cm² (= 1e-17 J/nm²)."""
     return 1e-17 / (photon_energy_ev(wavelength_nm) * E_CHARGE)
 
 
-# --- style ------------------------------------------------------------------
-# Slots 1-3 of the dataviz reference palette (light / dark steps). Validated with
-# validate_palette.js --pairs all: light on #ffffff (aqua 2.82:1 -> every chart
-# carries direct labels and the page carries a data table), dark on #201e29.
-PALETTE = {
-    "light": {
-        "s1": "#2a78d6",
-        "s2": "#eb6834",
-        "s3": "#1baf7a",
-        "ink": "#0b0b0b",
-        "ink2": "#52514e",
-        "muted": "#6b6a66",
-        "grid": "#e1e0d9",
-        "axis": "#c3c2b7",
-        "band": "#efeeea",
-        "context": "#b3b2aa",  # de-emphasis gray for "emphasis" charts (values are direct-labeled)
-        "seq": ["#ffffff", "#cde2fb", "#86b6ef", "#3987e5", "#256abf", "#184f95", "#0d366b"],
-    },
-    "dark": {
-        "s1": "#3987e5",
-        "s2": "#d95926",
-        "s3": "#199e70",
-        "ink": "#ffffff",
-        "ink2": "#c3c2b7",
-        "muted": "#a3a29b",
-        "grid": "#34323f",
-        "axis": "#4d4b58",
-        "band": "#2c2a36",
-        "context": "#5a5866",
-        "seq": ["#201e29", "#104281", "#1c5cab", "#2a78d6", "#5598e7", "#9ec5f4", "#e6f0fd"],
-    },
-}
+# ---------------------------------------------------------------------------
+# matplotlib plumbing (imported lazily: --check and the readiness matrix need none of it)
+# ---------------------------------------------------------------------------
 
 
-def setup(theme: str) -> dict:
-    p = PALETTE[theme]
-    plt.rcParams.update(
-        {
-            "svg.fonttype": "none",
-            "svg.hashsalt": "highuvlith-future",  # stable element ids -> reproducible files
-            "font.family": ["sans-serif"],
-            "font.sans-serif": ["Helvetica", "Arial", "DejaVu Sans"],
-            "font.size": 12,
-            "axes.edgecolor": p["axis"],
-            "axes.linewidth": 1.0,
-            "axes.labelcolor": p["ink2"],
-            "axes.titlecolor": p["ink"],
-            "axes.titlesize": 13,
-            "axes.titleweight": "bold",
-            "axes.titlelocation": "left",
-            "xtick.color": p["axis"],
-            "ytick.color": p["axis"],
-            "xtick.labelcolor": p["ink2"],
-            "ytick.labelcolor": p["ink2"],
-            "grid.color": p["grid"],
-            "grid.linewidth": 1.0,
-            "grid.linestyle": "-",
-            "legend.frameon": False,
-            "legend.labelcolor": p["ink2"],
-            "lines.solid_capstyle": "round",
-            "lines.solid_joinstyle": "round",
-            "figure.facecolor": "none",
-            "axes.facecolor": "none",
-            "savefig.facecolor": "none",
-            "savefig.transparent": True,
-        }
-    )
-    return p
+def _style():
+    import style  # noqa: PLC0415
+
+    return style
 
 
-def style_axes(ax, p) -> None:
-    ax.grid(True, which="major")
-    ax.set_axisbelow(True)
-    for side in ("top", "right"):
-        ax.spines[side].set_visible(False)
-    ax.tick_params(which="both", length=3)
+def _write_mpl_svg(fig, path: Path, title: str, alt: str) -> Path:
+    """Save a matplotlib figure as SVG with ``<title>``/``<desc>`` = the alt (the registry's SVG rule)."""
+    import matplotlib.pyplot as plt  # noqa: PLC0415
 
-
-def save(fig, name: str, theme: str, preview: Path | None) -> None:
-    OUT.mkdir(parents=True, exist_ok=True)
-    path = OUT / f"{name}-{theme}.svg"
-    fig.savefig(path, format="svg", bbox_inches="tight", metadata={"Date": None})
+    buf = io.StringIO()
+    fig.savefig(buf, format="svg", bbox_inches="tight", pad_inches=0.08, metadata={"Title": title, "Date": None})
     plt.close(fig)
-    if preview is not None and shutil.which("rsvg-convert"):
-        preview.mkdir(parents=True, exist_ok=True)
-        bg = "#ffffff" if theme == "light" else "#201e29"
-        subprocess.run(
-            ["rsvg-convert", "-b", bg, "-z", "1.5", "-o", str(preview / f"{name}-{theme}.png"), str(path)],
-            check=True,
-        )
-    print("wrote", path.relative_to(OUT.parents[2]))
+    text = buf.getvalue()
+    i = text.index("<svg")
+    j = text.index(">", i) + 1
+    head = text[i:j]
+    if "role=" not in head:
+        head = head[:-1] + ' role="img" aria-labelledby="t d">'
+    inject = f"\n<title id=\"t\">{K.esc(title)}</title>\n<desc id=\"d\">{K.esc(alt)}</desc>\n<!-- generated by {GENERATOR}; edit the script, not this file -->"
+    out = text[:i] + head + inject + text[j:]
+    out = _round_paths(out)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(out, encoding="utf-8")
+    return path
+
+
+_NUM = re.compile(r"-?\d+\.\d{3,}")
+
+
+def _round_paths(svg: str) -> str:
+    """Shrink a matplotlib SVG without changing what it draws: coordinates written with six decimals are
+    rounded to two (0.01 px at 100 dpi) and the outlined-glyph ids (``HelveticaNeue-31`` …) are shortened to
+    ``g<n>`` — together about a third of the file, most of it the ``<use>`` per glyph."""
+    def fix(m: re.Match) -> str:
+        v = round(float(m.group(0)), 2)
+        s = f"{v:.2f}".rstrip("0").rstrip(".")
+        return s if s not in ("", "-0") else "0"
+    svg = re.sub(r'(?<=\bd=")[^"]*', lambda m: _NUM.sub(fix, m.group(0)), svg)
+    svg = re.sub(r'(?<=\b[xy]=")-?\d+\.\d{3,}(?=")', fix, svg)
+    svg = re.sub(r'translate\([^)]*\)', lambda m: _NUM.sub(fix, m.group(0)), svg)
+    glyph_ids = sorted(set(re.findall(r'<path id="([A-Za-z]+-[0-9A-Fa-f]+)"', svg)))
+    mapping = {gid: f"g{i}" for i, gid in enumerate(glyph_ids)}
+    if mapping:
+        pat = re.compile(r"(?<=[#\"])(" + "|".join(re.escape(g) for g in glyph_ids) + r')(?=")')
+        svg = pat.sub(lambda m: mapping[m.group(1)], svg)
+    return svg
+
+
+def _render(name: str, draw, title: str, alt: str) -> list[Path]:
+    style = _style()
+    paths = []
+    for th in style.THEMES:
+        with style.use(th):
+            fig = draw(th)
+            paths.append(_write_mpl_svg(fig, OUT / f"{name}-{th.name}.svg", title, alt))
+    return paths
+
+
+def _spec(name, kind, alt, caption, pages, gen, **kw) -> registry.AssetSpec:
+    return registry.AssetSpec(name=name, kind=kind, group="future", subdir="future", fmt="svg", alt=alt, caption=caption,
+                              pages=pages, generator=gen, **kw)
 
 
 # ============================================================================
-# 1. Photons per feature: the lambda^3 squeeze
+# 1. Photons per feature: the λ³ squeeze
 # ============================================================================
 DOSE_MJ_CM2 = 30.0
-
-# (label, wavelength nm, half-pitch nm, kind, source)
-# kind "spec": vendor resolution spec from the product page (retrieved 2026-09-30):
-#   NXT:2000i  https://www.asml.com/en/products/duv-lithography-systems/twinscan-nxt2000i
-#              ("production resolutions down to 40 nm (C-quad) and 38 nm (dipole)")
-#   NXE:3400C  https://www.asml.com/en/products/euv-lithography-systems/twinscan-nxe3400c (13 nm)
-#   EXE:5000   https://www.asml.com/en/products/euv-lithography-systems/twinscan-exe-5000 (8 nm)
-# kind "extrap": NOT a product -- k1 = 0.32 (the k1 implied by the two EUV specs:
-#   13*0.33/13.5 = 0.318, 8*0.55/13.5 = 0.326) applied to a hypothetical NA.
+#: (label, wavelength nm, half-pitch nm, kind). "spec": vendor resolution spec (ASML product
+#: pages, retrieved 2026-09-30): NXT:2000i 38 nm dipole, NXE:3400C 13 nm, EXE:5000 8 nm.
+#: "extrap": NOT a product — k₁ = 0.32 (implied by the two EUV specs) at a hypothetical NA.
+K1_EXTRAP = 0.32
 TOOLS = [
     ("ArF immersion\nNA 1.35 (38 nm)", 193.0, 38.0, "spec"),
     ("EUV NA 0.33\n(13 nm)", 13.5, 13.0, "spec"),
     ("High-NA 0.55\n(8 nm)", 13.5, 8.0, "spec"),
-    ("Hyper-NA 0.75?\n(k₁ 0.32: 5.8 nm)", 13.5, 0.32 * 13.5 / 0.75, "extrap"),
-    ("BEUV 6.7 nm, NA 0.55?\n(k₁ 0.32: 3.9 nm)", 6.7, 0.32 * 6.7 / 0.55, "extrap"),
+    ("Hyper-NA 0.75?\n(k₁ 0.32: 5.8 nm)", 13.5, K1_EXTRAP * 13.5 / 0.75, "extrap"),
+    ("BEUV 6.7 nm, NA 0.55?\n(k₁ 0.32: 3.9 nm)", 6.7, K1_EXTRAP * 6.7 / 0.55, "extrap"),
 ]
+NOISE_LINE = 900  # 3σ/mean = 10 % ⇔ N = 900
 
 
-def fig_photons_per_feature(theme: str, preview: Path | None) -> None:
-    p = setup(theme)
-    fig, ax = plt.subplots(figsize=(8.6, 5.4))
-    style_axes(ax, p)
+def photons_per_feature(lam_nm: float, hp_nm: float, dose: float = DOSE_MJ_CM2) -> float:
+    return photons_per_nm2_per_mj_cm2(lam_nm) * dose * hp_nm**2
+
+
+PHOTON_COUNTS = [photons_per_feature(lam, hp) for _l, lam, hp, _k in TOOLS]
+PHOTONS_ALT = ("Photons incident on a (half-pitch)² square at 30 mJ/cm² versus half-pitch for 193, 13.5 and 6.7 nm light: "
+               f"about {PHOTON_COUNTS[0]:,.0f} at ArF immersion 38 nm, {PHOTON_COUNTS[1]:,.0f} at EUV 13 nm, "
+               f"{PHOTON_COUNTS[2]:,.0f} at High-NA 8 nm, and hypothetical {PHOTON_COUNTS[3]:,.0f} at 5.8 nm and "
+               f"{PHOTON_COUNTS[4]:,.0f} at 3.9 nm; a line at 900 photons marks 10 % three-sigma noise.")
+PHOTONS_CAPTION = ("<strong>At fixed dose and k₁, photons per feature fall as λ³.</strong> Incident photons on a (half-pitch)² "
+                   f"square at {DOSE_MJ_CM2:.0f} mJ/cm²: filled points are ASML resolution specs (38, 13, 8 nm — about "
+                   f"{PHOTON_COUNTS[0]:,.0f}, {PHOTON_COUNTS[1]:,.0f} and {PHOTON_COUNTS[2]:,.0f} photons), hollow points "
+                   f"hypothetical systems at k₁ = {K1_EXTRAP}; the {NOISE_LINE}-photon line marks 10 % three-sigma noise, "
+                   "and the absorbed fraction depends on the resist. <em>Closed form; not the engine.</em>")
+
+
+def draw_photons(th):
+    import matplotlib.pyplot as plt  # noqa: PLC0415
+    import numpy as np  # noqa: PLC0415
+
+    style = _style()
+    fig, ax = plt.subplots(figsize=(style.FULL_WIDTH, 5.0))
+    style.style_axes(ax, th, grid="both")
     hp = np.logspace(np.log10(2.0), np.log10(100.0), 200)
-    series = [(193.0, "193 nm (ArF)", p["s1"]), (13.5, "13.5 nm (EUV)", p["s2"]), (6.7, "6.7 nm (BEUV)", p["s3"])]
+    series = [(193.0, "193 nm (ArF)", th.s(1)), (13.5, "13.5 nm (EUV)", th.s(2)), (6.7, "6.7 nm (BEUV)", th.s(3))]
     for lam, label, color in series:
-        n = photons_per_nm2_per_mj_cm2(lam) * DOSE_MJ_CM2 * hp**2
-        ax.plot(hp, n, color=color, lw=2, label=label, zorder=3)
-        # direct label at the right end
-        ax.annotate(
-            label,
-            xy=(hp[-1], n[-1]),
-            xytext=(6, 0),
-            textcoords="offset points",
-            va="center",
-            fontsize=11,
-            color=p["ink"],
-        )
-    # Poisson reference: 3 sigma / mean = 10 %  <=>  N = 900
-    ax.axhline(900, color=p["muted"], lw=1, zorder=2)
-    ax.text(98, 900 / 1.3, "N = 900: 3σ photon noise = 10 %", fontsize=10, color=p["ink2"], ha="right", va="top")
-    colors = {193.0: p["s1"], 13.5: p["s2"], 6.7: p["s3"]}
-    offsets = {
-        "ArF": (-10, 12, "right"),
-        "EUV NA": (-12, 30, "right"),
-        "High": (10, -30, "left"),
-        "Hyper": (-12, 34, "right"),
-        "BEUV": (10, -32, "left"),
-    }
-    for label, lam, h, kind in TOOLS:
-        n = photons_per_nm2_per_mj_cm2(lam) * DOSE_MJ_CM2 * h**2
+        n = photons_per_feature(lam, hp)
+        ax.plot(hp, n, color=color, lw=2, zorder=3)
+        ax.annotate(label, xy=(hp[-1], n[-1]), xytext=(6, 0), textcoords="offset points", va="center",
+                    fontsize=style.BASE_PT, color=th.ink)
+    ax.axhline(NOISE_LINE, color=th.muted, lw=1, zorder=2)
+    ax.text(98, NOISE_LINE / 1.3, f"N = {NOISE_LINE}: 3σ photon noise = 10 %", fontsize=style.SMALL_PT, color=th.ink2,
+            ha="right", va="top")
+    colors = {193.0: th.s(1), 13.5: th.s(2), 6.7: th.s(3)}
+    offsets = {"ArF": (-10, 12, "right"), "EUV NA": (-12, 30, "right"), "High": (10, -30, "left"),
+               "Hyper": (-12, 34, "right"), "BEUV": (10, -32, "left")}
+    for (label, lam, h, kind), n in zip(TOOLS, PHOTON_COUNTS):
         c = colors[lam]
         if kind == "spec":
-            ax.plot(h, n, "o", ms=9, color=c, mec=p["seq"][0], mew=2, zorder=4)
+            ax.plot(h, n, "o", ms=9, color=c, mec=th.surface, mew=2, zorder=4)
         else:
             ax.plot(h, n, "o", ms=9, mfc="none", mec=c, mew=2, zorder=4)
         key = next(k for k in offsets if label.startswith(k))
         dx, dy, ha = offsets[key]
-        ax.annotate(
-            f"{label}\n≈ {n:,.0f} photons",
-            xy=(h, n),
-            xytext=(dx, dy),
-            textcoords="offset points",
-            ha=ha,
-            va="center",
-            fontsize=9.5,
-            color=p["ink2"],
-            linespacing=1.15,
-        )
+        ax.annotate(f"{label}\n≈ {n:,.0f} photons", xy=(h, n), xytext=(dx, dy), textcoords="offset points", ha=ha,
+                    va="center", fontsize=style.SMALL_PT, color=th.ink2, linespacing=1.15)
     ax.set_xscale("log")
     ax.set_yscale("log")
     ax.set_xlim(2, 100)
     ax.set_ylim(10, 5e6)
     ax.set_xticks([2, 3, 5, 10, 20, 30, 50, 100])
     ax.set_xticklabels(["2", "3", "5", "10", "20", "30", "50", "100"])
+    ax.minorticks_off()
     ax.set_xlabel("half-pitch (nm)")
     ax.set_ylabel(f"photons incident on a (half-pitch)² square\nat {DOSE_MJ_CM2:.0f} mJ/cm²")
-    ax.set_title("At fixed dose and k₁, photons per feature fall as λ³", pad=12)
-    ax.text(
-        0.0,
-        -0.2,
-        "Filled: vendor resolution specs (ASML product pages). Hollow: hypothetical, k₁ = 0.32 extrapolation.\n"
-        "Incident photons only; the absorbed fraction depends on the resist.",
-        transform=ax.transAxes,
-        fontsize=9,
-        color=p["muted"],
-        va="top",
-    )
-    save(fig, "photons-per-feature", theme, preview)
+    ax.set_title("At fixed dose and k₁, photons per feature fall as λ³")
+    ax.text(0.0, -0.17, "Filled: vendor resolution specs (ASML product pages). Hollow: hypothetical, k₁ = 0.32 extrapolation.\n"
+            "Incident photons only; the absorbed fraction depends on the resist.", transform=ax.transAxes,
+            fontsize=style.SMALL_PT, color=th.muted, va="top")
+    return fig
+
+
+def gen_photons() -> list[Path]:
+    return _render("photons-per-feature", draw_photons, "Photons per feature fall as λ³", PHOTONS_ALT)
 
 
 # ============================================================================
-# 2. Polarization: two-beam contrast vs angle
+# 2. NOON fringes vs classical two-photon exposure
 # ============================================================================
-# Two plane waves at +/- theta in the recording medium, equal amplitude:
-#   TE (s, E perpendicular to the plane of incidence):  V = 1
-#   TM (p, E in the plane of incidence):                 V = |cos 2 theta|
-#   unpolarized (incoherent TE + TM, equal weight):      V = (1 + cos 2 theta)/2 = cos^2 theta
-MARKERS = [
-    (0.33, "EUV\nNA 0.33"),
-    (0.55, "High-NA\n0.55"),
-    (0.75, "Hyper-NA\n0.75"),
-    (1.35 / 1.7, "ArF-i NA 1.35\nin resist n≈1.7"),
-]
+NOON_ALT = ("Three curves over two classical fringe periods: the one-photon classical fringe (raised cosine, period one), "
+            "the classical two-photon exposure I squared with the same period but narrower peaks, and the ideal N = 2 NOON "
+            "pattern whose period is halved.")
+NOON_CAPTION = ("<strong>Sharper is not finer.</strong> Classical one-photon exposure I = (1 + cos φ)/2, classical two-photon "
+                "exposure I² (exactly what quantum_aerial_image returns for N = 2 and fidelity 1: narrower lines at the "
+                "classical period) and the ideal N = 2 NOON pattern (1 + cos 2φ)/2, which alone halves the period; all three "
+                "are closed forms. <em>Model: Quantum lithography (N-photon / N00N) 🧪 (closed forms drawn here, not the engine).</em>")
 
 
-def fig_polarization_contrast(theme: str, preview: Path | None) -> None:
-    p = setup(theme)
-    fig, ax = plt.subplots(figsize=(8.6, 5.0))
-    style_axes(ax, p)
-    s = np.linspace(0.0, 0.999, 400)
-    cos2t = 1.0 - 2.0 * s**2
-    ax.plot(s, np.ones_like(s), color=p["s1"], lw=2, zorder=3, label="TE (s-polarized): 1")
-    ax.plot(s, np.abs(cos2t), color=p["s2"], lw=2, zorder=3, label="TM (p-polarized): |cos 2\u03b8|")
-    ax.plot(s, 1.0 - s**2, color=p["s3"], lw=2, zorder=3, label="unpolarized: cos\u00b2\u03b8")
-    ax.axvline(1 / np.sqrt(2), color=p["axis"], lw=1, zorder=1)
-    ax.text(
-        1 / np.sqrt(2) - 0.008,
-        0.03,
-        "TM fringes reverse\nbeyond 45\u00b0",
-        fontsize=9,
-        color=p["muted"],
-        va="bottom",
-        ha="right",
-    )
-    align = {0.33: ("center", 0.0), 0.55: ("center", 0.0), 0.75: ("right", -0.006)}
-    for x, label in MARKERS:
-        ax.plot([x, x], [0, 1], color=p["muted"], lw=1, zorder=1)
-        ax.plot(x, abs(1 - 2 * x**2), "o", ms=8, color=p["s2"], mec=p["seq"][0], mew=2, zorder=4)
-        ax.plot(x, 1 - x**2, "o", ms=8, color=p["s3"], mec=p["seq"][0], mew=2, zorder=4)
-        ha, dx = align.get(round(x, 2), ("left", 0.006))
-        ax.text(x + dx, 1.05, label, ha=ha, va="bottom", fontsize=9.5, color=p["ink2"], linespacing=1.1)
-    ax.legend(loc="lower left", fontsize=10.5, handlelength=1.6)
-    ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1.3)
-    ax.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
-    ax.set_xlabel("sin \u03b8 of the two interfering orders in the recording medium (= NA/n at the pitch limit)")
-    ax.set_ylabel("fringe contrast (visibility)")
-    ax.set_title("Why high NA needs polarization control: two-beam contrast", pad=14)
-    save(fig, "polarization-contrast", theme, preview)
+def draw_noon(th):
+    import matplotlib.pyplot as plt  # noqa: PLC0415
+    import numpy as np  # noqa: PLC0415
 
-
-# ============================================================================
-# 3. NOON fringes vs classical two-photon exposure
-# ============================================================================
-def fig_noon_fringes(theme: str, preview: Path | None) -> None:
-    p = setup(theme)
-    fig, ax = plt.subplots(figsize=(8.6, 4.6))
-    style_axes(ax, p)
-    x = np.linspace(0, 2, 800)  # in units of the classical fringe period
+    style = _style()
+    fig, ax = plt.subplots(figsize=(style.FULL_WIDTH, 4.2))
+    style.style_axes(ax, th, grid="y")
+    x = np.linspace(0, 2, 800)
     one = 0.5 * (1 + np.cos(2 * np.pi * x))
-    two_classical = one**2
-    noon2 = 0.5 * (1 + np.cos(4 * np.pi * x))
-    ax.plot(x, one, color=p["s1"], lw=2, zorder=3, label="classical light, one-photon resist: I")
-    ax.plot(
-        x,
-        two_classical,
-        color=p["s2"],
-        lw=2,
-        zorder=3,
-        label="classical light, two-photon resist: I\u00b2  (= highuvlith quantum_aerial_image, N = 2, F = 1)",
-    )
-    ax.plot(x, noon2, color=p["s3"], lw=2, zorder=4, label="ideal N = 2 NOON state: 1 + cos 2\u03c6  (period halved)")
-    ax.legend(loc="upper left", fontsize=10, handlelength=1.6, borderaxespad=0.2)
+    ax.plot(x, one, color=th.s(1), lw=2, zorder=3, label="classical light, one-photon resist: I")
+    ax.plot(x, one**2, color=th.s(2), lw=2, zorder=3,
+            label="classical light, two-photon resist: I²  (= highuvlith quantum_aerial_image, N = 2, F = 1)")
+    ax.plot(x, 0.5 * (1 + np.cos(4 * np.pi * x)), color=th.s(3), lw=2, zorder=4,
+            label="ideal N = 2 NOON state: 1 + cos 2φ  (period halved)")
+    ax.legend(loc="upper left", fontsize=style.SMALL_PT, handlelength=1.6, borderaxespad=0.2)
     ax.set_xlim(0, 2)
     ax.set_ylim(0, 1.55)
     ax.set_yticks([0, 0.5, 1.0])
     ax.set_xticks([0, 0.5, 1, 1.5, 2])
-    ax.set_xlabel("position (units of the classical fringe period \u039b = \u03bb / 2 sin \u03b8)")
+    ax.set_xlabel("position (units of the classical fringe period Λ = λ / 2 sin θ)")
     ax.set_ylabel("normalized exposure")
-    ax.set_title("Sharper is not finer: I\u00b2 narrows lines, only NOON halves the period", pad=12)
-    save(fig, "noon-fringes", theme, preview)
+    ax.set_title("Sharper is not finer: I² narrows lines, only NOON halves the period")
+    return fig
+
+
+def gen_noon() -> list[Path]:
+    return _render("noon-fringes", draw_noon, "NOON fringes versus classical two-photon exposure", NOON_ALT)
 
 
 # ============================================================================
-# 4. Talbot carpet
+# 3. Source landscape: every sourced row of the shared CSV
 # ============================================================================
-def fig_talbot_carpet(theme: str, preview: Path | None) -> None:
-    """Paraxial Fresnel self-imaging of a binary amplitude grating with 25 % open fraction.
-
-    Field behind the grating: E(x, z) = sum_m c_m exp(i 2 pi m x / p) exp(-i pi lambda z m^2 / p^2),
-    with c_0 = d, c_m = sin(pi m d) / (pi m), open fraction d = 0.25. In the scaled coordinates
-    x/p and z/z_T (z_T = 2 p^2 / lambda) the result is independent of lambda and p.
-    The open fraction matters at z_T/4: there the field is c_0 + (t(x) - c_0) * exp(-i pi m^2 / 2)
-    summed over orders, i.e. two half-period-shifted copies of the grating; with d = 0.5 they
-    add to a UNIFORM intensity, with d = 0.25 they do not overlap and give period p/2.
-    """
-    p = setup(theme)
-    nx, nz, mmax = 360, 480, 60  # about the displayed resolution
-    xs = np.linspace(-1.0, 1.0, nx)  # x / p
-    zs = np.linspace(0.0, 1.0, nz)  # z / z_T
-    m = np.arange(-mmax, mmax + 1)
-    duty = 0.25
-    c = np.where(m == 0, duty, np.sin(np.pi * m * duty) / (np.pi * np.where(m == 0, 1, m)))
-    # exp(-i pi lambda z m^2 / p^2) with z = zs * 2 p^2 / lambda -> exp(-i 2 pi zs m^2)
-    phase_x = np.exp(1j * 2 * np.pi * np.outer(m, xs))  # (M, nx)
-    phase_z = np.exp(-1j * 2 * np.pi * np.outer(zs, m**2))  # (nz, M)
-    field = (phase_z * c) @ phase_x  # (nz, nx)
-    inten = np.abs(field) ** 2
-    inten = np.clip(inten / np.percentile(inten, 99.5), 0, 1)
-    cmap = LinearSegmentedColormap.from_list("seq", p["seq"])
-    fig, ax = plt.subplots(figsize=(8.6, 4.6))
-    ax.imshow(
-        inten.T,
-        origin="lower",
-        extent=(0, 1, -1, 1),
-        aspect="auto",
-        cmap=cmap,
-        interpolation="bilinear",
-        rasterized=True,
-    )
-    for side in ("top", "right"):
-        ax.spines[side].set_visible(False)
-    for zf, label in [(0.25, r"$z_\mathrm{T}/4$: period halved"), (0.5, r"$z_\mathrm{T}/2$: shifted self-image"), (1.0, r"$z_\mathrm{T}$: self-image")]:
-        ax.axvline(zf, color=p["ink2"], lw=1)
-        ax.text(zf - 0.005, 1.04, label, ha="right" if zf == 1.0 else "center", va="bottom", fontsize=10, color=p["ink2"])
-    ax.set_xlabel(r"distance behind the mask, $z\,/\,z_\mathrm{T}$   (Talbot length $z_\mathrm{T} = 2p^2/\lambda$)")
-    ax.set_ylabel("x / p")
-    ax.set_yticks([-1, -0.5, 0, 0.5, 1])
-    ax.set_xticks([0, 0.25, 0.5, 0.75, 1.0])
-    ax.set_title("Talbot carpet: a grating re-images itself without a lens", pad=22)
-    save(fig, "talbot-carpet", theme, preview)
-
-
-# ============================================================================
-# 5. Source landscape: reported / projected average power vs wavelength
-# ============================================================================
-# Every point is a row of source_power_vs_wavelength.csv (next to this script). Rows 1-49
-# were compiled and checked by a research pass (each number seen in the cited source;
-# E_photon = 1239.84/lambda eV used for photon-rate conversions, noted per row); rows 50-51
-# (Socol et al. 2011 ERL-FEL study; xLight's SPIE 2026 public design) were added from the
-# references of docs/future/accelerator-light-sources.md. "Plane" matters: EUV numbers are
-# in-band power at intermediate focus (IF) unless the row says "AT THE SOURCE" (discharge
-# plasmas, into 2 pi sr, several times more than reaches IF); DUV numbers are laser output.
-DATA_CSV = Path(__file__).resolve().parent / "source_power_vs_wavelength.csv"
-
-HVM_BAND_W = (250.0, 1000.0)  # 13.5 nm at IF: 250 W (NXE:3400B, 2017) -> ~1 kW (ASML, ~2030)
+HVM_BAND_W = (250.0, 1000.0)  # 13.5 nm at IF: 250 W (NXE:3400B, 2017) → ~1 kW (ASML, ~2030)
 
 
 def _status(raw: str) -> str:
@@ -408,60 +279,32 @@ def _status(raw: str) -> str:
     return "projected"
 
 
-def _load_sources() -> list[dict]:
-    import csv
-
+def load_sources() -> list[dict]:
     rows = []
-    with DATA_CSV.open(newline="") as f:
+    with DATA_CSV.open(newline="", encoding="utf-8") as f:
         for r in csv.DictReader(f):
             lo, hi = float(r["power_w_low"]), float(r["power_w_high"])
-            rows.append(
-                {
-                    "id": int(r["id"]),
-                    "cls": r["class"],
-                    "name": r["machine_or_paper"],
-                    "lam": float(r["wavelength_nm"]),
-                    "lo": lo,
-                    "hi": hi,
-                    "mid": float(np.sqrt(lo * hi)),
-                    "status": _status(r["status"]),
-                    "at_source": "AT THE SOURCE" in r["plane_or_definition"].upper(),
-                }
-            )
+            rows.append({"id": int(r["id"]), "cls": r["class"], "name": r["machine_or_paper"], "lam": float(r["wavelength_nm"]),
+                         "lo": lo, "hi": hi, "mid": math.sqrt(lo * hi), "status": _status(r["status"]),
+                         "at_source": "AT THE SOURCE" in r["plane_or_definition"].upper()})
     return rows
 
 
+GROUPS_135 = ["tin laser-produced\nplasma", "discharge plasma", "linac / ERL\nfree-electron laser",
+              "steady-state\nmicrobunching ring", "synchrotron\nundulator beamline", "high-harmonic\ngeneration"]
+SUBROW = {"production": 0.28, "demonstrated": 0.0, "projected": -0.28}
+
+
 def _group_135(r: dict) -> str | None:
-    """Source class for the 13.5 nm chart (rows at 13.2-13.8 nm only)."""
     if not 13.2 <= r["lam"] <= 13.8:
         return None
     c = r["cls"]
-    if "LPP" in c:
-        return GROUPS_135[0]
-    if "DPP" in c or "LDP" in c:
-        return GROUPS_135[1]
-    if "FEL" in c:
-        return GROUPS_135[2]
-    if "SSMB" in c:
-        return GROUPS_135[3]
-    if "Synchrotron" in c:
-        return GROUPS_135[4]
-    if "HHG" in c:
-        return GROUPS_135[5]
+    for key, g in (("LPP", 0), ("DPP", 1), ("LDP", 1), ("FEL", 2), ("SSMB", 3), ("Synchrotron", 4), ("HHG", 5)):
+        if key in c:
+            return GROUPS_135[g]
     return None
 
 
-GROUPS_135 = [
-    "tin laser-produced\nplasma",
-    "discharge plasma",
-    "linac / ERL\nfree-electron laser",
-    "steady-state\nmicrobunching ring",
-    "synchrotron\nundulator beamline",
-    "high-harmonic\ngeneration",
-]
-SUBROW = {"production": 0.28, "demonstrated": 0.0, "projected": -0.28}
-
-# direct labels on the 13.5 nm chart: row id -> (text, dx pt, dy pt, ha)
 LABELS_135 = {
     8: ("production: 250 W (2017) … 600 W (2026)", -12, 0, "right"),
     17: ("demonstrated: 125 W … 1 kW (2025)", -12, 0, "right"),
@@ -474,66 +317,73 @@ LABELS_135 = {
     31: ("PSI XIL-II beamline: 11 mW", 10, 0, "left"),
     46: ("0.4–1 µW (2017, 2012)", 10, 0, "left"),
 }
-
-# group labels on the full-spectrum chart: (text, x nm, y W, ha)
 LABELS_WIDE = [
-    ("ArF lasers\n60–120 W", 193.0, 900.0, "center"),
-    ("KrF lasers\n30–60 W", 248.0, 6.0, "center"),
-    ("Gd LPP concept, 1 kW", 6.35, 1000.0, "right"),
-    ("KEK FEL design", 6.35, 1.8e4, "right"),
+    ("ArF lasers\n60–120 W", 193.0, 900.0, "center"), ("KrF lasers\n30–60 W", 248.0, 6.0, "center"),
+    ("Gd LPP concept, 1 kW", 6.35, 1000.0, "right"), ("KEK FEL design", 6.35, 1.8e4, "right"),
     ("ICS designs", 6.35, 1.2e-4, "right"),
-    ("13.5 nm: tin plasma, discharge\nplasma and accelerator designs\n(next chart)", 15.0, 6e4, "left"),
-    ("EUV HVM need at IF:\n250 W → ~1 kW", 17.5, 500.0, "left"),
-    ("synchrotron beamline", 12.8, 1.1e-2, "right"),
-    ("FLASH (13.7 nm)", 14.4, 2.8e-2, "left"),
-    ("FERMI (15 nm)", 16.0, 3.9e-4, "left"),
-    ("Ni-like Mo laser\n(18.9 nm)", 20.0, 5.0e-5, "left"),
-    ("HHG at 13.5 nm", 12.8, 7.0e-7, "right"),
-    ("FLASH (18.2 nm)", 19.5, 0.35, "left"),
-    ("LPA-FEL\n(SIOM, 27 nm)", 29.0, 1.5e-7, "left"),
-    ("HHG, mW class\nat 21–30 eV", 60.0, 3.0e-3, "left"),
-    ("soft-X-ray lasers\n(46.9 nm)", 52.0, 3.0e-5, "left"),
+    ("13.5 nm: tin plasma, discharge\nplasma and accelerator designs\n(the 13.5 nm chart)", 15.0, 6e4, "left"),
+    ("EUV HVM need at IF:\n250 W → ~1 kW", 17.5, 500.0, "left"), ("synchrotron beamline", 12.8, 1.1e-2, "right"),
+    ("FLASH (13.7 nm)", 14.4, 2.8e-2, "left"), ("FERMI (15 nm)", 16.0, 3.9e-4, "left"),
+    ("Ni-like Mo laser\n(18.9 nm)", 20.0, 5.0e-5, "left"), ("HHG at 13.5 nm", 12.8, 7.0e-7, "right"),
+    ("FLASH (18.2 nm)", 19.5, 0.35, "left"), ("LPA-FEL\n(SIOM, 27 nm)", 29.0, 1.5e-7, "left"),
+    ("HHG, mW class\nat 21–30 eV", 60.0, 3.0e-3, "left"), ("soft-X-ray lasers\n(46.9 nm)", 52.0, 3.0e-5, "left"),
 ]
 
 
-def _marker(ax, x, y, r, p, color):
+def _marker(ax, x, y, r, th, color):
     marker = "^" if r["at_source"] else {"production": "o", "demonstrated": "D", "projected": "s"}[r["status"]]
     ms = 7 if marker == "D" else 8
     if r["status"] == "projected":
         ax.plot(x, y, marker, ms=ms, mfc="none", mec=color, mew=2, zorder=4)
     else:
-        ax.plot(x, y, marker, ms=ms, color=color, mec=p["seq"][0], mew=1.5, zorder=4)
+        ax.plot(x, y, marker, ms=ms, color=color, mec=th.surface, mew=1.5, zorder=4)
 
 
-def _legend_handles(p):
-    from matplotlib.lines import Line2D
+def _legend_handles(th):
+    from matplotlib.lines import Line2D  # noqa: PLC0415
 
-    return [
-        Line2D([], [], ls="none", marker="o", ms=8, color=p["s1"], label="in production"),
-        Line2D([], [], ls="none", marker="D", ms=7, color=p["s2"], label="demonstrated"),
-        Line2D([], [], ls="none", marker="s", ms=8, mfc="none", mec=p["s3"], mew=2, label="projected / design study"),
-        Line2D([], [], ls="none", marker="^", ms=8, color=p["ink2"], label="into 2π at the source (not at IF)"),
-        Line2D([], [], color=p["ink2"], lw=1.6, label="reported range"),
-    ]
+    return [Line2D([], [], ls="none", marker="o", ms=8, color=th.s(1), label="in production"),
+            Line2D([], [], ls="none", marker="D", ms=7, color=th.s(2), label="demonstrated"),
+            Line2D([], [], ls="none", marker="s", ms=8, mfc="none", mec=th.s(3), mew=2, label="projected / design study"),
+            Line2D([], [], ls="none", marker="^", ms=8, color=th.ink2, label="into 2π at the source (not at IF)"),
+            Line2D([], [], color=th.ink2, lw=1.6, label="reported range")]
 
 
-def fig_source_landscape(theme: str, preview: Path | None) -> None:
-    """All sourced rows: average power vs wavelength (log-log)."""
-    p = setup(theme)
-    rows = _load_sources()
-    color = {"production": p["s1"], "demonstrated": p["s2"], "projected": p["s3"]}
-    fig, ax = plt.subplots(figsize=(8.6, 6.6))
-    style_axes(ax, p)
+N_SOURCE_ROWS = len(load_sources())
+LANDSCAPE_ALT = (f"Average power versus wavelength for {N_SOURCE_ROWS} sourced light-source rows from 5 to 250 nm: tin plasma in "
+                 "production at 13.5 nm near the shaded 250 W to 1 kW need, accelerator designs above it, synchrotron, FEL, HHG "
+                 "and soft-X-ray lasers far below, ArF and KrF lasers at 30–120 W.")
+LANDSCAPE_CAPTION = ("<strong>Reported and projected average power of lithography-relevant light sources.</strong> Every point "
+                     f"is a sourced row of source_power_vs_wavelength.csv ({N_SOURCE_ROWS} rows); EUV values are in-band power at "
+                     "intermediate focus unless marked into 2π at the source, DUV values are laser output; the band is the "
+                     "250 W → 1 kW need at 13.5 nm. <em>Data chart from source_power_vs_wavelength.csv; no model badge.</em>")
+LANDSCAPE_EUV_ALT = ("Average power at 13.5 nm by source class from 1 µW to 10 kW: tin laser-produced plasma in production at "
+                     "250–600 W and demonstrated to 1 kW inside the shaded HVM band, discharge plasma at tens of watts, FEL and "
+                     "SSMB designs of 1 to 38 kW as hollow projections, FLASH at 20 mW and HHG at a microwatt.")
+LANDSCAPE_EUV_CAPTION = ("<strong>At 13.5 nm only tin plasma delivers HVM power; accelerator kilowatts are still designs.</strong> "
+                         "The 13.2–13.8 nm rows of the same dataset by source class, with in production, demonstrated and "
+                         "projected on separate lines; the xLight point is a company design shared by 16 scanners. "
+                         "<em>Data chart from source_power_vs_wavelength.csv; no model badge.</em>")
+
+
+def draw_landscape(th):
+    import matplotlib.pyplot as plt  # noqa: PLC0415
+
+    style = _style()
+    rows = load_sources()
+    color = {"production": th.s(1), "demonstrated": th.s(2), "projected": th.s(3)}
+    fig, ax = plt.subplots(figsize=(style.FULL_WIDTH, 6.4))
+    style.style_axes(ax, th, grid="both")
     ax.set_yscale("log")
     ax.set_xscale("log")
-    ax.fill_between([11.0, 16.5], *HVM_BAND_W, color=p["band"], zorder=1, lw=0)
+    ax.fill_between([11.0, 16.5], *HVM_BAND_W, color=th.band, zorder=1, lw=0)
     for r in rows:
         c = color[r["status"]]
         if r["hi"] > r["lo"] * 1.01:
             ax.plot([r["lam"], r["lam"]], [r["lo"], r["hi"]], color=c, lw=1.6, zorder=3, solid_capstyle="butt")
-        _marker(ax, r["lam"], r["mid"], r, p, c)
+        _marker(ax, r["lam"], r["mid"], r, th, c)
     for text, x, y, ha in LABELS_WIDE:
-        ax.text(x, y, text, ha=ha, va="center", fontsize=10, color=p["ink2"], linespacing=1.1)
+        ax.text(x, y, text, ha=ha, va="center", fontsize=style.SMALL_PT, color=th.ink2, linespacing=1.1)
     ax.set_xlim(3.2, 330)
     ax.set_ylim(5e-8, 3e5)
     ax.set_xticks([5, 6.7, 10, 13.5, 20, 30, 50, 100, 193, 248])
@@ -541,28 +391,28 @@ def fig_source_landscape(theme: str, preview: Path | None) -> None:
     ax.minorticks_off()
     ax.set_xlabel("wavelength (nm)")
     ax.set_ylabel("average power (W)")
-    ax.legend(handles=_legend_handles(p), loc="upper left", bbox_to_anchor=(0.0, 1.13), ncol=3, fontsize=10,
+    ax.legend(handles=_legend_handles(th), loc="upper left", bbox_to_anchor=(0.0, 1.12), ncol=3, fontsize=style.SMALL_PT,
               handletextpad=0.4, columnspacing=1.2, frameon=False)
-    ax.set_title("Reported and projected average power\nof lithography-relevant light sources", pad=52)
+    ax.set_title("Reported and projected average power\nof lithography-relevant light sources", pad=46)
     fig.text(0.125, 0.0, "EUV: in-band power at intermediate focus (IF) unless marked; DUV: laser output.\n"
-             "Every point is a sourced row of docs/figures/future/source_power_vs_wavelength.csv.",
-             fontsize=9, color=p["muted"], va="top")
-    save(fig, "source-landscape", theme, preview)
+             "Every point is a sourced row of docs/figures/sim/data/source_power_vs_wavelength.csv.",
+             fontsize=style.SMALL_PT, color=th.muted, va="top")
+    return fig
 
 
-def fig_source_landscape_euv(theme: str, preview: Path | None) -> None:
-    """The 13.5 nm rows as a horizontal dot plot by source class."""
-    p = setup(theme)
-    rows = _load_sources()
-    color = {"production": p["s1"], "demonstrated": p["s2"], "projected": p["s3"]}
-    fig, ax = plt.subplots(figsize=(8.6, 7.4))
-    style_axes(ax, p)
+def draw_landscape_euv(th):
+    import matplotlib.pyplot as plt  # noqa: PLC0415
+
+    style = _style()
+    rows = load_sources()
+    color = {"production": th.s(1), "demonstrated": th.s(2), "projected": th.s(3)}
+    fig, ax = plt.subplots(figsize=(style.FULL_WIDTH, 7.0))
+    style.style_axes(ax, th, grid="x")
     ax.set_xscale("log")
-    ax.grid(False, axis="y")
     n = len(GROUPS_135)
-    ax.axvspan(*HVM_BAND_W, color=p["band"], zorder=1, lw=0)
-    ax.text(np.sqrt(HVM_BAND_W[0] * HVM_BAND_W[1]), n - 0.35, "HVM need at IF\n250 W → ~1 kW",
-            ha="center", va="bottom", fontsize=9.5, color=p["ink"], linespacing=1.1)
+    ax.axvspan(*HVM_BAND_W, color=th.band, zorder=1, lw=0)
+    ax.text(math.sqrt(HVM_BAND_W[0] * HVM_BAND_W[1]), n - 0.35, "HVM need at IF\n250 W → ~1 kW", ha="center", va="bottom",
+            fontsize=style.SMALL_PT, color=th.ink, linespacing=1.1)
     for r in rows:
         g = _group_135(r)
         if g is None:
@@ -571,46 +421,45 @@ def fig_source_landscape_euv(theme: str, preview: Path | None) -> None:
         c = color[r["status"]]
         if r["hi"] > r["lo"] * 1.01:
             ax.plot([r["lo"], r["hi"]], [y, y], color=c, lw=1.6, zorder=3, solid_capstyle="butt")
-        _marker(ax, r["mid"], y, r, p, c)
+        _marker(ax, r["mid"], y, r, th, c)
         if r["id"] in LABELS_135:
             text, dx, dy, ha = LABELS_135[r["id"]]
             ax.annotate(text, xy=(r["mid"], y), xytext=(dx, dy), textcoords="offset points", ha=ha, va="center",
-                        fontsize=10, color=p["ink2"], linespacing=1.1)
-    ssmb_y = n - 1 - 3  # the SSMB row (GROUPS_135[3])
-    ax.text(2e-7, ssmb_y, "no EUV power demonstrated yet\n(2021, 2024 mechanism tests at 1064 nm)",
-            ha="left", va="center", fontsize=10, color=p["ink2"], style="italic")
+                        fontsize=style.SMALL_PT, color=th.ink2, linespacing=1.1)
+    ax.text(2e-7, n - 1 - 3, "no EUV power demonstrated yet\n(2021, 2024 mechanism tests at 1064 nm)", ha="left", va="center",
+            fontsize=style.SMALL_PT, color=th.ink2, style="italic")
     ax.set_yticks(range(n))
-    ax.set_yticklabels(list(reversed(GROUPS_135)), fontsize=11, linespacing=1.1)
+    ax.set_yticklabels(list(reversed(GROUPS_135)), fontsize=style.BASE_PT, linespacing=1.1)
     ax.tick_params(axis="y", length=0)
     ax.set_ylim(-0.6, n - 0.1)
     ax.set_xlim(1e-7, 2e5)
     ax.set_xticks([1e-6, 1e-4, 1e-2, 1, 1e2, 1e4])
     ax.set_xticklabels(["1 µW", "100 µW", "10 mW", "1 W", "100 W", "10 kW"])
+    ax.minorticks_off()
     ax.set_xlabel("average power at 13.5 nm (13.2–13.8 nm)")
-    ax.legend(handles=_legend_handles(p), loc="upper left", bbox_to_anchor=(0.0, 1.125), ncol=3, fontsize=10,
+    ax.legend(handles=_legend_handles(th), loc="upper left", bbox_to_anchor=(0.0, 1.115), ncol=3, fontsize=style.SMALL_PT,
               handletextpad=0.4, columnspacing=1.2, frameon=False)
-    ax.set_title("At 13.5 nm only tin plasma delivers HVM power;\naccelerator kilowatts are still designs", pad=62)
+    ax.set_title("At 13.5 nm only tin plasma delivers HVM power;\naccelerator kilowatts are still designs", pad=54)
     fig.text(0.02, 0.0, "Within a class: upper row in production, middle demonstrated, lower projected.\n"
-             "EUV power at IF unless marked. Every point is a sourced row of\n"
-             "docs/figures/future/source_power_vs_wavelength.csv.",
-             fontsize=9.5, color=p["muted"], va="top")
-    save(fig, "source-landscape-euv", theme, preview)
+             "EUV power at IF unless marked. Every point is a sourced row of\ndocs/figures/sim/data/source_power_vs_wavelength.csv.",
+             fontsize=style.SMALL_PT, color=th.muted, va="top")
+    return fig
+
+
+def gen_landscape() -> list[Path]:
+    return _render("source-landscape", draw_landscape, "Reported and projected average source power vs wavelength", LANDSCAPE_ALT)
+
+
+def gen_landscape_euv() -> list[Path]:
+    return _render("source-landscape-euv", draw_landscape_euv, "Average power at 13.5 nm by source class", LANDSCAPE_EUV_ALT)
 
 
 # ============================================================================
-# 6. Multilayer mirrors: best measured peak reflectance, and what ~11 reflections leave
+# 4. Multilayer mirrors: best measured peak reflectance, and what ~11 reflections leave
 # ============================================================================
-# (label, wavelength class, measured peak R, BEUV?, source). Every value checked in the
-# paper's abstract (retrieved via OpenAlex/Crossref, 2026-09-30):
-#   Mo/Si:  Yakshin et al., Proc. SPIE 6517, 65170I (2007), doi:10.1117/12.711796
-#           ("70.5% at 13.3 nm and 70.15% at 13.5 nm", B4C interface barriers, 50 periods)
-#   Ru/Be:  Smertin et al., Opt. Express 30, 46749 (2022), doi:10.1364/OE.475079 ("record values of
-#           R = 72.2%" at 11.4 nm, Mo interlayers; the 2024 Opt. Lett. 49, 3690 follow-up,
-#           doi:10.1364/OL.528271, reports "R > 71%" with near-zero stress)
-#   Mo/Be:  Skulina et al., Appl. Opt. 34, 3727 (1995), doi:10.1364/AO.34.003727 (68.7 +/- 0.2 % at 11.3 nm)
-#   La/B:   Kuznetsov et al., Opt. Lett. 40, 3778 (2015), doi:10.1364/OL.40.003778
-#           (64.1 % at 6.65 nm, 1.5 deg off normal, nitridated La)
-#   LaN/B:  Makhotkin et al., Opt. Express 21, 29894 (2013), doi:10.1364/OE.21.029894 (57.3 % at 6.6 nm)
+#: (label, measured peak R %, BEUV?) — each value checked in the paper's abstract (2026-09-30):
+#: Mo/Si Yakshin 2007 doi:10.1117/12.711796; Ru/Be Smertin 2022 doi:10.1364/OE.475079; Mo/Be Skulina 1995
+#: doi:10.1364/AO.34.003727; La/B Kuznetsov 2015 doi:10.1364/OL.40.003778; LaN/B Makhotkin 2013 doi:10.1364/OE.21.029894.
 MIRRORS = [
     ("Mo/Si (B4C barriers)\n13.5 nm, 2007", 70.15, False),
     ("Ru/Be + Mo interlayers\n11.4 nm, 2022", 72.2, False),
@@ -618,72 +467,614 @@ MIRRORS = [
     ("La/B (nitridated)\n6.65 nm, 2015", 64.1, True),
     ("LaN/B\n6.6 nm, 2013", 57.3, True),
 ]
-N_REFLECTIONS = 11  # representative count: "about a dozen" reflections between source and wafer
+N_REFLECTIONS = 11
 
 
-def fig_multilayer_reflectance(theme: str, preview: Path | None) -> None:
-    p = setup(theme)
-    fig, (ax1, ax2) = plt.subplots(
-        1, 2, figsize=(8.8, 4.6), sharey=True, gridspec_kw={"width_ratios": [1.25, 1.0], "wspace": 0.08}
-    )
+def left_after(r_percent: float, n: int = N_REFLECTIONS) -> float:
+    return (r_percent / 100.0) ** n * 100.0
+
+
+MIRROR_ALT = ("Two bar charts: best measured peak reflectance of one multilayer mirror — Mo/Si 70.15 % at 13.5 nm, Ru/Be 72.2 % "
+              "at 11.4 nm, Mo/Be 68.7 % at 11.3 nm, La/B 64.1 % at 6.65 nm, LaN/B 57.3 % at 6.6 nm — and the fraction left "
+              f"after {N_REFLECTIONS} reflections, from {left_after(72.2):.1f} % down to {left_after(57.3):.2f} %.")
+MIRROR_CAPTION = ("<strong>A few points less per mirror becomes 3–9× less light at the wafer.</strong> Best measured "
+                  "normal-incidence peak reflectance per paper abstract (Mo/Si 70.15 %, Ru/Be 72.2 %, Mo/Be 68.7 %, La/B 64.1 %, "
+                  f"LaN/B 57.3 %) and the fraction left after {N_REFLECTIONS} reflections, a representative count rather than a "
+                  "specific scanner. <em>Data chart from the cited abstracts; no model badge.</em>")
+
+
+def draw_mirrors(th):
+    import matplotlib.pyplot as plt  # noqa: PLC0415
+    import numpy as np  # noqa: PLC0415
+
+    style = _style()
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(style.FULL_WIDTH, 4.4), sharey=True,
+                                   gridspec_kw={"width_ratios": [1.25, 1.0], "wspace": 0.08})
     labels = [m[0] for m in MIRRORS]
     y = np.arange(len(MIRRORS))[::-1]
     for ax in (ax1, ax2):
-        style_axes(ax, p)
-        ax.grid(False, axis="y")
+        style.style_axes(ax, th, grid="x")
         ax.tick_params(axis="y", length=0)
     for yi, (label, r, beuv) in zip(y, MIRRORS):
-        c = p["s1"] if beuv else p["context"]
+        c = th.s(1) if beuv else th.axis
         ax1.barh(yi, r, height=0.5, color=c, zorder=3)
-        ax1.text(r + 1.2, yi, f"{r:g} %", va="center", fontsize=11, color=p["ink"])
-        t = (r / 100.0) ** N_REFLECTIONS * 100.0
+        ax1.text(r + 1.2, yi, f"{r:g} %", va="center", fontsize=style.BASE_PT, color=th.ink)
+        t = left_after(r)
         ax2.barh(yi, t, height=0.5, color=c, zorder=3)
-        ax2.text(t + 0.05, yi, f"{t:.2f} %", va="center", fontsize=11, color=p["ink"])
+        ax2.text(t + 0.05, yi, f"{t:.2f} %", va="center", fontsize=style.BASE_PT, color=th.ink)
     ax1.set_yticks(y)
-    ax1.set_yticklabels(labels, fontsize=11, linespacing=1.1)
+    ax1.set_yticklabels(labels, fontsize=style.BASE_PT, linespacing=1.1)
     ax1.set_xlim(0, 100)
     ax1.set_xticks([0, 25, 50, 75, 100])
     ax1.set_xlabel("best measured peak reflectance, one mirror (%)")
-    ax1.set_title("One mirror", fontsize=12)
+    ax1.set_title("One mirror", fontsize=style.BASE_PT)
     ax2.set_xlim(0, 3.2)
     ax2.set_xticks([0, 1, 2, 3])
     ax2.set_xlabel(f"R¹¹: fraction left after {N_REFLECTIONS} reflections (%)")
-    ax2.set_title(f"After {N_REFLECTIONS} reflections", fontsize=12)
-    fig.suptitle(
-        "Beyond-EUV mirrors: a few points less per mirror\nbecomes ~3–9× less light at the wafer",
-        x=0.02, y=1.08, ha="left", fontsize=13, fontweight="bold", color=p["ink"],
-    )
-    fig.text(
-        0.02, -0.06,
-        "Blue: 6.x nm (La/B family); gray: 11–13.5 nm. Records as reported in each paper's\n"
-        "abstract (sources in the script and on the page). The 11-reflection column is simple\n"
-        "arithmetic with a representative mirror count, not a model of a specific scanner.",
-        fontsize=9, color=p["muted"], va="top",
-    )
-    save(fig, "multilayer-reflectance", theme, preview)
+    ax2.set_title(f"After {N_REFLECTIONS} reflections", fontsize=style.BASE_PT)
+    fig.suptitle("Beyond-EUV mirrors: a few points less per mirror\nbecomes ~3–9× less light at the wafer", x=0.02, y=1.06,
+                 ha="left", fontsize=style.TITLE_PT, fontweight="semibold", color=th.ink)
+    fig.text(0.02, -0.05, "Blue: 6.x nm (La/B family); grey: 11–13.5 nm. Records as reported in each paper's abstract "
+             "(sources in the script and on the page).\nThe 11-reflection column is simple arithmetic with a representative "
+             "mirror count, not a model of a specific scanner.", fontsize=style.SMALL_PT, color=th.muted, va="top")
+    return fig
 
 
-FIGURES = {
-    "photons-per-feature": fig_photons_per_feature,
-    "multilayer-reflectance": fig_multilayer_reflectance,
-    "source-landscape": fig_source_landscape,
-    "source-landscape-euv": fig_source_landscape_euv,
-    "polarization-contrast": fig_polarization_contrast,
-    "noon-fringes": fig_noon_fringes,
-    "talbot-carpet": fig_talbot_carpet,
+def gen_mirrors() -> list[Path]:
+    return _render("multilayer-reflectance", draw_mirrors, "Multilayer mirror records and what eleven reflections leave", MIRROR_ALT)
+
+
+# ============================================================================
+# 5. N16 — the Poisson failure floor
+# ============================================================================
+#: Absorbed photons per (HP)² from the recorded output of stochastic-frontier.md's first example
+#: (``check()`` verifies the page still prints them).
+EXAMPLE_COUNTS = [("CAR, 8 nm", 209), ("MOR, 8 nm", 533), ("CAR, 5.8 nm", 110), ("MOR, 5.8 nm", 280)]
+TARGETS = [1e-9, 1e-12]
+
+
+def poisson_cdf_half(mu: float) -> float:
+    """Exact P(X ≤ floor(μ/2)) for X ~ Poisson(μ), summed in log space."""
+    k_max = int(math.floor(mu / 2))
+    total = 0.0
+    for k in range(k_max + 1):
+        total += math.exp(-mu + k * math.log(mu) - math.lgamma(k + 1))
+    return total
+
+
+def mu_for(target: float) -> int:
+    """The smallest even μ with P(X ≤ μ/2) below ``target`` (the page's convention: μ/2 an integer, so
+    the thresholds are the upper envelope of the odd/even zigzag — 122 and 166 on stochastic-frontier.md)."""
+    mu = 2
+    while poisson_cdf_half(mu) >= target:
+        mu += 2
+    return mu
+
+
+MU_TARGETS = [mu_for(t) for t in TARGETS]
+POISSON_ALT = ("Exact Poisson probability that a feature collects at most half its mean count, on a log axis from 1 to 1e-15, "
+               f"versus the mean from 10 to 1000: 1e-9 needs a mean of about {MU_TARGETS[0]}, 1e-12 about {MU_TARGETS[1]}; "
+               "vertical markers at 110, 209, 280 and 533 absorbed photons from the page's example.")
+POISSON_CAPTION = ("<strong>A feature whose events fall to half their mean fails.</strong> Exact Poisson P(X ≤ μ/2) against the mean "
+                   f"count μ: a failure rate below 10⁻⁹ needs μ ≳ {MU_TARGETS[0]}, below 10⁻¹² μ ≳ {MU_TARGETS[1]}; the markers are "
+                   "the absorbed-photon counts of this page's first example (CAR 209 / MOR 533 at 8 nm, 110 / 280 at 5.8 nm). "
+                   "<em>Toy model: the critical volume at an edge is smaller than the feature. No model badge.</em>")
+
+
+def draw_poisson(th):
+    import matplotlib.pyplot as plt  # noqa: PLC0415
+    import numpy as np  # noqa: PLC0415
+
+    style = _style()
+    fig, ax = plt.subplots(figsize=(style.FULL_WIDTH, 4.8))
+    style.style_axes(ax, th, grid="both")
+    mus = np.arange(10, 1001, 2)  # even μ: μ/2 is an integer (the page's convention)
+    p = np.array([poisson_cdf_half(m) for m in mus])
+    ax.plot(mus, p, color=th.s(1), lw=2, zorder=3)
+    for target, mu_t, label in zip(TARGETS, MU_TARGETS, ("10⁻⁹", "10⁻¹²")):
+        ax.axhline(target, color=th.muted, lw=1, ls=(0, (4, 3)), zorder=2)
+        ax.plot(mu_t, target, "o", ms=8, color=th.s(2), mec=th.surface, mew=1.5, zorder=4)
+        ax.annotate(f"{label}: μ ≳ {mu_t}", xy=(mu_t, target), xytext=(10, 8), textcoords="offset points",
+                    fontsize=style.SMALL_PT, color=th.ink2)
+    for i, (label, n) in enumerate(EXAMPLE_COUNTS):
+        ax.axvline(n, color=th.s(3), lw=1.2, zorder=2)
+        ax.text(n, 10 ** (-0.6 - 0.9 * (i % 2)), f" {label}: {n}", rotation=90, va="top", ha="right" if False else "left",
+                fontsize=style.SMALL_PT, color=th.ink2)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlim(10, 1000)
+    ax.set_ylim(1e-15, 1)
+    ax.set_xticks([10, 20, 50, 100, 200, 500, 1000])
+    ax.set_xticklabels(["10", "20", "50", "100", "200", "500", "1000"])
+    ax.minorticks_off()
+    ax.set_xlabel("mean number of events μ in the critical volume")
+    ax.set_ylabel("P(X ≤ μ/2): the feature fails")
+    ax.set_title("The Poisson floor: how many events a feature needs to almost never fail")
+    ax.text(0.0, -0.16, "Toy model: a feature fails when it collects at most half its mean count. The critical volume at an edge is "
+            "smaller than the feature,\nso the absorbed-photon markers (per (half-pitch)² from the example above) overstate the "
+            "count that matters.", transform=ax.transAxes, fontsize=style.SMALL_PT, color=th.muted, va="top")
+    return fig
+
+
+def gen_poisson() -> list[Path]:
+    return _render("poisson-floor", draw_poisson, "The Poisson failure floor", POISSON_ALT)
+
+
+# ============================================================================
+# 6. N17 — two routes to 5–6 nm half-pitch at k₁ = 0.30
+# ============================================================================
+K1_ROUTES = 0.30
+#: (target half-pitch, route label, wavelength) — the beyond-euv.md table; everything is arithmetic.
+ROUTES = [
+    (6.0, "13.5 nm, high NA", 13.5), (6.0, "6.7 nm (BEUV)", 6.7),
+    (5.4, "13.5 nm, hyper-NA", 13.5), (5.4, "6.7 nm (BEUV)", 6.7),
+]
+
+
+def route_numbers(hp: float, lam: float, k1: float = K1_ROUTES) -> dict:
+    na = k1 * lam / hp
+    sin_t = lam / (4 * hp)
+    cos2t = 1 - 2 * sin_t**2
+    return {"na": na, "lam_na2": lam / na**2, "sin": sin_t, "tm": abs(cos2t), "photons": photons_per_feature(lam, hp)}
+
+
+ROUTE_ROWS = [(hp, label, lam, route_numbers(hp, lam)) for hp, label, lam in ROUTES]
+#: The page table's values (rounded as printed) — ``check()`` asserts the arithmetic reproduces them.
+ROUTE_TABLE = [(0.675, 29.6, 0.56, 0.37, 734), (0.335, 59.7, 0.28, 0.84, 364), (0.75, 24.0, 0.63, 0.22, 595), (0.37, 48.4, 0.31, 0.81, 295)]
+ROUTES_ALT = ("Three dumbbells: a 13.5 nm high-NA route against a 6.7 nm BEUV route to 6.0 and 5.4 nm half-pitch at k1 = 0.30 — "
+              "lambda over NA squared 29.6 vs 59.7 and 24.0 vs 48.4 nm, TM contrast 0.37 vs 0.84 and 0.22 vs 0.81, 734 vs 364 and "
+              "595 vs 295 photons; every system hollow (hypothetical).")
+ROUTES_CAPTION = ("<strong>Two routes to 5–6 nm half-pitch at k₁ = 0.30.</strong> Hyper-NA at 13.5 nm against BEUV at 6.7 nm on "
+                  "three dumbbells — λ/NA² (depth of focus), TM two-beam contrast |cos 2θ| and incident photons per (half-pitch)² "
+                  "at 30 mJ/cm²; the shorter wavelength wins focus and polarization and loses photons. "
+                  "<em>Arithmetic at k₁ = 0.30, not a simulation; hollow = hypothetical system.</em>")
+
+
+def draw_routes(th):
+    import matplotlib.pyplot as plt  # noqa: PLC0415
+
+    style = _style()
+    fig, axes = plt.subplots(1, 3, figsize=(style.FULL_WIDTH, 3.6), gridspec_kw={"wspace": 0.55})
+    panels = [("λ / NA²  (depth of focus ∝)", "lam_na2", "nm", "more is better"),
+              ("TM two-beam contrast |cos 2θ|", "tm", "", "more is better"),
+              ("photons per (HP)² at 30 mJ/cm²", "photons", "", "more is better")]
+    targets = [6.0, 5.4]
+    for ax, (title, key, unit, note) in zip(axes, panels):
+        style.style_axes(ax, th, grid="x")
+        ax.tick_params(axis="y", length=0)
+        for j, hp in enumerate(targets):
+            yv = len(targets) - 1 - j
+            pair = [row for row in ROUTE_ROWS if row[0] == hp]
+            vals = [row[3][key] for row in pair]
+            ax.plot(vals, [yv, yv], color=th.axis, lw=2, zorder=2)
+            for (hp_, label, lam, nums), v in zip(pair, vals):
+                c = th.s(2) if lam == 13.5 else th.s(1)
+                ax.plot(v, yv, "o", ms=9, mfc="none", mec=c, mew=2, zorder=4)
+                txt = f"{v:.0f}" if key == "photons" else (f"{v:.1f}" if key == "lam_na2" else f"{v:.2f}")
+                ax.annotate(txt, xy=(v, yv), xytext=(0, 9), textcoords="offset points", ha="center", fontsize=style.SMALL_PT,
+                            color=c)
+        ax.set_yticks([1, 0])
+        ax.set_yticklabels([f"{targets[0]:g} nm HP", f"{targets[1]:g} nm HP"], fontsize=style.SMALL_PT)
+        ax.set_ylim(-0.6, 1.6)
+        ax.set_title(title, fontsize=style.BASE_PT)
+        lo = min(row[3][key] for row in ROUTE_ROWS)
+        hi = max(row[3][key] for row in ROUTE_ROWS)
+        ax.set_xlim(lo * 0.6 if key != "tm" else 0, hi * 1.15 if key != "tm" else 1.0)
+        ax.set_xlabel(unit or note, fontsize=style.SMALL_PT)
+    from matplotlib.lines import Line2D  # noqa: PLC0415
+
+    fig.legend(handles=[Line2D([], [], ls="none", marker="o", ms=8, mfc="none", mec=th.s(2), mew=2, label="13.5 nm, NA 0.675 / 0.75 (hypothetical)"),
+                        Line2D([], [], ls="none", marker="o", ms=8, mfc="none", mec=th.s(1), mew=2, label="6.7 nm BEUV, NA 0.335 / 0.37 (hypothetical)")],
+               loc="lower center", bbox_to_anchor=(0.5, -0.12), ncol=2, fontsize=style.SMALL_PT, frameon=False)
+    fig.suptitle(f"Two routes to the same half-pitch at k₁ = {K1_ROUTES}: the shorter wavelength wins focus and polarization, loses photons",
+                 x=0.02, y=1.04, ha="left", fontsize=style.TITLE_PT, fontweight="semibold", color=th.ink)
+    return fig
+
+
+def gen_routes() -> list[Path]:
+    return _render("two-routes", draw_routes, "Two routes to 5–6 nm half-pitch at k₁ = 0.30", ROUTES_ALT)
+
+
+# ============================================================================
+# 7. N18 — electron-beam write time
+# ============================================================================
+WAFER_AREA_CM2 = math.pi * 15.0**2  # 300 mm wafer ≈ 707 cm²
+DOSES_UC_CM2 = (10.0, 50.0, 200.0)  # assumed round numbers (the page's illustration uses 50)
+WPH_GUIDES = (1.0, 100.0)
+MAPPER_WPH = 1.0  # "a modest throughput of 1 wafer an hour" (alternative-patterning.md); the current is not public
+
+
+def write_time_s(dose_uc_cm2: float, current_a: float, area_cm2: float = WAFER_AREA_CM2) -> float:
+    return dose_uc_cm2 * 1e-6 * area_cm2 / current_a
+
+
+EBEAM_ALT = ("Electron-beam write time per 300 mm wafer, minutes to days, versus delivered current from 1 nA to 10 mA at 10, "
+             "50 and 200 µC/cm²: 50 µC/cm² at 1 µA takes about 10 hours and 100 wafers per hour needs about 1 mA; guides at 1 "
+             "and 100 wafers per hour and MAPPER's reported 1 wafer per hour.")
+EBEAM_CAPTION = ("<strong>Electron-beam write time is charge divided by current.</strong> t = D·A/I for a 300 mm wafer at 10, 50 "
+                 "and 200 µC/cm² against delivered current from 1 nA to 10 mA, with guides at 1 and 100 wafers per hour and "
+                 "MAPPER's reported ~1 wph; 50 µC/cm² at 1 µA is about 10 hours, and 100 wph needs about 1 mA. "
+                 "<em>Doses are assumed round numbers; the MAPPER current is not public.</em>")
+
+
+def draw_ebeam(th):
+    import matplotlib.pyplot as plt  # noqa: PLC0415
+    import numpy as np  # noqa: PLC0415
+
+    style = _style()
+    fig, ax = plt.subplots(figsize=(style.FULL_WIDTH, 4.8))
+    style.style_axes(ax, th, grid="both")
+    cur = np.logspace(-9, -2, 200)
+    for i, d in enumerate(DOSES_UC_CM2):
+        t = write_time_s(d, cur)
+        ax.plot(cur, t, color=th.s(i + 1), lw=2, zorder=3)
+        t_lab = (3e6, 2.5e5, 2e4)[i]  # staggered along each (parallel) line so the labels never touch
+        i_lab = d * 1e-6 * WAFER_AREA_CM2 / t_lab
+        ax.annotate(f"{d:g} µC/cm²", xy=(i_lab, t_lab), xytext=(7, 2), textcoords="offset points", va="center",
+                    fontsize=style.SMALL_PT, color=th.s(i + 1))
+    for wph in WPH_GUIDES:
+        ax.axhline(3600 / wph, color=th.muted, lw=1, ls=(0, (4, 3)), zorder=2)
+        ax.text(8e-3, 3600 / wph * 1.25, f"{wph:g} wafer{'s' if wph != 1 else ''} per hour", ha="right", fontsize=style.SMALL_PT,
+                color=th.ink2, va="bottom")
+    t50_1ua = write_time_s(50.0, 1e-6)
+    ax.plot(1e-6, t50_1ua, "o", ms=8, color=th.s(2), mec=th.surface, mew=1.5, zorder=4)
+    ax.annotate(f"50 µC/cm² at 1 µA:\n≈ {t50_1ua / 3600:.0f} h per wafer", xy=(1e-6, t50_1ua), xytext=(10, 10),
+                textcoords="offset points", fontsize=style.SMALL_PT, color=th.ink2)
+    i100 = 50e-6 * WAFER_AREA_CM2 / 36.0
+    ax.plot(i100, 36.0, "o", ms=8, color=th.s(2), mec=th.surface, mew=1.5, zorder=4)
+    ax.annotate(f"100 wph at 50 µC/cm²:\n≈ {i100 * 1e3:.0f} mA delivered", xy=(i100, 36.0), xytext=(-22, 34),
+                textcoords="offset points", ha="right", va="bottom", fontsize=style.SMALL_PT, color=th.ink2,
+                arrowprops=dict(arrowstyle="-", color=th.axis, lw=0.8))
+    ax.annotate("MAPPER (2018): ~1 wph reported;\ncurrent not public (marker on the guide only)", xy=(1.3e-9, 3600 / MAPPER_WPH),
+                xytext=(6, -12), textcoords="offset points", va="top", fontsize=style.SMALL_PT, color=th.muted)
+    ax.plot(1.3e-9, 3600 / MAPPER_WPH, "D", ms=7, mfc="none", mec=th.ink2, mew=1.5, zorder=4)
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_xlim(1e-9, 1e-2)
+    ax.set_ylim(10, 1e7)
+    ax.set_xticks([1e-9, 1e-8, 1e-7, 1e-6, 1e-5, 1e-4, 1e-3, 1e-2])
+    ax.set_xticklabels(["1 nA", "10 nA", "100 nA", "1 µA", "10 µA", "100 µA", "1 mA", "10 mA"])
+    ax.set_yticks([60, 600, 3600, 36000, 86400, 864000])
+    ax.set_yticklabels(["1 min", "10 min", "1 h", "10 h", "1 day", "10 days"])
+    ax.minorticks_off()
+    ax.set_xlabel("total delivered beam current")
+    ax.set_ylabel("write time per 300 mm wafer")
+    ax.set_title("t = D·A/I: a wafer an hour needs milliamps with nanometre placement")
+    ax.text(0.0, -0.15, "Doses are assumed round numbers; A = 707 cm². Masks are written once and printed thousands of times, "
+            "which is why e-beam\nspeed is affordable there and not for wafers.", transform=ax.transAxes,
+            fontsize=style.SMALL_PT, color=th.muted, va="top")
+    return fig
+
+
+def gen_ebeam() -> list[Path]:
+    return _render("ebeam-write-time", draw_ebeam, "Electron-beam write time versus delivered current", EBEAM_ALT)
+
+
+# ============================================================================
+# 8. N4 — the readiness × model matrix (svgkit, from readiness.csv)
+# ============================================================================
+import check_readiness as CR  # noqa: E402
+
+RUNG_SHORT = {"In production": "In production", "Shipping": "Shipping", "Announced": "Announced", "Demonstrated": "Demonstrated",
+              "Roadmap": "Roadmap", "Proposed": "Proposed", "Speculative": "Speculative"}
+FAMILY_SHORT = {"More NA": "More NA", "Shorter wavelength": "Shorter λ", "Brighter sources": "Brighter sources",
+                "Resists and stochastics": "Resists, stochastics", "Alternatives to projection": "Alternatives to projection",
+                "Quantum and exotic": "Quantum and exotic"}
+GLYPH_SLUG = {"✅": "implemented", "🔶": "simplified", "🧪": "theoretical", "🗺": "planned"}
+
+
+def _rows() -> list[dict]:
+    rows = CR.load()
+    errs = CR.validate(rows)
+    if errs:
+        raise SystemExit("readiness.csv is invalid:\n" + "\n".join(errs))
+    return rows
+
+
+def _counts(rows) -> tuple[int, dict]:
+    return len(rows), {g: sum(1 for r in rows for b in r["badges"] if b == g) for g in ("✅", "🔶", "🧪", "∅")}
+
+
+def _wrap(text: str, size: float, max_w: float) -> list[str]:
+    words = text.split()
+    lines, cur = [], ""
+    for w in words:
+        cand = (cur + " " + w).strip()
+        if K.text_width(cand, size, 600) <= max_w or not cur:
+            cur = cand
+        else:
+            lines.append(cur)
+            cur = w
+    if cur:
+        lines.append(cur)
+    return lines[:3] if len(lines) <= 3 else lines[:2] + [" ".join(lines[2:])]
+
+
+def _tech_chip(s: K.Svg, x: float, y: float, r: dict, w: float, size: float = K.MIN_TEXT) -> float:
+    """One technology chip: glyph mark(s) at the left, up to two lines of label; returns its height."""
+    f = size
+    em = f * 0.95
+    gl = r["badges"]
+    gw = 0.45 * f + len(gl) * (em * 0.95) + 0.25 * f
+    lines = _wrap(r["label"], f, w - gw - 0.6 * f)
+    h = f * 1.25 * len(lines) + 2 * 0.3 * f
+    not_mod = gl == ["∅"]
+    if not_mod:
+        fill, stroke, col = s.tint("muted", 0.08), s.tint("muted", 0.35), s.c("muted")
+    else:
+        colour = s.t["grades"][GLYPH_SLUG[gl[0]]]
+        fill, stroke, col = tokens.mix(colour, s.t["surface"], s.t["chip_tint"]), tokens.mix(colour, s.t["surface"], s.t["chip_border"]), colour
+    s.rect(x, y, w, h, fill=fill, stroke=stroke, sw=0.9, rx=min(h / 2, 9))
+    gy = y + h / 2
+    gx = x + 0.45 * f
+    for g in gl:
+        if g == "∅":
+            s.circle(gx + em / 2, gy, em * 0.36, fill="none", stroke="muted", sw=1.2)
+            s.line(gx + em * 0.2, gy + em * 0.3, gx + em * 0.8, gy - em * 0.3, "muted", 1.2)
+        else:
+            K._glyph_mark(s, GLYPH_SLUG[g], gx, gy, em, s.t["grades"][GLYPH_SLUG[g]])
+        gx += em * 0.95
+    tx = x + gw
+    ty = y + 0.3 * f + f * 0.95
+    for i, line in enumerate(lines):
+        s.text(tx, ty + i * f * 1.25, line, size=f, anchor="start", color="ink2" if not_mod else col, weight=600)
+    return h
+
+
+def _matrix_alt(rows) -> str:
+    n, c = _counts(rows)
+    return (f"{n} technology chips in seven readiness columns (In production to Speculative) by six family rows, each with "
+            f"the simulator's model glyph: {c['✅']} implemented, {c['🔶']} simplified, {c['🧪']} theoretical marks, {c['∅']} not "
+            "modelled; Shipping and Roadmap hold no technology today.")
+
+
+MATRIX_CAPTION = ("<strong>Readiness of the technology (columns) against what the simulator models (chips).</strong> Rung words are "
+                  "defined on this page as of September 2026; chips are copied from the capability matrix, a second glyph is the "
+                  "grade of the part the technology uses, and ∅ means no code at all. A ✅ model of a source that does not exist "
+                  "is still a model of a source that does not exist. <em>Chips copied from the matrix.</em>")
+
+
+def draw_matrix(theme: str, narrow: bool = False) -> str:
+    rows = _rows()
+    if narrow:
+        return _draw_matrix_narrow(theme, rows)
+    W = 960
+    m, label_w, gap = 8, 90, 4
+    cols = list(CR.RUNGS)
+    col_w = (W - 2 * m - label_w - gap * (len(cols) - 1)) / len(cols)
+    chip_w = col_w - 6
+    f = K.MIN_TEXT
+    # lay out: per (family, rung) a stack of chips
+    cells: dict[tuple[str, str], list[dict]] = {}
+    for r in rows:
+        cells.setdefault((r["family"], r["rung"]), []).append(r)
+    chip_h = {}
+    for key, lst in cells.items():
+        hs = []
+        for r in lst:
+            gw = 0.45 * f + len(r["badges"]) * (f * 0.95 * 0.95) + 0.25 * f
+            n_lines = len(_wrap(r["label"], f, chip_w - gw - 0.6 * f))
+            hs.append(f * 1.25 * n_lines + 0.6 * f)
+        chip_h[key] = hs
+    row_h = {}
+    for fam in CR.FAMILIES:
+        h = 0.0
+        for rung in cols:
+            hs = chip_h.get((fam, rung), [])
+            h = max(h, sum(hs) + 5 * max(0, len(hs) - 1))
+        row_h[fam] = max(h, 30) + 14
+    y_head = 54
+    H = y_head + 30 + sum(row_h.values()) + 76
+    s = K.Svg(W, H, theme, "Readiness of the technology against what the simulator models", _matrix_alt(rows), generator=GENERATOR)
+    hue = s.c("hue:future")
+    # top arrow and column headers
+    x_cols = {rung: m + label_w + gap + i * (col_w + gap) for i, rung in enumerate(cols)}
+    s.line(W - m, 20, m + label_w + gap, 20, "muted", 1.0, arrow="end", opacity=0.7)
+    s.text(m + label_w + gap + 6, 15, "closer to volume manufacturing", size=K.SMALL, anchor="start", color="muted", halo=True)
+    s.text(W - m - 6, 15, "readiness", size=K.SMALL, anchor="end", color="muted", halo=True)
+    for rung in cols:
+        x = x_cols[rung]
+        K.chip(s, x + col_w / 2, y_head - 14, rung, outlined=True, anchor="middle", size=K.SMALL)
+    y = y_head + 10
+    for fam in CR.FAMILIES:
+        rh = row_h[fam]
+        s.line(m, y, W - m, y, "grid", 1.0)
+        s.rect(m, y, 3, rh, fill=hue, opacity=0.6)
+        lines = _wrap(FAMILY_SHORT[fam], K.SMALL, label_w - 14)
+        ty = y + 20
+        for i, line in enumerate(lines):
+            s.text(m + 10, ty + i * K.SMALL * 1.25, line, size=K.SMALL, anchor="start", weight=600, color="ink")
+        for rung in cols:
+            lst = cells.get((fam, rung), [])
+            cy = y + 7
+            for r in lst:
+                h = _tech_chip(s, x_cols[rung] + 3, cy, r, chip_w)
+                cy += h + 5
+        y += rh
+    s.line(m, y, W - m, y, "grid", 1.0)
+    for rung in cols:
+        if not any(r["rung"] == rung for r in rows):
+            s.text(x_cols[rung] + col_w / 2, y_head + 10 + sum(row_h.values()) / 2, "no technology on this rung today",
+                   size=K.MIN_TEXT, color="muted", rotate=-90, opacity=0.8)
+    # legend
+    ly = y + 26
+    lx = m
+    s.text(lx, ly, "Chips grade the model, not the technology:", size=K.SMALL, anchor="start", color="ink2", weight=600)
+    lx += K.text_width("Chips grade the model, not the technology:", K.SMALL, 600) + 14
+    for slug, word in (("implemented", "Implemented"), ("simplified", "Simplified"), ("theoretical", "Theoretical")):
+        K._glyph_mark(s, slug, lx, ly - 4, 12, s.t["grades"][slug])
+        s.text(lx + 15, ly, word, size=K.SMALL, anchor="start", color="ink2")
+        lx += 15 + K.text_width(word, K.SMALL) + 14
+    s.circle(lx + 6, ly - 4, 4.3, fill="none", stroke="muted", sw=1.2)
+    s.line(lx + 3.5, ly - 1, lx + 8.5, ly - 7, "muted", 1.2)
+    s.text(lx + 16, ly, "not modelled", size=K.SMALL, anchor="start", color="ink2")
+    s.text(m, ly + 19, "Two glyphs: the headline grade, then the grade of the part the technology uses.", size=K.SMALL,
+           anchor="start", color="muted")
+    s.text(m, ly + 36, "Rung words: this page's readiness ladder (September 2026); grades copied from the capability matrix.",
+           size=K.SMALL, anchor="start", color="muted")
+    return s.render()
+
+
+def _draw_matrix_narrow(theme: str, rows) -> str:
+    W = 600
+    m, gap, f = 10, 6, K.MIN_TEXT
+    chip_w = (W - 2 * m - 2 * gap) / 3
+    # measure
+    blocks = []
+    y = 16
+    for rung in CR.RUNGS:
+        lst = [r for r in rows if r["rung"] == rung]
+        y += 28
+        if not lst:
+            y += 20
+            blocks.append((rung, lst, y))
+            continue
+        cy = y
+        col = 0
+        rowh = 0.0
+        for r in lst:
+            gw = 0.45 * f + len(r["badges"]) * (f * 0.95 * 0.95) + 0.25 * f
+            n_lines = len(_wrap(r["label"], f, chip_w - gw - 0.6 * f))
+            h = f * 1.25 * n_lines + 0.6 * f
+            rowh = max(rowh, h)
+            col += 1
+            if col == 3:
+                cy += rowh + 5
+                col, rowh = 0, 0.0
+        if col:
+            cy += rowh + 5
+        blocks.append((rung, lst, y))
+        y = cy + 6
+    H = y + 56  # two footnote lines
+    s = K.Svg(W, H, theme, "Readiness of the technology against what the simulator models", _matrix_alt(rows), generator=GENERATOR)
+    y = 16
+    for rung, lst, _y in blocks:
+        y += 28
+        K.chip(s, m, y - 16, rung, outlined=True, anchor="start", size=K.SMALL)
+        if not lst:
+            s.text(m + 150, y - 12, "no technology on this rung today", size=K.MIN_TEXT, anchor="start", color="muted")
+            y += 20
+            continue
+        cy = y
+        col = 0
+        rowh = 0.0
+        for r in lst:
+            h = _tech_chip(s, m + col * (chip_w + gap), cy, r, chip_w)
+            rowh = max(rowh, h)
+            col += 1
+            if col == 3:
+                cy += rowh + 5
+                col, rowh = 0, 0.0
+        if col:
+            cy += rowh + 5
+        y = cy + 6
+    # the footnote on two lines: one line of 104 characters at 12.5 units is ~660 units, wider than the canvas
+    s.text(m, H - 30, "Chips grade the model, not the technology; ∅ = not modelled.", size=K.MIN_TEXT, anchor="start", color="muted")
+    s.text(m, H - 14, "Grades copied from the capability matrix.", size=K.MIN_TEXT, anchor="start", color="muted")
+    return s.render()
+
+
+def gen_matrix() -> list[Path]:
+    return K.write_pair("readiness-matrix", draw_matrix, OUT, narrow=lambda t: draw_matrix(t, narrow=True))
+
+
+# ============================================================================
+# registry
+# ============================================================================
+registry.register(_spec("readiness-matrix", "schematic", _matrix_alt(CR.load()), MATRIX_CAPTION,
+                        ("future/index.md", "README.md"), gen_matrix, narrow=True, hero_on=("future/index.md",),
+                        platform_independent=True, extra={"width": {"README.md": 300}}), module="make_future_figures.py")
+registry.register(_spec("photons-per-feature", "figure", PHOTONS_ALT, PHOTONS_CAPTION, ("future/stochastic-frontier.md",), gen_photons),
+                  module="make_future_figures.py")
+registry.register(_spec("noon-fringes", "figure", NOON_ALT, NOON_CAPTION, ("future/quantum-and-exotic.md",), gen_noon),
+                  module="make_future_figures.py")
+registry.register(_spec("source-landscape", "figure", LANDSCAPE_ALT, LANDSCAPE_CAPTION, ("future/quantum-and-exotic.md",), gen_landscape),
+                  module="make_future_figures.py")
+registry.register(_spec("source-landscape-euv", "figure", LANDSCAPE_EUV_ALT, LANDSCAPE_EUV_CAPTION,
+                        ("future/accelerator-light-sources.md",), gen_landscape_euv, hero_on=("future/accelerator-light-sources.md",)),
+                  module="make_future_figures.py")
+registry.register(_spec("multilayer-reflectance", "figure", MIRROR_ALT, MIRROR_CAPTION, ("future/beyond-euv.md",), gen_mirrors),
+                  module="make_future_figures.py")
+registry.register(_spec("poisson-floor", "figure", POISSON_ALT, POISSON_CAPTION, ("future/stochastic-frontier.md",), gen_poisson),
+                  module="make_future_figures.py")
+registry.register(_spec("two-routes", "figure", ROUTES_ALT, ROUTES_CAPTION, ("future/beyond-euv.md",), gen_routes),
+                  module="make_future_figures.py")
+registry.register(_spec("ebeam-write-time", "figure", EBEAM_ALT, EBEAM_CAPTION, ("future/alternative-patterning.md",), gen_ebeam),
+                  module="make_future_figures.py")
+
+GENERATORS = {
+    "readiness-matrix": gen_matrix, "photons-per-feature": gen_photons, "noon-fringes": gen_noon,
+    "source-landscape": gen_landscape, "source-landscape-euv": gen_landscape_euv, "multilayer-reflectance": gen_mirrors,
+    "poisson-floor": gen_poisson, "two-routes": gen_routes, "ebeam-write-time": gen_ebeam,
 }
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--preview", type=Path, default=None, help="also write PNG previews here")
-    ap.add_argument("only", nargs="*", help="figure names to build (default: all)")
-    args = ap.parse_args()
-    names = args.only or list(FIGURES)
-    for name in names:
-        for theme in ("light", "dark"):
-            FIGURES[name](theme, args.preview)
+def check() -> tuple[list[str], list[str]]:
+    """Physical-correctness asserts (no drawing): the numbers printed on the figures and in the captions."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    # photons: the page's own numbers (future/index.md § Photons)
+    for lam, want in ((193.0, 9.72), (13.5, 0.680), (6.7, 0.338)):
+        got = photons_per_nm2_per_mj_cm2(lam)
+        if abs(got - want) / want > 0.01:
+            errors.append(f"photons-per-feature: {lam} nm gives {got:.3f} photons/nm² per mJ/cm², page says {want}")
+    if not (800 < NOISE_LINE < 1000):
+        errors.append("photons-per-feature: the 10 % 3σ line must be N = 900")
+    # Poisson floor
+    for t, mu in zip(TARGETS, MU_TARGETS):
+        if not (poisson_cdf_half(mu) < t <= poisson_cdf_half(mu - 2)):
+            errors.append(f"poisson-floor: μ for {t:g} is not the threshold")
+    if MU_TARGETS != [122, 166]:
+        errors.append(f"poisson-floor: thresholds {MU_TARGETS} differ from the page's 122 / 166")
+    for mu, want in ((100, 2.4e-8), (144, 2.4e-11), (200, 3.7e-15)):
+        got = poisson_cdf_half(mu)
+        if abs(got - want) / want > 0.05:
+            errors.append(f"poisson-floor: P(X ≤ μ/2) at μ = {mu} is {got:.2e}, page says {want:.1e}")
+    page = registry.DOCS / "future" / "stochastic-frontier.md"
+    if page.exists():
+        text = page.read_text(encoding="utf-8")
+        for _label, n in EXAMPLE_COUNTS:
+            if f"{n} absorbed" not in text:
+                warnings.append(f"poisson-floor: stochastic-frontier.md no longer prints '{n} absorbed'")
+    # two routes: reproduce the page table
+    for (hp, label, lam, nums), (na, lam_na2, sin_t, tm, ph) in zip(ROUTE_ROWS, ROUTE_TABLE):
+        if abs(nums["na"] - na) > 0.0051 or abs(nums["lam_na2"] - lam_na2) > 0.06 or abs(nums["sin"] - sin_t) > 0.006 \
+                or abs(nums["tm"] - tm) > 0.006 or abs(nums["photons"] - ph) > 0.6:
+            errors.append(f"two-routes: {hp} nm via {label}: computed {nums}, page table says NA {na}, {lam_na2}, {sin_t}, {tm}, {ph}")
+    # e-beam
+    if abs(write_time_s(50.0, 1e-6) / 3600 - 9.8) > 0.2:
+        errors.append("ebeam-write-time: 50 µC/cm² at 1 µA should be about 10 h")
+    if abs(50e-6 * WAFER_AREA_CM2 / 36.0 - 1e-3) > 0.1e-3:
+        errors.append("ebeam-write-time: 100 wph at 50 µC/cm² should need about 1 mA")
+    # mirrors: the page table (R = 0.70: 11 reflections → 2.0 %)
+    if abs(left_after(70.0) - 2.0) > 0.05:
+        errors.append(f"multilayer-reflectance: 0.70^11 = {left_after(70.0):.2f} %, page table says 2.0 %")
+    # readiness
+    errors += CR.validate()
+    # source CSV
+    if N_SOURCE_ROWS != 51:
+        warnings.append(f"source-landscape: {N_SOURCE_ROWS} rows in source_power_vs_wavelength.csv (captions say 51)")
+    return errors, warnings
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    if "--check" in argv:
+        e, w = check()
+        for x in w:
+            print("warning:", x)
+        for x in e:
+            print("error:", x)
+        print(f"future figures check: {len(e)} error(s), {len(w)} warning(s)")
+        return 1 if e else 0
+    only = [a for a in argv if not a.startswith("--")]
+    for name, fn in GENERATORS.items():
+        if only and name not in only:
+            continue
+        for p in fn():
+            print(f"wrote {registry.rel_to_repo(p)} ({p.stat().st_size / 1024:.1f} KB)")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

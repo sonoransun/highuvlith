@@ -2,17 +2,27 @@
 
 Each figure is a :class:`FigureSpec`: ``compute(fast)`` runs the simulator once and
 returns plain data; ``draw(data, theme)`` turns that data into a matplotlib figure
-for one theme. :mod:`make_all` runs ``compute`` once and ``draw`` twice (light and
-dark), writing ``<name>-light.png`` / ``<name>-dark.png`` under
-``docs/assets/images/sim/`` (``site/`` for the History / Nodes / Future pages).
+(or an SVG string, or a list of frames) for one theme. :mod:`make_all` runs
+``compute`` once and ``draw`` twice (light and dark), writing ``<name>-light.png`` /
+``<name>-dark.png`` under ``docs/assets/images/sim/`` (``site/`` for the History /
+Nodes / Future pages, ``anim/`` for animations).
 
 The canonical alt text and caption of every figure live here, next to the code that
 makes it, so the page embeds can be regenerated (``make_all.py --catalog``) and
-checked (``make_all.py --check``).
+checked (``make_all.py --check``). The embed forms and the file naming are shared with
+the narrative/schematic registry in ``docs/figures/registry.py`` (DESIGN §5.0):
+``kind`` picks the size cap, ``fmt="apng"`` makes ``draw`` return a frame list,
+``extra["crops"]`` expands into derived ``<name>-<crop>`` specs, ``extra["model_rows"]``
+resolves abbreviated caption labels to matrix rows, ``extra["table"]`` declares a
+marker table for ``--tables``.
+
+Physical-correctness asserts belong in ``compute()``, never in ``draw``: ``make_all.py
+--verify`` runs every ``compute(fast)`` without drawing, which is the only form CI runs.
 """
 
 from __future__ import annotations
 
+import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -27,6 +37,13 @@ CACHE_DIR = HERE / "_cache"
 
 if str(HERE) not in sys.path:
     sys.path.insert(0, str(HERE))
+if str(HERE.parent) not in sys.path:  # docs/figures: tokens, svgkit, registry
+    sys.path.insert(0, str(HERE.parent))
+
+import registry  # noqa: E402
+
+#: Set by ``make_all.py --frames N``: animation specs may cap their frame lists at this (None = full).
+FRAME_LIMIT: int | None = None
 
 
 def native():
@@ -55,8 +72,9 @@ class FigureSpec:
     caption: str
     #: Where the figure is embedded (paths relative to docs/, or "README.md").
     pages: tuple[str, ...] = ()
-    #: "" for docs/assets/images/sim/, "site" for .../sim/site/.
+    #: "" for docs/assets/images/sim/, "site" for .../sim/site/, "anim" for .../sim/anim/.
     subdir: str = ""
+    #: "png" (2x, optimized), "svg" (matplotlib, or a string returned by draw), "apng" (frame list).
     fmt: str = "png"
     #: Capabilities the figure needs (see ``capabilities()``); missing -> skipped.
     requires: tuple[str, ...] = ()
@@ -64,6 +82,33 @@ class FigureSpec:
     enabled: bool = True
     disabled_reason: str = ""
     extra: dict[str, Any] = field(default_factory=dict)
+    #: Registry contract (DESIGN §5.0): the size-cap kind; defaults to "figure".
+    kind: str = "figure"
+    #: None, "svg" (two-layer CSS animation; draw returns the animated SVG string) or "apng".
+    animated: str | None = None
+    #: For fmt="apng": index of the frame written as the designed still.
+    still_frame: int = 0
+    narrow: bool = False
+    hero_on: tuple[str, ...] = ()
+    platform_independent: bool = False
+    root: Path = OUT_DIR
+    still: bool = False
+    single: bool = False
+    module: str = ""
+
+    def __post_init__(self) -> None:
+        if self.fmt == "apng":
+            self.animated = "apng"
+            self.kind = "anim"
+        elif self.fmt == "svg" and self.name.endswith("-anim"):
+            self.animated = "svg"
+            self.kind = "anim"
+        if self.animated:
+            self.still = True
+        if self.kind not in registry.KINDS:
+            raise ValueError(f"{self.name}: kind {self.kind!r} not in {registry.KINDS}")
+        if not self.alt.strip():
+            raise ValueError(f"{self.name}: alt must not be empty (length ≤ 300 is a --check rule)")
 
     @property
     def rel_stem(self) -> str:
@@ -71,59 +116,58 @@ class FigureSpec:
         return f"{self.subdir}/{self.name}" if self.subdir else self.name
 
     def image_paths(self, out_dir: Path = OUT_DIR) -> list[Path]:
-        return [out_dir / f"{self.rel_stem}-{t}.{self.fmt}" for t in ("light", "dark")]
+        """Every file the spec ships (main light/dark, stills, narrow twins, GIFs)."""
+        return list(registry.all_files(self, out_dir).values())
+
+    @property
+    def is_crop(self) -> bool:
+        return "crop_of" in self.extra
 
 
 REGISTRY: list[FigureSpec] = []
 
 
 def register(spec: FigureSpec) -> FigureSpec:
-    if any(s.name == spec.name for s in REGISTRY):
-        raise ValueError(f"duplicate figure name {spec.name!r}")
+    """Register a spec and the derived crops of ``extra['crops']``; duplicate names are rejected."""
+    module = spec.compute.__module__ if hasattr(spec.compute, "__module__") else ""
+    spec.module = f"{module}.py" if module else ""
+    registry._claim(spec.name, spec.module or "sim")
     REGISTRY.append(spec)
+    for crop in registry.derive_crops(spec, lambda **f: FigureSpec(group=spec.group, compute=spec.compute,
+                                                                    draw=spec.draw, root=spec.root, **f)):
+        crop.module = spec.module
+        registry._claim(crop.name, spec.module or "sim")
+        REGISTRY.append(crop)
     return spec
 
 
+def cli_binary() -> Path | None:
+    """The built CLI (``$HUV_CLI`` or ``target/release/highuvlith``), or None."""
+    env = os.environ.get("HUV_CLI")
+    candidates = [Path(env)] if env else []
+    candidates += [REPO / "target" / "release" / "highuvlith", REPO / "target" / "release" / "highuvlith.exe"]
+    for c in candidates:
+        if c.is_file() and os.access(c, os.X_OK):
+            return c
+    return None
+
+
 def capabilities() -> dict[str, bool]:
-    """Optional simulator API the figures probe for (older/newer builds differ)."""
+    """Optional simulator API and tools the figures probe for (older/newer builds differ)."""
     huv = native()
     src = huv.SourceConfig.f2_laser(0.7)
     return {
         "illumination": hasattr(src, "with_illumination"),
         "spectrum": callable(getattr(src, "spectrum", None)),
         "pupil_fill": hasattr(src, "pupil_fill"),
+        "cli": cli_binary() is not None,
+        "attenuation": callable(getattr(huv, "compound_attenuation", None)),
     }
 
 
-def md_embed(spec: FigureSpec, page: str) -> str:
-    """Markdown that embeds ``spec`` into ``page`` (a path relative to docs/, or README.md).
-
-    Docs pages get a ``<figure markdown="span">`` whose blank lines keep it valid
-    on both renderers: MkDocs (md_in_html) produces ``<figure><img><img>
-    <figcaption>``, and github.com (CommonMark HTML blocks end at blank lines)
-    renders the two Markdown images and the caption. The
-    ``#gh-light-mode-only`` / ``#gh-dark-mode-only`` fragments make MkDocs
-    Material show one variant per colour scheme (github.com has honoured the
-    same fragments). The README uses a ``<picture>`` element instead.
-    """
-    if page == "README.md":
-        base = f"docs/assets/images/sim/{spec.rel_stem}"
-        return (
-            "<picture>\n"
-            f'  <source media="(prefers-color-scheme: dark)" srcset="{base}-dark.{spec.fmt}">\n'
-            f'  <img alt="{spec.alt}" src="{base}-light.{spec.fmt}">\n'
-            "</picture>"
-        )
-    depth = len(Path(page).parent.parts)
-    prefix = "../" * depth
-    base = f"{prefix}assets/images/sim/{spec.rel_stem}"
-    return (
-        '<figure markdown="span">\n\n'
-        f"![{spec.alt}]({base}-light.{spec.fmt}#gh-light-mode-only)\n"
-        f"![{spec.alt}]({base}-dark.{spec.fmt}#gh-dark-mode-only)\n\n"
-        f"<figcaption>{spec.caption}</figcaption>\n"
-        "</figure>"
-    )
+def md_embed(spec, page: str) -> str:
+    """Markdown that embeds ``spec`` into ``page`` (delegates to ``registry.md_embed``)."""
+    return registry.md_embed(spec, page)
 
 
 # ---------------------------------------------------------------------------

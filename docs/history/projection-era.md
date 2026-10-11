@@ -7,13 +7,25 @@ description: >-
 
 # The projection era
 
-Putting optics between the mask and the wafer solved contact printing's defect problem.
-It also made the lens the product. From 1973 to the late 1990s the lithography business
-was a contest in building larger, sharper and more stable projection optics, and in moving
-masks and wafers under them precisely. The contest also reshaped the industry. American
-companies supplied about 90 % of lithography tools in 1980 and about 10 % in 1990 [1].
+<p class="huv-lead">Chapter 2 of 7 — Putting optics between the mask and the wafer solved contact printing's defect problem, and it made the lens the product. From the Micralign of 1973 to the first TWINSCAN of 2001 the lithography business was a contest in building larger, sharper and more stable projection optics, and in moving masks and wafers under them precisely (1973–2001). The contest also reshaped the industry: American companies supplied about 90 % of lithography tools in 1980 and about 10 % in 1990 [1].</p>
 
-## Scanning projection: the Micralign
+<figure markdown="span">
+
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-projection-narrow-light.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-projection-light.svg#gh-light-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the g- and i-line projection span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-projection-narrow-dark.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-projection-dark.svg#gh-dark-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the g- and i-line projection span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
+
+<figcaption><strong>You are here on the axis of light.</strong> The chapter's wavelengths and eras at full strength, the rest faded; years are first tool models in litho_tools.csv; the log axis is expanded above 100 nm. <em>Data chart from litho_tools.csv; no model badge.</em></figcaption>
+</figure>
+
+<figure markdown="span">
+
+![Three panels: the Micralign 1:1 scanning projection aligner with an Offner two-mirror relay, an arc slit and a carriage moving mask and wafer together; a step-and-repeat stepper lighting a whole reticle field; a step-and-scan system sweeping a slit while reticle and wafer scan oppositely.](../assets/images/history/three-ways-to-move-light.svg#gh-light-mode-only)
+![Three panels: the Micralign 1:1 scanning projection aligner with an Offner two-mirror relay, an arc slit and a carriage moving mask and wafer together; a step-and-repeat stepper lighting a whole reticle field; a step-and-scan system sweeping a slit while reticle and wafer scan oppositely.](../assets/images/history/three-ways-to-move-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Three ways to move the image.</strong> The Micralign scans mask and wafer together through a 1:1 ring-field mirror relay; a stepper exposes a whole reduced field and steps; a step-and-scan tool sweeps a slit while reticle and wafer scan at 4v and v. <em>Schematic, not to scale.</em></figcaption>
+</figure>
+
+## Scanning projection: the Micralign, 1973–1981
 
 The first attempts at 1:1 projection used refractive lenses and imaged the whole wafer at
 once. Canon's PPC-1 (1970) used a g-line lens of NA 0.14 specified for 2–3 µm on wafers up to
@@ -44,7 +56,7 @@ pattern, and overlay must be held across the whole wafer. As wafers grew, keepin
 layer-to-layer overlay within the usual rule of thumb (about 20–30 % of the minimum feature)
 became too hard [2, 3].
 
-## The wafer stepper
+## The wafer stepper, 1975–1988
 
 The alternative came from mask making. Photorepeaters already stepped a reduced image of a
 reticle across a plate to build a mask. A **wafer stepper** does the same directly on the
@@ -81,7 +93,7 @@ business went to Silicon Valley Group in 1990 [4]. A quotation in Mack's history
 sense of why the business was hard. GCA's first g-line stepper cost it $5 million to develop,
 its i-line stepper $25 million, and its deep-UV stepper $140 million [4].
 
-## g-line, i-line and ever larger lenses
+## g-line, i-line and ever larger lenses, 1978–1994
 
 Steppers used single lines of the mercury arc lamp. The **g-line** is at 435.83 nm, the
 h-line at 404.66 nm and the **i-line** at 365.02 nm (wavelengths in air) [8]. Moving from g to
@@ -92,8 +104,10 @@ stepper produced [4, 5]. ASML's first i-line stepper, the PAS 2500/40 (1987), ha
 1987 [1].
 
 Bruning's summary of the turning points shows the shape of the trend: reduction ratio fell as
-fields grew, while the wavelength and the minimum feature shrank [3].
+fields grew, while the wavelength and the minimum feature shrank (turning points in
+reduction-stepper evolution, from Bruning (2007), Table 1 [3]).
 
+<!-- huv-table: stack -->
 | Year | Reduction | Wafer | Image field | λ | Minimum CD |
 |---|---|---|---|---|---|
 | 1970 | 1:1 | 50 mm | full wafer | 400–440 nm lamp | 5 µm |
@@ -102,8 +116,6 @@ fields grew, while the wavelength and the minimum feature shrank [3].
 | 1990 | 4:1 | 200 mm | 20 × 20 mm | 365 nm | 0.5 µm |
 | 1993 | 4:1 | 200 mm | 22 × 22 mm | 248 nm | 0.25 µm |
 
-*Table: turning points in reduction-stepper evolution, from Bruning (2007), Table 1.*
-
 Lens NA more than doubled over the stepper era, from 0.28 in 1978 to 0.63 in 1994 (Nikon
 NSR-2205i11D and Canon FPA-3000i4 [5, 9]). Each gain cost something: a larger, more complex lens
 and a shallower depth of focus, which scales as λ/NA². The i-line's roughly 3 nm spectral
@@ -111,26 +123,17 @@ width also forced lens designers to combine several glasses to correct colour, a
 g-line [3]. The excimer laser removed that burden (see [deep UV](excimer-duv.md)).
 
 <figure markdown="span">
-  ![Scatter chart of lens numerical aperture against year, 1973 to 2025. Dry tools rise from
-  0.167 (Micralign, 1973) and 0.28 (GCA DSW 4800, 1978) to about 0.6 around 1995 (Nikon
-  NSR-S201A) and 0.93 by 2004. Water-immersion tools jump above the NA = 1 dry-lens limit from
-  2005 (Nikon NSR-S609B, 1.07) and reach 1.35 in 2007 (ASML XT:1900i), below the water line at
-  1.44. EUV tools sit at 0.25 to 0.33 from 2006 and 0.55 for High-NA EUV from
-  2023.](../assets/images/history/na-vs-year-light.svg#only-light){ width="820" }
-  ![Scatter chart of lens numerical aperture against year, 1973 to 2025. Dry tools rise from
-  0.167 (Micralign, 1973) and 0.28 (GCA DSW 4800, 1978) to about 0.6 around 1995 (Nikon
-  NSR-S201A) and 0.93 by 2004. Water-immersion tools jump above the NA = 1 dry-lens limit from
-  2005 (Nikon NSR-S609B, 1.07) and reach 1.35 in 2007 (ASML XT:1900i), below the water line at
-  1.44. EUV tools sit at 0.25 to 0.33 from 2006 and 0.55 for High-NA EUV from
-  2023.](../assets/images/history/na-vs-year-dark.svg#only-dark){ width="820" }
-  <figcaption markdown="span">Numerical aperture of the tool models in the history data set. Dry NA climbed
-  steadily until it neared the physical limit of 1; water immersion then moved the ceiling to
-  1.35. EUV started again at low NA with mirror optics. Open circles are dry tools introduced
-  from 2007 on. Sources for every point are in the [data
-  table on the History overview](index.md#the-resolution-story-in-data).</figcaption>
+
+![Numerical aperture of each tool model from 1973 to 2000, the projection-era tools drawn in colour and later tools greyed out: the Micralign at 0.17, the GCA DSW 4800 stepper at 0.28, i-line steppers near 0.63 and the first step-and-scan tools at 0.6 to 0.68.](../assets/images/history/na-vs-year-to-2000-light.svg#gh-light-mode-only)
+![Numerical aperture of each tool model from 1973 to 2000, the projection-era tools drawn in colour and later tools greyed out: the Micralign at 0.17, the GCA DSW 4800 stepper at 0.28, i-line steppers near 0.63 and the first step-and-scan tools at 0.6 to 0.68.](../assets/images/history/na-vs-year-to-2000-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>NA through the projection era, 1973–2000.</strong> The same chart as the full NA history, cut at 2000 with the projection-era tools in colour: every step is a larger lens, from the Micralign's mirrors at 0.17 to 0.68 at the end of the century. <em>Data chart from litho_tools.csv; no model badge.</em></figcaption>
 </figure>
 
-## Step-and-scan
+The full chart, through immersion and EUV, is on the [history overview](index.md); every
+point's source is on [the tool data](tool-data.md) page.
+
+## Step-and-scan, 1990–2001
 
 A lens with a round field can only print the square inscribed in that circle. Scanning
 removes the restriction. Illuminate only a slit and move the reticle and wafer through it in
@@ -142,19 +145,11 @@ stages precisely at different speeds [3]. With 4× reduction the reticle moves f
 faster than the wafer.
 
 <figure markdown="span">
-  ![Two panels. Left, a stepper: the whole reticle field is lit in one flash, the projection
-  lens prints one field on the wafer, and the wafer then steps to the next field. Right, a
-  scanner: only a slit of light crosses the reticle; the reticle scans at four times the
-  wafer's speed in the opposite direction while the slit sweeps across a 26 by 33 mm field on
-  the wafer.](../assets/images/history/stepper-vs-scanner-light.svg#only-light){ width="820" }
-  ![Two panels. Left, a stepper: the whole reticle field is lit in one flash, the projection
-  lens prints one field on the wafer, and the wafer then steps to the next field. Right, a
-  scanner: only a slit of light crosses the reticle; the reticle scans at four times the
-  wafer's speed in the opposite direction while the slit sweeps across a 26 by 33 mm field on
-  the wafer.](../assets/images/history/stepper-vs-scanner-dark.svg#only-dark){ width="820" }
-  <figcaption markdown="span">Stepper and scanner. With an image-inverting 4× lens the reticle and wafer
-  stages scan in opposite directions, the reticle four times faster. Schematic; script:
-  [make_history_schematics.py](../figures/history/make_history_schematics.py).</figcaption>
+
+![Left, a step-and-repeat stepper: the whole reticle is lit in one flash, one field printed, the wafer stepped to the next. Right, a step-and-scan system: a slit of light sweeps the reticle while reticle and wafer scan in opposite directions, the reticle four times faster for a 4x lens.](../assets/images/history/stepper-vs-scanner-light.svg#gh-light-mode-only)
+![Left, a step-and-repeat stepper: the whole reticle is lit in one flash, one field printed, the wafer stepped to the next. Right, a step-and-scan system: a slit of light sweeps the reticle while reticle and wafer scan in opposite directions, the reticle four times faster for a 4x lens.](../assets/images/history/stepper-vs-scanner-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Stepper and scanner.</strong> With an image-inverting 4× lens the reticle and wafer stages scan in opposite directions, the reticle four times faster, so a lens corrected over the slit alone prints a 26 × 33 mm field. <em>Schematic, not to scale.</em></figcaption>
 </figure>
 
 The first step-and-scan tool was Perkin-Elmer's design, introduced in 1990 as the SVG
@@ -180,56 +175,61 @@ so one wafer could be measured while another was exposed [4, 7].
 ASML bought SVG Lithography in 2001 and discontinued the Micrascan line. By 2002 ASML had the
 largest share of the lithography market [1, 4].
 
-!!! info "What highuvlith models here"
-    The imaging engine is a projection imager: a pupil function with NA, reduction ratio,
-    flare, aberrations (Zernike) and chromatic defocus feeds Hopkins partially coherent imaging
-    (✅ Implemented as a scalar model, 🔶 above NA ≈ 0.8; see the
-    [pipeline](../pipeline.md) and [optics](../optics.md) pages). It images one field. It does
-    not model stages, scanning, slit-dependent aberrations, dose integration during the scan,
-    or overlay between layers. The refractive model has a single axial-chromatic coefficient,
-    so the multi-glass colour correction of real g- and i-line lenses is not represented; see
-    the source pages for how each lamp or laser preset describes its line.
+**What highuvlith models here: the imaging engine is a projection imager of one field, a pupil
+function feeding Hopkins partially coherent imaging; it does not model stages, scanning,
+slit-dependent aberrations, dose integration during the scan, or overlay between layers.** The
+refractive model has a single axial-chromatic coefficient, so the multi-glass colour correction
+of real g- and i-line lenses is not represented; the source pages say how each lamp or laser
+preset describes its line.
 
-## Try it
+<!-- huv-table: stack -->
 
-!!! example "Try it in highuvlith: three stepper generations on a 1.6 µm pitch"
-    `OpticsConfig.rayleigh_resolution` uses the classical k₁ = 0.61. The 1978 lens barely
-    resolves 0.8 µm lines: the first diffraction orders of a 1.6 µm pitch fall at the edge of its
-    NA 0.28 pupil. The 1994 i-line lens images them easily.
+| Issue | In highuvlith | Grade | Link |
+|---|---|---|---|
+| Projection imaging through a reduction lens | Hopkins partially coherent imaging of one field, scalar; the vector model above NA ≈ 0.8 | ✅ Implemented | [pipeline](../pipeline.md), [vector imaging](../vector-imaging.md) |
+| The lens: NA, reduction, flare, aberrations, colour | pupil function with Zernike aberrations and one axial-chromatic coefficient | ✅ Implemented | [optics](../optics.md) |
+| Mercury g-, h- and i-lines | NIST air wavelengths, exact photon budgets, line-shape conventions | ✅ Implemented (🔶 parameters) | [DUV/UV heritage](../sources/duv-heritage.md) |
+| Stages, scanning, overlay, throughput | not modelled | — | [architecture](../architecture.md) |
 
-    <!-- verify-example -->
-    ```python
-    import highuvlith as huv
+### Try it in highuvlith
 
-    mask = huv.MaskConfig.line_space(cd_nm=800.0, pitch_nm=1600.0)
-    grid = huv.GridConfig(size=128, pixel_nm=25.0)  # 3.2 um field = 2 periods
-    tools = [
-        ("GCA DSW 4800 (1978)", huv.SourceConfig.hg_g_line(sigma=0.5), 0.28),
-        ("Nikon NSR-1505G4D (1987)", huv.SourceConfig.hg_g_line(sigma=0.5), 0.45),
-        ("Nikon NSR-2205i11D (1994)", huv.SourceConfig.hg_i_line(sigma=0.5), 0.63),
-    ]
-    for name, source, na in tools:
-        optics = huv.OpticsConfig(numerical_aperture=na)
-        engine = huv.SimulationEngine(source, optics, mask, grid=grid)
-        contrast = engine.compute_aerial_image(focus_nm=0.0).image_contrast()
-        r = optics.rayleigh_resolution(source.wavelength_nm)
-        print(f"{name}: 0.61 lambda/NA = {r:.0f} nm, contrast at 1.6 um pitch = {contrast:.2f}")
+`OpticsConfig.rayleigh_resolution` uses the classical k₁ = 0.61. The 1978 lens barely
+resolves 0.8 µm lines: the first diffraction orders of a 1.6 µm pitch fall at the edge of its
+NA 0.28 pupil. The 1994 i-line lens images them easily.
+
+<!-- verify-example -->
+```python
+import highuvlith as huv
+
+mask = huv.MaskConfig.line_space(cd_nm=800.0, pitch_nm=1600.0)
+grid = huv.GridConfig(size=128, pixel_nm=25.0)  # 3.2 um field = 2 periods
+tools = [
+    ("GCA DSW 4800 (1978)", huv.SourceConfig.hg_g_line(sigma=0.5), 0.28),
+    ("Nikon NSR-1505G4D (1987)", huv.SourceConfig.hg_g_line(sigma=0.5), 0.45),
+    ("Nikon NSR-2205i11D (1994)", huv.SourceConfig.hg_i_line(sigma=0.5), 0.63),
+]
+for name, source, na in tools:
+    optics = huv.OpticsConfig(numerical_aperture=na)
+    engine = huv.SimulationEngine(source, optics, mask, grid=grid)
+    contrast = engine.compute_aerial_image(focus_nm=0.0).image_contrast()
+    r = optics.rayleigh_resolution(source.wavelength_nm)
+    print(f"{name}: 0.61 lambda/NA = {r:.0f} nm, contrast at 1.6 um pitch = {contrast:.2f}")
+```
+
+???+ success "Output"
+
+    ```text
+    GCA DSW 4800 (1978): 0.61 lambda/NA = 949 nm, contrast at 1.6 um pitch = 0.85
+    Nikon NSR-1505G4D (1987): 0.61 lambda/NA = 591 nm, contrast at 1.6 um pitch = 0.97
+    Nikon NSR-2205i11D (1994): 0.61 lambda/NA = 353 nm, contrast at 1.6 um pitch = 0.98
     ```
-
-    ??? success "Output"
-
-        ```text
-        GCA DSW 4800 (1978): 0.61 lambda/NA = 949 nm, contrast at 1.6 um pitch = 0.85
-        Nikon NSR-1505G4D (1987): 0.61 lambda/NA = 591 nm, contrast at 1.6 um pitch = 0.97
-        Nikon NSR-2205i11D (1994): 0.61 lambda/NA = 353 nm, contrast at 1.6 um pitch = 0.98
-        ```
 
 <figure markdown="span">
 
 ![Cross-sections of 800 nm lines on a 1.6 micrometre pitch through three stepper lenses; the edges sharpen from the 1978 g-line tool to the 1994 i-line tool.](../assets/images/sim/site/site-steppers-1600nm-pitch-light.png#gh-light-mode-only)
 ![Cross-sections of 800 nm lines on a 1.6 micrometre pitch through three stepper lenses; the edges sharpen from the 1978 g-line tool to the 1994 i-line tool.](../assets/images/sim/site/site-steppers-1600nm-pitch-dark.png#gh-dark-mode-only)
 
-<figcaption>The projection-era example as images: 800 nm lines on a 1.6 µm pitch through the GCA DSW 4800 (g-line, NA 0.28), Nikon NSR-1505G4D (g-line, NA 0.45) and NSR-2205i11D (i-line, NA 0.63), σ 0.5, default 2 % flare. Model: scalar Hopkins imaging ✅ (ideal lenses: the tools' real aberrations and illuminators are not modelled).</figcaption>
+<figcaption><strong>Three stepper generations on one 1.6 µm pitch.</strong> 800 nm lines through the GCA DSW 4800 (g-line, NA 0.28), Nikon NSR-1505G4D (g-line, NA 0.45) and NSR-2205i11D (i-line, NA 0.63), σ 0.5, default 2 % flare — the projection-era example as images. <em>Model: Hopkins imaging ✅ (ideal lenses: the tools' real aberrations and illuminators are not modelled).</em></figcaption>
 </figure>
 
 ## Key takeaways
@@ -243,6 +243,8 @@ largest share of the lithography market [1, 4].
 - Step-and-scan (Micrascan 1990; Nikon S201A 1995; ASML PAS 5500/500 1997) let a lens
   corrected over a narrow slit print a 26 × 33 mm field. Every advanced tool since has been a
   scanner.
+
+**Where next:** ← [From stone to silicon](origins.md) · [Excimer lasers & deep UV](excimer-duv.md) → · Related: [Optical systems](../optics.md) · [Capability matrix](../capability-matrix.md#optical-systems)
 
 ## References and further reading
 

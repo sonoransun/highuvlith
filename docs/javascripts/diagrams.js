@@ -7,8 +7,10 @@
  * natural size, gives it a minimum width (at most MAX_STRETCH column widths) so it
  * scrolls sideways instead of shrinking.
  * The natural size is measured from outside the shadow root by briefly letting the
- * diagram grow to its full width. The container is keyboard-focusable while it
- * overflows, so it can be scrolled without a mouse.
+ * diagram grow to its full width. The overflow cue (data-huv-overflow, tabindex,
+ * aria-label, the "scrolls →" label drawn by extra.css) is delegated to layout.js
+ * (window.huvMarkOverflow(box), owner G0b, DESIGN §4.9) after every fit; the
+ * tabindex/aria-label fallback below runs only when layout.js is absent.
  */
 (function () {
   "use strict";
@@ -37,7 +39,9 @@
         if (width > box.clientWidth + 1) host.style.minWidth = Math.ceil(width) + "px";
       }
     }
-    if (box.scrollWidth > box.clientWidth + 1) {
+    if (typeof window.huvMarkOverflow === "function") {
+      window.huvMarkOverflow(box);
+    } else if (box.scrollWidth > box.clientWidth + 1) {
       box.setAttribute("tabindex", "0");
       box.setAttribute("aria-label", "Diagram (scrolls sideways)");
     } else {

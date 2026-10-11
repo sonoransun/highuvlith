@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render the highuvlith demo video and the documentation stills.
+"""Render the highuvlith demo video and its stills.
 
 Five sequences, all computed live by the simulator:
 
@@ -13,15 +13,18 @@ Usage (from a checkout with the extension built, e.g. ``maturin develop --releas
 
     python examples/generate_demo.py                # video + stills
     python examples/generate_demo.py --quick        # fewer frames, for a smoke test
-    python examples/generate_demo.py --stills-only  # only docs/assets/images/demo/*
+    python examples/generate_demo.py --stills-only  # only examples/out/demo-*.{gif,png}
 
-Outputs (the videos are git-ignored; the stills are tracked):
+Outputs (all git-ignored; nothing under docs/assets/ — the documentation animations are
+rendered by the figure registry, ``docs/figures/sim/make_all.py``, through the same tokens):
 
     examples/demo_vp9.webm, examples/demo_mpeg4.mp4
-    docs/assets/images/demo/demo-through-focus.gif
-    docs/assets/images/demo/demo-te-tm.png
-    docs/assets/images/demo/demo-talbot.png
+    examples/out/demo-through-focus.gif
+    examples/out/demo-te-tm.png
+    examples/out/demo-talbot.png
 
+Colours come from ``docs/figures/tokens.py`` (the dark theme's chrome and categorical
+series, the OKLab field ramp), so the video reads like the site's figures.
 Needs matplotlib and ffmpeg (with libvpx-vp9) on PATH.
 """
 
@@ -30,6 +33,7 @@ from __future__ import annotations
 import argparse
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -38,6 +42,11 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
+from matplotlib.colors import LinearSegmentedColormap  # noqa: E402
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "docs" / "figures"))
+import tokens  # noqa: E402
 
 import highuvlith as huv  # noqa: E402
 
@@ -45,38 +54,51 @@ import highuvlith as huv  # noqa: E402
 FPS = 24
 DPI = 150
 FIG_W, FIG_H = 12.8, 7.2  # inches -> 1920x1080 at 150 DPI
-BG_COLOR = "#1a1a2e"
-PANEL_COLOR = "#16213e"
-TEXT_COLOR = "#e0e0e0"
-MUTED_COLOR = "#8a8aa0"
-ACCENT_COLOR = "#f0a030"
-BLUE = "#4fc3f7"
-GREEN = "#76ff03"
-PINK = "#ff6f91"
-CMAP = "inferno"
+
+#: The demo is a dark-theme production: chrome and series from the one token source.
+THEME = tokens.theme("dark")
+BG_COLOR = THEME["surface"]
+PANEL_COLOR = tokens.mix(THEME["ink"], THEME["surface"], 0.04)
+TEXT_COLOR = THEME["ink"]
+MUTED_COLOR = THEME["muted"]
+ACCENT_COLOR = THEME["yellow"]  # series slot 4: the "current value" accent
+BLUE = THEME["blue"]  # slot 1
+GREEN = THEME["aqua"]  # slot 3
+PINK = THEME["magenta"]  # slot 5
+#: Field ramp for 2-D intensity / latent images: dark = no light, light = full (tokens.FIELD_RAMP runs light -> dark).
+CMAP = LinearSegmentedColormap.from_list("huv_field_demo", [tokens.mix(THEME["surface"], "#000000", 0.5)] + list(reversed(tokens.FIELD_RAMP)) + ["#ffffff"])
 
 REPO_URL = "github.com/sonoransun/highuvlith"
 BANNER = "highuvlith  ·  VUV → X-ray lithography simulator  ·  " + REPO_URL
 
-ROOT = Path(__file__).resolve().parent.parent
-STILLS_DIR = ROOT / "docs" / "assets" / "images" / "demo"
+STILLS_DIR = ROOT / "examples" / "out"
+
+
+def _fonts() -> list[str]:
+    """The installed members of tokens.FONT_MPL (matplotlib warns about absent families)."""
+    from matplotlib import font_manager
+
+    installed = {f.name for f in font_manager.fontManager.ttflist}
+    return [f for f in tokens.FONT_MPL if f in installed] + ["sans-serif"]
 
 
 def setup_style():
     plt.rcParams.update({
         "figure.facecolor": BG_COLOR,
         "axes.facecolor": PANEL_COLOR,
-        "axes.edgecolor": "#555555",
+        "axes.edgecolor": THEME["axis"],
         "axes.labelcolor": TEXT_COLOR,
         "text.color": TEXT_COLOR,
         "xtick.color": TEXT_COLOR,
         "ytick.color": TEXT_COLOR,
-        "grid.color": "#333333",
+        "grid.color": THEME["grid"],
         "legend.facecolor": PANEL_COLOR,
-        "legend.edgecolor": "#555555",
+        "legend.edgecolor": THEME["axis"],
+        "font.family": _fonts(),
         "font.size": 12,
         "axes.titlesize": 14,
         "figure.titlesize": 16,
+        "axes.prop_cycle": matplotlib.cycler(color=list(THEME["series"])),
     })
 
 
@@ -94,7 +116,7 @@ class FrameWriter:
 
 
 def add_banner(fig, text: str = BANNER):
-    fig.text(0.5, 0.01, text, ha="center", va="bottom", fontsize=9, color="#888888", family="monospace")
+    fig.text(0.5, 0.01, text, ha="center", va="bottom", fontsize=9, color=MUTED_COLOR, family="monospace")
 
 
 def add_badge(fig, text: str):
@@ -270,7 +292,7 @@ def draw_te_tm(data, i: int, *, banner: bool = True):
     for (label, p), color in zip(data["pol"].items(), colors):
         ax0.plot(p["x"][i], p["cut"][i], color=color, lw=2, label=f"{label}: C = {p['contrast'][i]:.2f}")
         ax1.plot(data["na"][: i + 1], p["contrast"][: i + 1], color=color, lw=2.5)
-        ax1.plot(data["curve_na"], p["curve"], color="#ffffff", lw=1.0, ls=":", alpha=0.7)
+        ax1.plot(data["curve_na"], p["curve"], color=TEXT_COLOR, lw=1.0, ls=":", alpha=0.7)
         ax1.plot([na], [p["contrast"][i]], "o", color=color, ms=9)
     ax0.set(xlabel="x / pitch", ylabel="intensity", title="Aerial image (two periods)", ylim=(0, None))
     ax0.legend(loc="upper center", fontsize=10)
@@ -308,7 +330,7 @@ def render_landscape(w: FrameWriter, frames_per_preset: int):
     presets = [p for p in huv.source_landscape() if p.average_power_w is not None]
     markers = {"demonstrated": "o", "projection": "s", "theoretical": "^"}
     for k, p in enumerate(presets):
-        src = eval("huv.SourceConfig." + p.factory)
+        src = eval("huv.SourceConfig." + p.factory)  # noqa: S307 - the engine's own factory strings
         derived = src.derived_quantities()
         for _ in range(frames_per_preset):
             fig = plt.figure(figsize=(FIG_W, FIG_H))
@@ -320,7 +342,7 @@ def render_landscape(w: FrameWriter, frames_per_preset: int):
             for j, q in enumerate(presets):
                 active = j == k
                 ax.plot(q.wavelength_nm, q.average_power_w, markers.get(q.maturity, "o"),
-                        color=ACCENT_COLOR if active else (BLUE if j < k else "#555577"),
+                        color=ACCENT_COLOR if active else (BLUE if j < k else THEME["axis"]),
                         ms=14 if active else 7, zorder=3 if active else 2)
             ax.set(xscale="log", yscale="log", xlabel="wavelength (nm)", ylabel="average power (W)",
                    xlim=(0.08, 600), ylim=(1e-10, 1e5))
@@ -380,20 +402,21 @@ def render_development(w: FrameWriter, n_frames: int):
     x = np.asarray(proc.baked.x_nm)
     z = np.asarray(proc.baked.z_nm)
     plane_t = np.where(np.isfinite(times[:, mid, :]), times[:, mid, :], 1e9)
+    developed_cmap = LinearSegmentedColormap.from_list("huv_dev", [BLUE, BLUE])
     for t in np.linspace(0.0, t_end, n_frames):
         fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(FIG_W, FIG_H), gridspec_kw={"width_ratios": [1.3, 1]})
         fig.suptitle("Development: a level-set front moving through the latent image", fontsize=18,
                      fontweight="bold")
-        ax0.imshow(1 - lat[:, mid, :], cmap="magma", origin="upper", aspect="auto", vmin=0, vmax=1,
+        ax0.imshow(1 - lat[:, mid, :], cmap=CMAP, origin="upper", aspect="auto", vmin=0, vmax=1,
                    extent=[x[0], x[-1], z[-1], z[0]])
         dissolved = np.ma.masked_where(plane_t > t, np.ones_like(plane_t))
-        ax0.imshow(dissolved, cmap="Blues", alpha=0.75, origin="upper", aspect="auto", vmin=0, vmax=1.2,
+        ax0.imshow(dissolved, cmap=developed_cmap, alpha=0.75, origin="upper", aspect="auto", vmin=0, vmax=1.2,
                    extent=[x[0], x[-1], z[-1], z[0]])
         if 0 < t and plane_t.min() < t:
             ax0.contour(x, z, plane_t, levels=[t], colors=[BLUE], linewidths=2)
         ax0.set(xlabel="x (nm)", ylabel="depth (nm)", title="x–z slice: exposure after bake (glow), developed (blue)")
         remaining = (plane_t > t).sum(axis=0) * (z[1] - z[0])
-        ax1.fill_between(x, 0, remaining, color="#1e88e5", alpha=0.7, step="mid")
+        ax1.fill_between(x, 0, remaining, color=BLUE, alpha=0.7, step="mid")
         ax1.set(xlabel="x (nm)", ylabel="undissolved resist per column (nm)", xlim=(x[0], x[-1]),
                 ylim=(0, (z[-1] - z[0]) * 1.2), title="Resist profile (centre row)")
         ax1.grid(alpha=0.2)
@@ -429,8 +452,8 @@ def draw_talbot(d, k: int, *, banner: bool = True):
     ax0.imshow(carpet, cmap=CMAP, origin="lower", aspect="auto", extent=[x[0], x[-1], z[0], z[-1]])
     ax0.axhline(z[k], color=BLUE, lw=2)
     for m, lab in ((0.5, "z_T/2"), (1.0, "z_T"), (1.5, "3z_T/2")):
-        ax0.axhline(m * d["z_t"], color="#cccccc", lw=0.8, ls="--")
-        ax0.text(x[-1], m * d["z_t"], f" {lab}", color="#cccccc", fontsize=9, va="center")
+        ax0.axhline(m * d["z_t"], color=THEME["ink2"], lw=0.8, ls="--")
+        ax0.text(x[-1], m * d["z_t"], f" {lab}", color=THEME["ink2"], fontsize=9, va="center")
     ax0.set(xlabel="x (nm)", ylabel="distance behind the mask z (nm)", title="Talbot carpet, p = 100 nm, λ = 13.5 nm")
     ax1.plot(x, carpet[k], color=BLUE, lw=2, label=f"at z = {z[k]:.0f} nm")
     window = carpet[max(0, k - int(len(z) / 2) + 1): k + 1]
@@ -468,7 +491,7 @@ def encode_video(frames_dir: Path, output_path: Path, codec_args: list[str]):
 
 
 def write_stills(stills_dir: Path, tf_data=None, tt_data=None, talbot=None):
-    """Small tracked stills for the docs: an animated GIF and two PNGs."""
+    """Small stills under examples/out/: an animated GIF and two PNGs (git-ignored)."""
     stills_dir.mkdir(parents=True, exist_ok=True)
     print(f"  Writing stills to {stills_dir}...")
     if tf_data is None:
@@ -503,11 +526,13 @@ def write_stills(stills_dir: Path, tf_data=None, tt_data=None, talbot=None):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--quick", action="store_true", help="few frames per sequence (smoke test)")
-    ap.add_argument("--stills-only", action="store_true", help="only write the documentation stills")
-    ap.add_argument("--no-stills", action="store_true", help="skip the documentation stills")
+    ap.add_argument("--stills-only", action="store_true", help="only write the stills under examples/out/")
+    ap.add_argument("--no-stills", action="store_true", help="skip the stills")
     ap.add_argument("--out-dir", type=Path, default=Path(__file__).resolve().parent, help="video directory")
-    ap.add_argument("--stills-dir", type=Path, default=STILLS_DIR, help="stills directory")
+    ap.add_argument("--stills-dir", type=Path, default=STILLS_DIR, help="stills directory (default examples/out/)")
     args = ap.parse_args()
+    if (ROOT / "docs" / "assets") in args.stills_dir.resolve().parents or args.stills_dir.resolve() == (ROOT / "docs" / "assets"):
+        raise SystemExit("the demo never writes under docs/assets/: documentation animations come from docs/figures/sim/make_all.py")
     if shutil.which("ffmpeg") is None:
         raise SystemExit("ffmpeg not found on PATH")
     setup_style()

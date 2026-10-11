@@ -10,18 +10,22 @@ how mature the model or the machine is (see the
 
 ## Setup
 
-Run everything from the repository root.
+Run everything from the repository root. highuvlith is not on PyPI; the build is the same
+five lines as the [README](../README.md#quick-start) and the
+[getting-started page](../docs/getting-started.md):
 
 ```bash
-# CLI: install the binary (or replace `highuvlith` below by
-# `cargo run --release -p highuvlith-cli --`)
-cargo install --path crates/highuvlith-cli
-
-# Python: highuvlith is not on PyPI; build the extension into a virtualenv
+git clone https://github.com/sonoransun/highuvlith.git
+cd highuvlith
 python -m venv .venv && source .venv/bin/activate
-pip install maturin numpy matplotlib jupyter
-maturin develop --release
+pip install maturin numpy
+maturin develop --release    # Rust core + Python package
 ```
+
+The scripts and notebooks also need `pip install matplotlib jupyter`. The CLI is a Cargo
+binary: `cargo build --release -p highuvlith-cli` puts it at `target/release/highuvlith`
+(`cargo install --path crates/highuvlith-cli` puts `highuvlith` on your `PATH`, which the
+run commands below assume; `cargo run --release -p highuvlith-cli --` works in its place).
 
 ## Projection imaging configs (`highuvlith simulate`)
 
@@ -88,5 +92,5 @@ the file). Each runs in seconds with a release build; CI executes all six.
 | File | What it demonstrates | Run command | Docs |
 |------|----------------------|-------------|------|
 | `mnsl_example.py` | Moiré nanosphere (MNSL) emission maps and parameter sweeps (🧪 heuristic emission model); writes four PNGs to the current directory | `python examples/mnsl_example.py` | [research-modules](../docs/research-modules.md) |
-| `generate_demo.py` | Renders the demo video (through focus, TE vs TM, source landscape, level-set development, Talbot carpet) and the stills in `docs/assets/images/demo/`; needs ffmpeg with libvpx-vp9 | `python examples/generate_demo.py` (`--quick` for a smoke test, `--stills-only` for the stills) | [python-api](../docs/python-api.md) |
+| `generate_demo.py` | Renders the demo video (through focus, TE vs TM, source landscape, level-set development, Talbot carpet) and its stills into `examples/out/` (gitignored; the site's figures come from `docs/figures/`); needs ffmpeg with libvpx-vp9 | `python examples/generate_demo.py` (`--quick` for a smoke test, `--stills-only` for the stills) | [python-api](../docs/python-api.md) |
 | `demo_vp9.webm`, `demo_mpeg4.mp4` | The rendered video (about 45 s, 1920 × 1080). Not tracked in git: generate it with the command above | `python examples/generate_demo.py` | — |

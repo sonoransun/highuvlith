@@ -2,42 +2,53 @@
 description: "2018–2020: immersion multipatterning versus EUV insertion, EUV single exposure at 30–40 nm pitch, photon shot noise and stochastic defects, pellicles and reflective masks."
 ---
 
-# 7 nm and 5 nm: EUV arrives
+# 7 nm and 5 nm
 
-By 2018 the tightest metal pitches had reached about 40 nm, and by 2020 about 28–30 nm. On an
-ArF-immersion scanner those pitches mean spacer quadruple patterning plus cut masks, or four
-litho-etch passes. On an EUV scanner (13.5 nm, NA 0.33) the optics could print them in one
-exposure, at k₁ = 0.49 and 0.34–0.37. After decades of development (told in the history
-section's [EUV chapter](../history/euv.md)), EUV entered volume production in exactly this
-window, and the industry learned what it costs: a tin-plasma light source, all-reflective
-optics and masks, vacuum, and a new enemy, photon shot noise.
+<p class="huv-lead">Chapter 3 of 5 — By 2018 the tightest metal pitches had reached about 40 nm, and by 2020 about 28–30 nm. On an ArF-immersion scanner those pitches mean spacer quadruple patterning plus cut masks, or four litho-etch passes; on an EUV scanner (13.5 nm, NA 0.33) the optics could print them in one exposure, at k₁ = 0.49 and 0.34–0.37. 2018–2020: after decades of development (told in the history section's EUV chapter), EUV entered volume production in exactly this window, and the industry learned what it costs — a tin-plasma light source, all-reflective optics and masks, vacuum, and a new enemy, photon shot noise.</p>
+
+<figure markdown="span">
+
+![The node ruler of the section index with the years 2018–2020 highlighted and the rest dimmed: transistor type, tightest metal pitch, node name and critical-layer tool against the year.](../assets/images/nodes/node-ladder-7-and-5nm-light.svg#gh-light-mode-only)
+![The node ruler of the section index with the years 2018–2020 highlighted and the rest dimmed: transistor type, tightest metal pitch, node name and critical-layer tool against the year.](../assets/images/nodes/node-ladder-7-and-5nm-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>You are here: 2018–2020.</strong> This chapter's years on the node ruler of the section index. <em>Data chart; no model badge.</em></figcaption>
+</figure>
+
+## At a glance
+
+<!-- huv-table: stack -->
+
+| Process | Volume production | Transistor | CPP | MMP | Critical-layer patterning |
+|---|---|---|---|---|---|
+| TSMC N7 | 2018 | FinFET | 57 nm (64 nm in high-performance cells) | 40 nm | ArF immersion only: SAQP for fins, SADP for gates and M0 (reported) |
+| Samsung 7LPP | wafer production from October 2018; first product 2019 | FinFET | ≈ 54 nm | ≈ 36 nm EUV metal (reported) | EUV on metal layers; 44 nm-pitch layers still quadruple-patterned (reported) |
+| TSMC N7+ | Q2 2019 | FinFET | — | — | EUV on up to 4 layers (reported) |
+| TSMC N6 | 2020 | FinFET | — | — | more EUV than N7+; 18 % higher logic density than N7 |
+| TSMC N5 | 2020 | FinFET | ≈ 50–51 nm (reported) | ≈ 28–30 nm (reported) | EUV on more than ten layers; 30 nm M0 double patterned (ASML, 2020) |
+| Intel 4 | 2023 | FinFET | 50 nm | 30 nm | Intel's first EUV process; EUV on selected lower metal and via layers, 30 nm M0 by immersion multipatterning (reported) |
+
+Pitches are rounded reported values (company papers, teardowns and press reports); a dash
+means no value we could verify. The [arithmetic page](litho-math.md) gives the k₁ each tool
+needed at these pitches.
 
 ## Two roads to 7 nm
 
-The 7 nm generation was built both ways:
-
-| Process | Volume production | Contacted gate pitch | Tightest metal pitch | Critical-layer patterning |
-|---|---|---|---|---|
-| TSMC N7 | 2018 | 57 nm (64 nm in high-performance cells) | 40 nm | ArF immersion only: SAQP for fins, SADP for gates and M0 (reported) |
-| Samsung 7LPP | wafer production from October 2018; first product 2019 | ≈ 54 nm | ≈ 36 nm EUV metal (reported) | EUV on metal layers; 44 nm-pitch layers still quadruple-patterned (reported) |
-| TSMC N7+ | Q2 2019 | — | — | EUV on up to 4 layers (reported) |
-| TSMC N6 | 2020 | — | — | more EUV than N7+; 18 % higher logic density than N7 |
-| Intel 4 | 2023 | 50 nm | 30 nm | Intel's first EUV process; EUV on selected lower metal and via layers, 30 nm M0 by immersion multipatterning (reported) |
-
-TSMC says it was the first foundry to start 7 nm volume production, in 2018, and it did so
-without EUV. On 18 October 2018 Samsung announced that it had "started wafer production" of
-its EUV-based 7LPP process, arguing that where ArF "can require up to 4 masks" for a layer, EUV
-needs one, so that 7LPP "can reduce the total number of masks by about 20%"; its first EUV
-product was the Galaxy Note10 in 2019. TSMC's N7+ entered volume production in the second
-quarter of 2019, and TSMC calls it "the industry's first commercially available Extreme
-Ultraviolet (EUV) lithography technology". Both companies shipped their first EUV-made
-products in 2019. Intel reached EUV with Intel 4, whose VLSI 2022 paper reports a 50 nm gate
-pitch, 30 nm fin pitch and 30 nm minimum metal pitch, with EUV "used extensively to simplify
-the process flow".
+The 7 nm generation was built both ways. TSMC says it was the first foundry to start 7 nm
+volume production, in 2018, and it did so without EUV. On 18 October 2018 Samsung announced
+that it had "started wafer production" of its EUV-based 7LPP process, arguing that where ArF
+"can require up to 4 masks" for a layer, EUV needs one, so that 7LPP "can reduce the total
+number of masks by about 20%"; its first EUV product was the Galaxy Note10 in 2019. TSMC's N7+
+entered volume production in the second quarter of 2019, and TSMC calls it "the industry's
+first commercially available Extreme Ultraviolet (EUV) lithography technology". Both companies
+shipped their first EUV-made products in 2019. Intel reached EUV with Intel 4, whose VLSI 2022
+paper reports a 50 nm gate pitch, 30 nm fin pitch and 30 nm minimum metal pitch, with EUV
+"used extensively to simplify the process flow".
 
 ## Immersion multipatterning versus EUV, in numbers
 
 For a 36–40 nm metal pitch the trade looks like this ([arithmetic](litho-math.md)):
+
+<!-- huv-table: stack -->
 
 | | ArF immersion (NA 1.35) | EUV (NA 0.33) |
 |---|---|---|
@@ -49,10 +60,11 @@ For a 36–40 nm metal pitch the trade looks like this ([arithmetic](litho-math.
 
 Neither column wins everywhere. EUV replaces several immersion exposures, depositions and
 etches with one exposure, and the IRDS describes it as "a remedy to pattern tight ground rules
-in fewer process steps". But each EUV exposure is slower (see the throughput row), so a layer
-moves to EUV only when it removes enough steps to pay for that. That is why EUV entered layer by
-layer (up to 4 layers on N7+, more on N6, more than ten on N5) rather than all at once, and why
-fins stayed on immersion SAQP even at 5 nm.
+in fewer process steps". But each EUV exposure is slower (see the throughput row, and the
+[dose–throughput chart](../future/stochastic-frontier.md#dose-throughput-and-money) of the stochastic frontier), so a
+layer moves to EUV only when it removes enough steps to pay for that. That is why EUV entered
+layer by layer (up to 4 layers on N7+, more on N6, more than ten on N5) rather than all at
+once, and why fins stayed on immersion SAQP even at 5 nm.
 
 ## Single exposure at 30–40 nm pitch
 
@@ -60,9 +72,9 @@ TSMC's N5 entered risk production in April 2019 and volume production in 2020. I
 paper describes a platform "featuring full-fledged EUV": according to reports of the paper and
 its presentation, more than ten EUV layers, each replacing more than three immersion layers
 (the paper says more than four) at the cut, contact, via and metal masking steps, with a total
-mask count several masks lower than 7 nm. Its gate pitch is reported at about 50–51 nm and its tightest metal pitch at about
-28–30 nm, and ASML reported in 2020 that a 5 nm M0 layer at 30 nm pitch needed double
-patterning.
+mask count several masks lower than 7 nm. Its gate pitch is reported at about 50–51 nm and its
+tightest metal pitch at about 28–30 nm, and ASML reported in 2020 that a 5 nm M0 layer at 30 nm
+pitch needed double patterning.
 
 That is the practical edge of 0.33-NA EUV. Optically, ASML specifies 13 nm half-pitch (26 nm
 pitch, k₁ = 0.32). In production the limit is set earlier by stochastics: an industry white paper
@@ -73,12 +85,35 @@ resist. A reasonable summary:
 **about 30–36 nm pitch in single exposure in volume production; below roughly 28–30 nm, double
 patterning or High-NA.**
 
-<figure markdown="span">
-  ![Illustrative sketch of stochastic printing failures: a contact-hole array with varying hole sizes, a missing contact and two merged contacts; dense lines with rough edges, a microbridge between two lines and a break in one line.](../assets/images/nodes/stochastic-defects-light.svg#only-light){ width="720" }
-  ![Illustrative sketch of stochastic printing failures: a contact-hole array with varying hole sizes, a missing contact and two merged contacts; dense lines with rough edges, a microbridge between two lines and a break in one line.](../assets/images/nodes/stochastic-defects-dark.svg#only-dark){ width="720" }
-  <figcaption>Stochastic failure modes: size variation, missing and merged contacts, rough
-  edges, microbridges and breaks. Schematic, not simulated.</figcaption>
-</figure>
+### Try it in highuvlith
+
+EUV single exposure at 36 nm and 28 nm pitch: both print on a 0.33-NA EUV system; the
+contrast drop from 36 to 28 nm pitch is the optical part of the story (the stochastic part
+comes next). With σ = 0.9 the optical cut-off is $\lambda / (\mathrm{NA} (1+\sigma)) \approx 21.5$ nm.
+
+<!-- verify-example -->
+```python
+import highuvlith as huv
+
+src = huv.SourceConfig.lpp_sn_13nm5(0.9)
+opt = huv.OpticsConfig.euv_nxe()                      # NA 0.33, unobscured
+for pitch in (36.0, 28.0):
+    mask = huv.MaskConfig.line_space(pitch / 2, pitch)
+    eng = huv.SimulationEngine(src, opt, mask, grid=huv.GridConfig(128, pitch / 16))
+    k1 = pitch / 2 * 0.33 / 13.5
+    print(f"{pitch:.0f} nm pitch  k1 = {k1:.2f}  contrast = {eng.compute_aerial_image().image_contrast():.2f}")
+```
+
+???+ success "Output"
+
+    ```text
+    36 nm pitch  k1 = 0.44  contrast = 0.64
+    28 nm pitch  k1 = 0.34  contrast = 0.32
+    ```
+
+Thin mask, no resist, isotropic pupil: the EUV projection optics are a 🔶 Simplified model
+([matrix](../capability-matrix.md#optical-systems)); the numbers say what the optics allow,
+not what a resist prints.
 
 ## Stochastics: when photons run out
 
@@ -89,6 +124,14 @@ chemically amplified resist absorbs roughly 5 µm⁻¹ at 13.5 nm, so a 35 nm fi
 16 % (worked numbers on the [arithmetic page](litho-math.md#counting-photons)). The absorbed
 photons then release secondary electrons, which generate acid, which diffuses and deprotects the
 resist, and every one of those steps is random too.
+
+<figure markdown="span">
+
+![Illustrative sketch of stochastic printing failures: a contact-hole array with varying hole sizes, a missing contact and two merged contacts; dense lines with rough edges, a microbridge between two lines and a break in one line.](../assets/images/nodes/stochastic-defects-light.svg#gh-light-mode-only)
+![Illustrative sketch of stochastic printing failures: a contact-hole array with varying hole sizes, a missing contact and two merged contacts; dense lines with rough edges, a microbridge between two lines and a break in one line.](../assets/images/nodes/stochastic-defects-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Stochastic failure modes.</strong> Size variation, missing and merged contacts, rough edges, microbridges and breaks. <em>Schematic, not simulated; sizes and positions are illustrative.</em></figcaption>
+</figure>
 
 Besides roughness, "stochastic effects can also give rise to local, random printing failures,
 such as missing contacts or microbridges in spaces" (P. De Bisschop, imec, 2017), at failure
@@ -116,7 +159,9 @@ Research announced a vapour-deposited, dry-developed resist in February 2020). T
 chemically amplified resists to remain the workhorse to at least the 1 nm node, with
 metal-oxide resists becoming important from about the 1.5 nm node, especially with High-NA.
 
-!!! info "Why dose alone is not a free fix"
+**Doubling the dose halves the variance of the photon count, so the 3σ noise drops only by √2 while the exposure time roughly doubles.**
+
+!!! note "Why dose alone is not a free fix"
     Doubling the dose halves the relative variance of the photon count, so the 3σ noise drops
     only by √2 (3.3 % → 2.3 % for the (20 nm)² example at 30 → 60 mJ/cm²), while the exposure
     time roughly doubles. Fractilia puts it the same way: doubling the dose "only reduces the
@@ -124,22 +169,102 @@ metal-oxide resists becoming important from about the 1.5 nm node, especially wi
     why source power has been one of the defining EUV engineering races, and why resist
     absorption and chemistry matter as much as the scanner.
 
+The calculator below is a 🔶 teaching toy on the closed form (Poisson statistics of incident
+photons, the same formulas as the [playground](../playground/index.md)); the engine example
+further down counts the photons of a real aerial image. Pick a wavelength and a feature size
+and read off the count and its 1σ spread.
+
+<figure markdown="span">
+
+![Two log–log charts against feature size from 5 to 100 nm at 30 mJ/cm²: incident photons in a square feature and the Poisson 1σ fluctuation 1/√N in percent for g-line 436, KrF 248, ArF 193, EUV 13.5 and 6.7 nm; a 20 nm square at 13.5 nm holds 8155 photons, a 1σ of 1.11 %.](../assets/images/playground/playground-shotnoise-light.svg#gh-light-mode-only)
+![Two log–log charts against feature size from 5 to 100 nm at 30 mJ/cm²: incident photons in a square feature and the Poisson 1σ fluctuation 1/√N in percent for g-line 436, KrF 248, ArF 193, EUV 13.5 and 6.7 nm; a 20 nm square at 13.5 nm holds 8155 photons, a 1σ of 1.11 %.](../assets/images/playground/playground-shotnoise-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Photons per feature and shot noise.</strong> Incident photons × f<sub>abs</sub> (here 1) in a square feature at 30 mJ/cm² (left) and the Poisson 1σ fluctuation 1/√N (right) against feature size: the count falls with λ at fixed dose, so a 20 nm square holds 8155 photons at 13.5 nm, a 1σ of 1.11 %. <em>Closed-form toy, same formulas as the calculator; not the engine. No model badge.</em></figcaption>
+</figure>
+
+<div class="huv-calc" data-huv-calc="shotnoise">
+<noscript>This calculator needs JavaScript. The formulas on the arithmetic page give the same numbers by hand.</noscript>
+</div>
+
 What happens as the half-pitch keeps shrinking, and what the proposed remedies cost, is the
 subject of [the stochastic frontier](../future/stochastic-frontier.md) in the future section.
+
+### Try it in highuvlith: photon shot noise in a contact
+
+Take the aerial image of a 20 nm contact array at 30 and 60 mJ/cm² (intensities are relative
+to the clear field), convert intensity to photons with the source wavelength, and sample
+Poisson counts for many contacts. highuvlith's stochastic module runs the full version of
+this, per pixel and with Gamma-distributed dose jitter, and turns it into LER/LWR
+(`huv.compute_ler_lwr`); the grades are in the ledger below.
+
+<!-- verify-example -->
+```python
+import numpy as np
+import highuvlith as huv
+
+src = huv.SourceConfig.lpp_sn_13nm5(0.9)
+mask = huv.MaskConfig.contact_hole(20.0, 40.0, 40.0)        # 20 nm holes on a 40 nm grid
+eng = huv.SimulationEngine(src, huv.OpticsConfig.euv_nxe(), mask, grid=huv.GridConfig(64, 1.25))
+img = eng.compute_aerial_image().intensity
+per_nm2 = 1e-17 / (1239.84193 / src.wavelength_nm * 1.602176634e-19)   # ≈ 0.68 per mJ/cm²
+hole = img > 0.5 * img.max()                                 # pixels inside the 4 holes
+for dose in (30.0, 60.0):
+    mean = dose * per_nm2 * img[hole].sum() * 1.25**2 / 4    # photons per hole
+    n = np.random.default_rng(0).poisson(mean, 20_000)
+    print(f"{dose:.0f} mJ/cm²: {mean:,.0f} photons/hole, 3σ = {300 * n.std() / n.mean():.1f} %")
+```
+
+???+ success "Output"
+
+    ```text
+    30 mJ/cm²: 1,894 photons/hole, 3σ = 6.9 %
+    60 mJ/cm²: 3,787 photons/hole, 3σ = 4.9 %
+    ```
+
+<figure markdown="span">
+
+![Four panels for 20 nm contacts on a 40 nm grid at 13.5 nm, NA 0.33: the noiseless aerial image of 16 contacts, grainy Poisson photon maps at 30 and 60 mJ/cm², and histograms of photons per contact for both doses, whose 3-sigma spread doubling the dose narrows only by root two.](../assets/images/sim/site/site-contact-shot-noise-light.png#gh-light-mode-only)
+![Four panels for 20 nm contacts on a 40 nm grid at 13.5 nm, NA 0.33: the noiseless aerial image of 16 contacts, grainy Poisson photon maps at 30 and 60 mJ/cm², and histograms of photons per contact for both doses, whose 3-sigma spread doubling the dose narrows only by root two.](../assets/images/sim/site/site-contact-shot-noise-dark.png#gh-dark-mode-only)
+
+<figcaption><strong>Why EUV counts photons.</strong> 20 nm contacts on a 40 nm grid through the NA 0.33 preset (Sn LPP σ 0.9): the noiseless aerial image, Poisson-sampled incident-photon maps at 30 and 60 mJ/cm² from the source's <code>photon_density_per_mj_cm2</code>, and the per-contact count histograms with their 3σ spread — the page's shot-noise example, drawn. Incident photons only: thin mask, no resist absorption, no secondary electrons or acid diffusion; the noisy maps are photon counts, not printed contacts or defects. <em>Model: Hopkins imaging ✅ · EUV projection optics 🔶 · photon shot noise ✅ (Poisson) · LER/LWR 🔶 (not shown).</em></figcaption>
+</figure>
+
+**What highuvlith models here.** Imaging and photon counting are computed; resist chemistry, secondary electrons, mask 3-D effects and pellicles are not.
+
+<!-- huv-table: stack -->
+
+| Issue | In highuvlith | Grade | Matrix row |
+|---|---|---|---|
+| EUV single exposure at 36 and 28 nm pitch | Hopkins/SOCS aerial image through `OpticsConfig.euv_nxe()` | ✅ Implemented | [Hopkins imaging (factorized TCC/SOCS)](../capability-matrix.md#core-imaging) |
+| The NA 0.33 optics | isotropic wafer-side pupil; no anamorphic optics, no mask 3-D, no multilayer apodization | 🔶 Simplified | [EUV scanner projection optics](../capability-matrix.md#optical-systems) |
+| Photons per contact | Poisson counts per pixel from the source wavelength (0.68 photons/nm² per mJ/cm²) | ✅ Implemented | [Photon shot noise](../capability-matrix.md#stochastics) |
+| Shot-to-shot dose variation | Gamma-distributed per-exposure dose factor | ✅ Implemented | [Shot-to-shot dose jitter](../capability-matrix.md#stochastics) |
+| Roughness from the noise | threshold-crossing statistics; no resist chemistry, secondary electrons or acid diffusion | 🔶 Simplified | [LER/LWR Monte Carlo](../capability-matrix.md#stochastics) |
+| The tin-plasma source | spectral and power model of the Sn LPP chain | ✅ Implemented (🔶 CE defaults, étendue; 🧪 Gd/Tb power) | [Laser-produced plasma](../capability-matrix.md#light-sources) |
+| Mask 3-D effects, pellicles, resist chemistry | not modelled | — | — |
 
 ## Reflective masks and pellicles
 
 Nothing transmits 13.5 nm light well, so the EUV mask is a mirror: 40 to 50 alternating layers
 of molybdenum and silicon form a Bragg reflector, capped with ruthenium and topped with a
 patterned tantalum-based absorber. "In EUV, light hits the mask at an angle of 6°" so that the
-reflected light can clear the incoming beam. Each multilayer mirror reflects only about 70 %, so
-after the dozen or so reflections in the illuminator and projection optics only a few percent of
-the collected light reaches the wafer. The absorber is tens of nanometres thick, comparable to
-the features, so the mask acts as a three-dimensional object: shadowing and phase effects shift
-and distort the image depending on feature orientation, pitch and focus (imec measured
-best-focus shifts through pitch at NA 0.33). The IRDS calls for new absorber materials "to
-reduce mask 3D effects". highuvlith treats masks as thin (Kirchhoff) transmittance maps and
-does **not** model these effects.
+reflected light can clear the incoming beam.
+
+<figure markdown="span">
+
+![Cross-section of an EUV mask: a low-expansion substrate, 40 to 50 Mo/Si bilayers under a Ru cap, a tantalum-based absorber on top, the 6-degree chief ray with the absorber's shadow hatched beside it, and a pellicle membrane above that the light crosses twice.](../assets/images/nodes/euv-mask-stack-light.svg#gh-light-mode-only)
+![Cross-section of an EUV mask: a low-expansion substrate, 40 to 50 Mo/Si bilayers under a Ru cap, a tantalum-based absorber on top, the 6-degree chief ray with the absorber's shadow hatched beside it, and a pellicle membrane above that the light crosses twice.](../assets/images/nodes/euv-mask-stack-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>An EUV mask is a mirror with a patterned absorber on top.</strong> 40–50 Mo/Si bilayers under a Ru cap reflect about 70 % at 13.5 nm; the 6° chief ray makes the tens-of-nanometre absorber cast a shadow, and a pellicle's transmission counts twice. <em>Schematic, not to scale. The engine's mask is a thin transmittance map: no mask 3-D, pellicles not modelled.</em></figcaption>
+</figure>
+
+Each multilayer mirror reflects only about 70 %, so after the dozen or so reflections in the
+illuminator and projection optics only a few percent of the collected light reaches the wafer.
+The absorber is tens of nanometres thick, comparable to the features, so the mask acts as a
+three-dimensional object: shadowing and phase effects shift and distort the image depending on
+feature orientation, pitch and focus (imec measured best-focus shifts through pitch at NA
+0.33). The IRDS calls for new absorber materials "to reduce mask 3D effects". highuvlith treats
+masks as thin (Kirchhoff) transmittance maps and does **not** model these effects.
 
 A pellicle is a thin membrane stretched above the mask so that particles land out of focus
 instead of printing. For EUV it must be only tens of nanometres thick, transmit as much as
@@ -155,65 +280,8 @@ The light itself comes from droplets of tin hit by a CO₂ laser (laser-produced
 [LPP source](../sources/lpp.md) in highuvlith, ✅ Implemented as a spectral/power model). ASML
 demonstrated 250 W in 2017, the power level behind the NXE:3400B's specified 125 wafers per
 hour, and the IRDS reports 600 W at intermediate focus achieved under dose-controlled conditions,
-with efforts toward 1 kW.
-
-## Try it in highuvlith
-
-!!! example "EUV single exposure at 36 nm and 28 nm pitch"
-    Both print on a 0.33-NA EUV system; the contrast drop from 36 to 28 nm pitch is the
-    optical part of the story (the stochastic part comes next). With σ = 0.9 the optical
-    cut-off is $\lambda / (\mathrm{NA} (1+\sigma)) \approx 21.5$ nm.
-
-    <!-- verify-example -->
-    ```python
-    import highuvlith as huv
-
-    src = huv.SourceConfig.lpp_sn_13nm5(0.9)
-    opt = huv.OpticsConfig.euv_nxe()                      # NA 0.33, unobscured
-    for pitch in (36.0, 28.0):
-        mask = huv.MaskConfig.line_space(pitch / 2, pitch)
-        eng = huv.SimulationEngine(src, opt, mask, grid=huv.GridConfig(128, pitch / 16))
-        k1 = pitch / 2 * 0.33 / 13.5
-        print(f"{pitch:.0f} nm pitch  k1 = {k1:.2f}  contrast = {eng.compute_aerial_image().image_contrast():.2f}")
-    ```
-
-    ??? success "Output"
-
-        ```text
-        36 nm pitch  k1 = 0.44  contrast = 0.64
-        28 nm pitch  k1 = 0.34  contrast = 0.32
-        ```
-
-!!! example "Photon shot noise in a contact at 30 and 60 mJ/cm²"
-    Take the aerial image of a 20 nm contact array (intensities are relative to the clear
-    field), convert intensity to photons with the source wavelength, and sample Poisson counts
-    for many contacts. highuvlith's stochastic module runs the full version of this, per
-    pixel and with Gamma-distributed dose jitter (both ✅), and turns it into LER/LWR (🔶,
-    `huv.compute_ler_lwr`).
-
-    <!-- verify-example -->
-    ```python
-    import numpy as np
-    import highuvlith as huv
-
-    src = huv.SourceConfig.lpp_sn_13nm5(0.9)
-    mask = huv.MaskConfig.contact_hole(20.0, 40.0, 40.0)        # 20 nm holes on a 40 nm grid
-    eng = huv.SimulationEngine(src, huv.OpticsConfig.euv_nxe(), mask, grid=huv.GridConfig(64, 1.25))
-    img = eng.compute_aerial_image().intensity
-    per_nm2 = 1e-17 / (1239.84193 / src.wavelength_nm * 1.602176634e-19)   # ≈ 0.68 per mJ/cm²
-    hole = img > 0.5 * img.max()                                 # pixels inside the 4 holes
-    for dose in (30.0, 60.0):
-        mean = dose * per_nm2 * img[hole].sum() * 1.25**2 / 4    # photons per hole
-        n = np.random.default_rng(0).poisson(mean, 20_000)
-        print(f"{dose:.0f} mJ/cm²: {mean:,.0f} photons/hole, 3σ = {300 * n.std() / n.mean():.1f} %")
-    ```
-
-    ??? success "Output"
-
-        ```text
-        30 mJ/cm²: 1,894 photons/hole, 3σ = 6.9 %
-        60 mJ/cm²: 3,787 photons/hole, 3σ = 4.9 %
-        ```
+with efforts toward 1 kW; what source power buys in wafers per hour is charted on the
+[stochastic frontier](../future/stochastic-frontier.md#dose-throughput-and-money).
 
 ## Key takeaways
 
@@ -227,6 +295,8 @@ with efforts toward 1 kW.
   features, and a dose-to-print that the IRDS projects to triple over four nodes.
 - Reflective masks bring mask 3D effects and a hard pellicle problem (83 % transmission in 2018).
   highuvlith models imaging and shot noise, not mask 3D effects.
+
+**Where next:** ← [22 nm to 10 nm](22-to-10nm.md) · [3 nm and 2 nm](3nm-and-2nm.md) → · Related: [The road to EUV](../history/euv.md) · [The stochastic frontier](../future/stochastic-frontier.md) · [LPP source](../sources/lpp.md) · [capability matrix](../capability-matrix.md#stochastics)
 
 ## References and further reading
 

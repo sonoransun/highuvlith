@@ -105,16 +105,15 @@ register(FigureSpec(
     draw=ilt_draw,
     alt="Inverse lithography for a two-by-two contact array: the target, the continuous mask after 0, 10, 20 and "
         "35 iterations growing serifs and assist-like rings, the printed image of the final binary mask with its "
-        "contour on the target, and cost histories where the exact adjoint keeps descending while the legacy "
-        "proxy stalls.",
-    caption="Inverse lithography (ILT) of 100 nm contacts on a 200 nm pitch (F<sub>2</sub> 157.63 nm, NA 0.75, σ "
-            "0.6, 8 kernels, 64 × 8 nm grid): sigmoid-resist cost with the exact adjoint gradient through the "
-            "SOCS kernels, conjugate gradients, binarization penalty switched on after iteration 20 (converged at "
-            "35). Bottom right: "
-            "on 90 nm contacts the legacy local proxy stops after a few iterations while the adjoint drives the "
-            "cost down ~18×. Model: ILT ✅ (constant-threshold sigmoid resist; pixel mask, no MRC or polygon "
-            "extraction).",
-    pages=("research-modules.md", "README.md"),
+        "contour on the target, and cost histories: the adjoint keeps descending, the proxy stalls.",
+    caption="<strong>Inverse lithography of a contact array.</strong> 100 nm contacts on a 200 nm pitch (F<sub>2</sub> "
+            "157.63 nm, NA 0.75, σ 0.6, 8 kernels, 64 × 8 nm grid): sigmoid-resist cost with the exact adjoint gradient "
+            "through the SOCS kernels, conjugate gradients, binarization penalty switched on after iteration 20 "
+            "(converged at 35). Bottom right: on 90 nm contacts the legacy local proxy stops after a few iterations "
+            "while the adjoint drives the cost down ~18×. <em>Model: ILT mask optimization ✅ (constant-threshold "
+            "sigmoid resist; pixel mask, no MRC or polygon extraction).</em>",
+    pages=("research-modules.md", "README.md", "history/immersion-multipatterning.md", "python-api.md"),
+    extra={"width": {"README.md": 280}},  # README "See it" row (DESIGN §6.2)
 ))
 
 
@@ -192,10 +191,11 @@ register(FigureSpec(
     alt="Left: an 80 nm isolated line with sub-resolution assist bars on each side. Right: printed line width "
         "versus focus without and with the assists; with assists the width stays within ten percent over a wider "
         "focus range.",
-    caption="Sub-resolution assist features for an isolated 80 nm line (F<sub>2</sub> 157.63 nm, NA 0.75, annular "
-            "σ 0.5–0.8): rule-placed scattering bars are shrunk or removed until none prints at ±150 nm focus and "
-            "±8 % dose, then the depth of focus (CD within ±10 %, each mask at its own dose-to-size) is compared. "
-            "Model: SRAF insertion 🔶 (heuristic rule deck + model print check; constant-threshold resist).",
+    caption="<strong>Assist features widen the focus window of an isolated line.</strong> An 80 nm line "
+            "(F<sub>2</sub> 157.63 nm, NA 0.75, annular σ 0.5–0.8): rule-placed scattering bars are shrunk or removed "
+            "until none prints at ±150 nm focus and ±8 % dose, then the depth of focus (CD within ±10 %, each mask at "
+            "its own dose-to-size) is compared. <em>Model: SRAF insertion 🔶 (heuristic rule deck + model print check; "
+            "constant-threshold resist).</em>",
     pages=("research-modules.md",),
 ))
 
@@ -272,15 +272,14 @@ register(FigureSpec(
     group="optim",
     compute=opc_compute,
     draw=opc_draw,
-    alt="Left: aerial image of a short line after optical proximity correction, with the drawn line, the "
-        "corrected mask polygon extended at the line ends, and the printed contours before and after correction. "
-        "Right: maximum and rms edge-placement error falling from about 27 and 9 nm to below 1 nm in six "
-        "iterations.",
-    caption="Fragment-based model OPC of a 90 × 500 nm line (F<sub>2</sub> 157.63 nm, NA 0.75, σ 0.6, threshold at "
-            "the dose-to-size of the line centre): edges are cut into fragments, each moved by damped feedback on "
-            "its edge-placement error measured on the aerial image. The uncorrected line ends pull back by tens "
-            "of nanometres; the corrected polygon extends them and the residual falls below 1 nm. Model: OPC "
-            "(fragment model-based) ✅ (aerial-image threshold; corners slaved, no MRC beyond bias clamp, jog "
-            "cleanup and grid snap).",
+    alt="A short line after optical proximity correction: the drawn line, the corrected polygon extended at the "
+        "line ends and the printed contours before and after correction (left); maximum and rms edge-placement "
+        "error falling from about 27 and 9 nm to below 1 nm in six iterations (right).",
+    caption="<strong>Model-based OPC pulls the line ends back out.</strong> A 90 × 500 nm line (F<sub>2</sub> "
+            "157.63 nm, NA 0.75, σ 0.6, threshold at the dose-to-size of the line centre): edges are cut into "
+            "fragments, each moved by damped feedback on its edge-placement error measured on the aerial image; the "
+            "uncorrected line ends pull back by tens of nanometres, the corrected polygon extends them and the "
+            "residual falls below 1 nm. <em>Model: OPC (rule, uniform model, fragment model) ✅ (aerial-image "
+            "threshold; corners slaved, no MRC beyond bias clamp, jog cleanup and grid snap).</em>",
     pages=("research-modules.md",),
 ))

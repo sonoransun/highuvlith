@@ -1,0 +1,8 @@
+# Figure-script dependencies for the nightly runner (docs-figures.yml) and the docs-examples job.
+# These let the figure modules import so `make_all.py --verify` can run every compute() and its
+# asserts; nothing platform-dependent is rendered in CI. The renderer of record is the figure
+# machine documented in docs/figures/README.md ("Renderer of record"): numpy 2.4.3,
+# matplotlib 3.10.8, Pillow 12.1.1 on Python 3.14.7 — pinned here where PyPI has them.
+numpy==2.4.3
+matplotlib==3.10.8
+Pillow==12.1.1

@@ -1,23 +1,63 @@
-# Discharge-Produced Plasma (DPP / LDP) at 13.5 nm
+---
+description: "Discharge-produced and laser-assisted discharge plasma sources at 13.5 nm: the electrical → 2π-at-source → collected → intermediate-focus power chain on reported anchors, with the two planes the literature quotes kept apart."
+---
 
-**Status:** 🔶 Simplified — the electrical-power → in-band (2π sr, at the source) → collected → étendue-limited (intermediate focus) power chain, the in-band spectrum, pulse energy and shot-to-shot jitter are live and fixture-tested, and the presets sit on reported real-machine anchors; but the conversion efficiencies are reported order-of-magnitude values, the pinch size, collector and illuminator étendue are stated assumptions, and discharge dynamics, out-of-band emission and debris are not modelled.
+# Discharge-produced plasma
 
-## Overview
+**Status:** 🔶 Simplified — the electrical → 2π-at-source → collected → intermediate-focus chain, in-band spectrum, pulse energy and jitter are live on reported anchors; conversion efficiencies, pinch size, collector and étendue are stated assumptions; 34 W at intermediate focus for Sn · [matrix](../capability-matrix.md#light-sources)
 
-A discharge-produced plasma (DPP) source dumps the energy of a capacitor bank directly into a small gas or vapour column: the current pinches and heats it to tens of eV, and Xe¹⁰⁺ or Sn⁸⁺–Sn¹⁴⁺ ions radiate into the 2 % band at 13.5 nm that Mo/Si mirrors reflect. The laser-assisted variant (LDP) uses a laser pulse to vaporize tin from a rotating, tin-coated electrode, triggering and localizing the discharge. With no multi-kW drive laser, DPP was the leading low-cost alternative to laser-produced plasma ([LPP](./lpp.md)) during EUV development, and a laser-assisted Sn source was used on the pre-production ASML NXE:3100.
+<p class="huv-lead">A discharge-produced plasma dumps the energy of a capacitor bank directly into a small gas or vapour column: the current pinches and heats it to tens of eV, and Xe¹⁰⁺ or Sn⁸⁺–Sn¹⁴⁺ ions radiate into the 2 % band at 13.5 nm that Mo/Si mirrors reflect. The laser-assisted variant (LDP) vaporises tin from a rotating electrode with a laser pulse to trigger and localise the discharge. With no multi-kilowatt drive laser, DPP was the leading low-cost alternative during EUV development, and a laser-assisted Sn source lit the pre-production ASML NXE:3100.</p>
 
-It lost the high-volume-manufacturing (HVM) race on two counts that this model makes explicit:
+<div class="huv-physics" markdown>
 
-- **Power scaling.** Essentially all of the electrical input ends up as heat at the electrodes (CE is a few %), so electrode cooling and erosion cap the input at tens of kW, and with it the in-band power.
-- **Étendue.** A discharge pinch is sub-mm to mm in size — much larger than a ~0.1 mm LPP plasma — so less of the collected light fits the scanner illuminator's étendue.
+<figure markdown="span">
 
-Discharge sources remain in use at lower power as compact sources for actinic (at-wavelength) metrology and inspection, where brightness rather than total power is the figure of merit.
+![Two lanes to a top-hat pupil of sigma 0.9: a CO2 laser hits 25 to 30 micrometre Sn droplets, the plasma emits into 2 pi sr and a collector focuses it at the intermediate focus; a capacitor bank pinches Xe or Sn, grazing shells collect it and an etendue cut sets the IF power.](../assets/images/diagrams/sources-cluster-plasma-light.svg#gh-light-mode-only)
+![Two lanes to a top-hat pupil of sigma 0.9: a CO2 laser hits 25 to 30 micrometre Sn droplets, the plasma emits into 2 pi sr and a collector focuses it at the intermediate focus; a capacitor bank pinches Xe or Sn, grazing shells collect it and an etendue cut sets the IF power.](../assets/images/diagrams/sources-cluster-plasma-dark.svg#gh-dark-mode-only)
 
-**Two power conventions.** DPP outputs are customarily quoted **into 2π sr at the source**; scanner requirements (the ~250 W HVM class) are **at intermediate focus (IF)**, after collection and the étendue cut — several times lower. The model reports both and never mixes them.
+<figcaption><strong>Mechanism.</strong> LPP: a CO₂ (or 1–2 µm solid-state) drive laser hits 25–30 µm tin droplets 50 000 times a second, the Sn⁸⁺–Sn¹⁴⁺ plasma emits in band into 2π sr, and a normal-incidence Mo/Si collector brings the light to the intermediate focus where the model states its power. DPP/LDP: a capacitor bank pinches Xe gas or Sn vapour into a millimetre column, grazing shells with a debris trap collect it, and the étendue cut f_G = min(1, G_ill/G_src) decides what reaches IF. Both default to the spatially incoherent top-hat pupil (σ 0.9). <em>Schematic, not to scale; no model badge.</em></figcaption>
+</figure>
 
-`DppSource` in [source_models/dpp.rs](../../crates/highuvlith-core/src/source_models/dpp.rs) models Xe DPP and Sn DPP/LDP behind one struct, selected by `DppFuel`.
+<figure markdown="span">
 
-## Generation physics
+![Log-power waterfall of the Sn LDP and Xe DPP chains from electrical input through in-band emission into 2π, collected power and power at intermediate focus to the wafer: 360 W into 2π becomes 34 W at IF for tin, 10 W becomes 0.7 W for xenon.](../assets/images/sim/sources-power-chain-dpp-light.png#gh-light-mode-only)
+![Log-power waterfall of the Sn LDP and Xe DPP chains from electrical input through in-band emission into 2π, collected power and power at intermediate focus to the wafer: 360 W into 2π becomes 34 W at IF for tin, 10 W becomes 0.7 W for xenon.](../assets/images/sim/sources-power-chain-dpp-dark.png#gh-dark-mode-only)
+
+<figcaption><strong>Where a discharge plasma's watts go.</strong> The two planes the literature quotes are both on the chart: the in-band emission into 2π sr at the source (the DPP convention, anchored on the TRINITI 360 W and Energetiq 10 W reports) and the power at intermediate focus after the collector and the étendue cut. The pinch size, collector solid angle and throughput and the illuminator étendue are assumptions, as is the optics train to the wafer. <em>Model: Discharge-produced plasma 🔶 · Dose-limited wafer throughput 🔶.</em></figcaption>
+</figure>
+
+<!-- huv-table: stack -->
+
+| What is modeled | Grade | Dominant approximation | Details |
+|---|---|---|---|
+| The power chain P_elec → CE → collector → étendue cut → IF | 🔶 Simplified | CE reported order of magnitude (Xe ~0.5 %, Sn ~2 %); pinch size, collector and illuminator étendue assumed | [Key equations](#key-equations) |
+| In-band spectrum and pupil fill | 🔶 Simplified | Gaussian line inside the mirror band; incoherent top-hat fill | [What the model does](#what-the-model-does) |
+| Shot-to-shot dose jitter | ✅ Implemented | an assumed 5 % rms feeds the Gamma dose factor of the stochastic module | [What the model does](#what-the-model-does) |
+| Wafers per hour from the IF power | 🔶 Simplified | ten 0.70 mirrors and a 0.65 mask, lumped overheads | [throughput](index.md#dose-limited-throughput) |
+| Discharge dynamics, out-of-band emission, debris, electrode lifetime | not modelled | out of scope | [What the model does](#what-the-model-does) |
+
+**Same thing elsewhere:** Python `SourceConfig.dpp_sn_13nm5(sigma=0.9)` · TOML `[source] type = "dpp"` · CLI `highuvlith sources --family dpp` · GUI Source panel · physics → [Pipeline](../pipeline.md#stage-1--source)
+
+</div>
+
+<p class="huv-lead">It lost the high-volume race on two counts this model makes explicit: nearly all the electrical input ends as electrode heat (conversion efficiency a few percent), capping the input at tens of kilowatts, and a sub-mm-to-mm pinch is far larger than a ~0.1 mm LPP plasma, so less of the collected light fits the illuminator's étendue. Discharge sources remain in use at lower power for actinic metrology, where brightness matters more than watts. <strong>Two power conventions:</strong> DPP outputs are customarily quoted into 2π sr at the source; scanner requirements are at intermediate focus (IF), several times lower; the model reports both and never mixes them.</p>
+
+<div class="huv-glance" markdown>
+
+| Property | Value |
+|---|---|
+| Wavelength | 13.5 nm (Xe DPP, Sn DPP/LDP) — the mirror band |
+| Band / class | 2 % ≈ 270 pm Gaussian inside the Mo/Si band; capacitor-bank pinch, optionally laser-assisted |
+| Coherence → pupil | incoherent plasma, trait default 0 → top-hat σ 0.9 |
+| Power | Sn 360 W **into 2π sr at the source** (TRINITI anchor) → 34.4 W **at intermediate focus**; Xe 10 W into 2π → 0.70 W at IF |
+| Presets | `dpp_sn_13nm5(sigma)`, `dpp_xe_13nm5(sigma)` |
+| Grade | 🔶 Simplified |
+| Compare with | [LPP](lpp.md) (the HVM winner) · [Synchrotron](synchrotron.md) · history: [The road to EUV](../history/euv.md#the-source-problem-20012013) |
+
+</div>
+
+<details markdown="1">
+<summary>How the light is made (flowchart)</summary>
 
 ```mermaid
 flowchart LR
@@ -29,98 +69,98 @@ flowchart LR
     F --> G["Intermediate focus<br/><i>P_IF (scanner convention)</i>"]
 ```
 
-In-band power into the 2π half-space at the source, with CE the conversion efficiency from electrical input to in-band (2 % bandwidth at 13.5 nm) radiation:
+</details>
+
+## Key equations
+
+In-band power into the 2π half-space at the source, with CE the conversion efficiency from electrical input to in-band (2 % bandwidth at 13.5 nm) radiation, and the power collected by a collector subtending Ω_c with throughput η_c (mirror reflectivity × debris-mitigation transmission):
 
 ```math
-P_{2\pi} = \mathrm{CE}\; P_\text{elec}
+P_{2\pi} = \mathrm{CE}\; P_\text{elec}, \qquad P_\text{coll} = P_{2\pi}\,\frac{\Omega_c}{2\pi}\,\eta_c
 ```
 
-Collected by a collector subtending $\Omega_c$ with throughput $\eta_c$ (mirror reflectivity × debris-mitigation transmission):
+Source étendue of a cylindrical emitter of diameter d and length l, using the side-on projected area and the small-angle form G = AΩ (a conservative upper estimate for a large collection angle), the étendue-limited usable fraction and the power at intermediate focus:
 
 ```math
-P_\text{coll} = P_{2\pi}\,\frac{\Omega_c}{2\pi}\,\eta_c
+G_\text{src} = d\, l\, \Omega_c, \qquad f_G = \min\!\left(1, \frac{G_\text{ill}}{G_\text{src}}\right), \qquad P_\text{IF} = P_\text{coll}\, f_G
 ```
 
-Source étendue of a cylindrical emitter of diameter $d$ and length $l$, using the side-on projected area and the small-angle form $G = A \Omega$ (a conservative upper estimate for a large collection solid angle):
-
-```math
-G_\text{src} = d\, l\, \Omega_c
-```
-
-Étendue-limited usable fraction (uniform phase-space density) and the power at intermediate focus:
-
-```math
-f_G = \min\!\left(1, \frac{G_\text{ill}}{G_\text{src}}\right), \qquad P_\text{IF} = P_\text{coll}\, f_G
-```
-
-The metrology figure of merit, in-band radiance:
+The metrology figure of merit is the in-band radiance:
 
 ```math
 L = \frac{P_{2\pi}}{d\,l\;2\pi}\quad[\mathrm{W\,mm^{-2}\,sr^{-1}}]
 ```
 
-## Real-machine parameters
+## Real machines
 
-Reported in-band (13.5 nm) powers — note the plane of each number:
+Reported in-band 13.5 nm powers — note the plane of each number:
 
-| Source | Fuel | Reported in-band power | Plane | Year | Reference |
+<!-- huv-table: stack -->
+
+| Source | Fuel | In-band power | Plane / provenance | Year | Reference |
 |---|---|---|---|---|---|
-| Energetiq EQ-10 / EQ-10HP | Xe | 10 → 20 W | 2π sr at the source | product specification | [Energetiq](https://www.energetiq.com/euv-lithography-high-brightness-extreme-ultraviolet-light-source-electrodeless-z-pinch-eq-10hp) |
-| EQ-10HP at the LBNL MET5 | Xe | 27 W | 2π sr at the source | 2024 | [Miyakawa (2024)](https://euvlitho.com/2024/P13.pdf) |
-| Fraunhofer ILT FS5440 | Xe | 20–40 W (2 % BW) | 2π sr at the source | 2020 | [Vieker (2020)](https://euvlitho.com/2020/P32.pdf) |
-| Philips Extreme UV lamp | Sn | 200 W continuous | 2π sr at the source | 2005 | as reported by [Banine & Moors (2011)](https://www.euvlitho.com/2011/S8.pdf) |
-| TRINITI rotating-disk-electrode DPP | Sn | 360 W continuous for ≥44 min (180 mJ × 2 kHz); 1 kW for 10 s at 63 kW electrical (implied CE ≈ 1.6 %) | 2π sr at the source | 2010 | [Borisov et al. (2010)](https://euvlitho.com/2010/P1.pdf) |
-| XTREME/Ushio laser-assisted DPP on the ASML NXE:3100 | Sn | "20 W at 90 % duty" (≈18 W time-averaged) | intermediate focus (exposure power) | 2011 | [Banine & Moors (2011)](https://www.euvlitho.com/2011/S8.pdf) |
+| Energetiq EQ-10 / EQ-10HP | Xe | 10 → 20 W | 2π sr at the source, product specification | — | [Energetiq](https://www.energetiq.com/euv-lithography-high-brightness-extreme-ultraviolet-light-source-electrodeless-z-pinch-eq-10hp) |
+| EQ-10HP at the LBNL MET5 | Xe | 27 W | 2π sr at the source, measured | 2024 | [Miyakawa (2024)](https://euvlitho.com/2024/P13.pdf) |
+| Fraunhofer ILT FS5440 | Xe | 20–40 W (2 % BW) | 2π sr at the source, reported | 2020 | [Vieker (2020)](https://euvlitho.com/2020/P32.pdf) |
+| Philips Extreme UV lamp | Sn | 200 W continuous | 2π sr at the source, reported | 2005 | [Banine & Moors (2011)](https://www.euvlitho.com/2011/S8.pdf) |
+| TRINITI rotating-disk-electrode DPP | Sn | 360 W continuous for ≥ 44 min (180 mJ × 2 kHz); 1 kW for 10 s at 63 kW electrical (CE ≈ 1.6 %) | 2π sr at the source, measured | 2010 | [Borisov et al. (2010)](https://euvlitho.com/2010/P1.pdf) |
+| XTREME/Ushio laser-assisted DPP on the ASML NXE:3100 | Sn | "20 W at 90 % duty" (≈ 18 W time-averaged) | intermediate focus (exposure power), reported | 2011 | [Banine & Moors (2011)](https://www.euvlitho.com/2011/S8.pdf) |
+| `dpp_xe_13nm5` preset | Xe | 2 kW (implied) × 0.5 % = 10 W into 2π; 1 × 3 mm pinch, 1.5 sr, η_c 0.4, G_src 4.5 mm²·sr, f_G 0.733 → 0.70 W at IF (×357 to 250 W) | this model, Energetiq class | — | — |
+| `dpp_sn_13nm5` preset | Sn | 18 kW × 2 % = 360 W into 2π; 0.4 × 1 mm pinch, 1.5 sr, η_c 0.4, G_src 0.6 mm²·sr, f_G 1 → 34.4 W at IF (×7.3) | this model, TRINITI anchor | — | — |
 
-For scale between the two planes: a 2013 LPP example quoted "720 W in 2π → 176 W raw at IF" (Cymer). In-band CE orders of magnitude (2 % BW, 2π sr): ~0.5 % for Xe, ~2 % for Sn (reported).
+For scale between the two planes, a 2013 LPP example quoted "720 W in 2π → 176 W raw at IF" (Cymer). The Sn preset's 34 W at IF is the same order as the ≈ 18–20 W the laser-assisted DPP delivered on the NXE:3100. Every preset number not in a reported row is an **assumption** labelled in the code; the default illuminator étendue of 3.3 mm²·sr is of the order of published EUV scanner budgets (the value the [LPP](lpp.md) model uses too) — set `illuminator_etendue_mm2_sr` for your illuminator.
 
-Model presets (every number not in the table above is an **assumption**, labelled in the code):
+## What the model does
 
-| Preset | P_elec | CE | P_2π (at source) | Anchor | d × l | Ω_c, η_c | G_src | f_G (G_ill = 3.3 mm²·sr) | P_IF | Gap to 250 W |
-|---|---|---|---|---|---|---|---|---|---|---|
-| `xe_13nm5` | 2 kW (implied) | 0.5 % | 10 W | Energetiq EQ-10 class | 1 × 3 mm | 1.5 sr, 0.4 | 4.5 mm²·sr | 0.733 | 0.70 W | ×357 |
-| `sn_13nm5` (DPP/LDP) | 18 kW | 2 % | 360 W (180 mJ × 2 kHz) | TRINITI continuous level | 0.4 × 1 mm | 1.5 sr, 0.4 | 0.6 mm²·sr | 1 | 34.4 W | ×7.3 |
+`DppSource` in [`dpp.rs`](../../crates/highuvlith-core/src/source_models/dpp.rs) models Xe DPP and Sn DPP/LDP behind one struct selected by `DppFuel`.
 
-The Sn preset's 34 W at IF is the same order as the ≈18–20 W the laser-assisted DPP delivered on the NXE:3100. The default illuminator étendue of 3.3 mm²·sr is an assumption of the order of published EUV scanner étendue budgets (the same value the LPP model uses); the real value depends on the NA, field size and pupil fill — set `illuminator_etendue_mm2_sr` for your illuminator.
-
-## Simulation model
-
-`DppSource` implements `LithographySource`:
-
-- **Spectrum** — `wavelength_nm()` is the in-band centre (13.5 nm) and `bandwidth_pm()` the mirror-selected 2 % band (270 pm), sampled as a Gaussian by `spectral_weights()` (same convention as [LPP](./lpp.md)). The narrow band makes the per-sample-focus polychromatic imaging honest.
-- **Power chain (live)** — `in_band_power_2pi_w()` (at the source), `collected_power_w()`, `source_etendue_mm2_sr()`, `etendue_usable_fraction()`, `power_at_if_w()` (at intermediate focus), `in_band_radiance_w_mm2_sr()`. `average_power_w()` reports the usable power at IF and `pulse_energy_j()` divides it by `rep_rate_hz`.
-- **Stochastics** — `shot_to_shot_rms()` (default 5 %, an assumed few-% pulse-to-pulse stability) feeds the Gamma dose-jitter term of the stochastic module, so DPP and LPP stability profiles can be compared there.
+- **Spectrum** — `wavelength_nm()` is the in-band centre and `bandwidth_pm()` the mirror-selected 2 % band (270 pm), sampled as a Gaussian by `spectral_weights()` (the [LPP](lpp.md) convention); the narrow band keeps per-sample-focus polychromatic imaging honest.
+- **Power chain (live)** — `in_band_power_2pi_w()` (at the source), `collected_power_w()`, `source_etendue_mm2_sr()`, `etendue_usable_fraction()`, `power_at_if_w()` (at IF), `in_band_radiance_w_mm2_sr()`; `average_power_w()` reports the usable power at IF and `pulse_energy_j()` divides it by `rep_rate_hz`.
+- **Stochastics** — `shot_to_shot_rms()` (default 5 %, an assumed few-percent pulse-to-pulse stability) feeds the Gamma dose-jitter term of the stochastic module, so DPP and LPP stability profiles can be compared there.
 - **Pupil** — the plasma is spatially incoherent: `transverse_coherence() = 0` and the default pupil is `Conventional { sigma }` (σ validated in (0, 1]).
-- **Derived quantities** — P_2π (at the source), P_coll, G_src, f_G, P_IF (at intermediate focus), photon rate at IF, radiance, in-band energy per discharge into 2π, electrode heat load, and the gap of the IF power to a 250 W HVM-class requirement.
-- **Presets** — `DppSource::xe_13nm5(sigma)`, `DppSource::sn_13nm5(sigma)`; `validate()` checks every field after overrides.
+- **Presets** — `xe_13nm5(sigma)`, `sn_13nm5(sigma)`; `validate()` checks every field after overrides.
+- **Not modelled** — discharge-circuit and pinch MHD dynamics, fuel spectra outside the mirror band (xenon's strongest EUV emission lies near 11 nm), debris, electrode erosion and lifetime, the exact étendue integral of an elongated emitter over a large collection angle.
 
-Not modelled: discharge-circuit and pinch MHD dynamics, the fuel spectra outside the mirror band (out-of-band power; xenon's strongest EUV emission lies near 11 nm), debris generation, electrode erosion and lifetime, and the exact étendue integral of an elongated emitter over a large collection solid angle.
-
-## Model coverage
+<!-- huv-table: stack -->
 
 | Field | Unit | Consumed by | Status |
 |---|---|---|---|
-| `fuel` | enum (`Xe`/`Sn`) | preset selection | stored (inert) |
-| `laser_assisted` | bool | provenance of the preset parameters | stored (inert) |
-| `wavelength_nm` | nm | imaging, photon energy, photon rate | live |
-| `bandwidth_pm` | pm | `spectral_weights()` | live |
-| `electrical_power_w` | W | P_2π, heat load | live |
-| `conversion_efficiency` | — | P_2π | live |
-| `source_diameter_mm` | mm | G_src, radiance | live |
-| `source_length_mm` | mm | G_src, radiance | live |
-| `collector_solid_angle_sr` | sr | P_coll, G_src | live |
-| `collector_efficiency` | — | P_coll | live |
-| `illuminator_etendue_mm2_sr` | mm²·sr | f_G | live |
-| `rep_rate_hz` | Hz | `pulse_energy_j()`, energy per discharge | live |
-| `shot_to_shot_rms` | — | `shot_to_shot_rms()` → stochastic dose jitter | live |
-| `spectral_samples` | count | spectral sampling density | live |
-| `spectral_shape` | enum | line shape in `spectral_weights()` | live |
-| `illumination` | enum | `intensity_at()` pupil fill | live |
+| `fuel`, `laser_assisted` | enum, bool | preset selection; provenance of the preset parameters | stored (inert) |
+| `wavelength_nm`, `bandwidth_pm` | nm, pm | imaging, photon energy, photon rate; `spectral_weights()` | live |
+| `electrical_power_w`, `conversion_efficiency` | W, — | P_2π, heat load | live |
+| `source_diameter_mm`, `source_length_mm` | mm | G_src, radiance | live |
+| `collector_solid_angle_sr`, `collector_efficiency`, `illuminator_etendue_mm2_sr` | sr, —, mm²·sr | P_coll, G_src, f_G | live |
+| `rep_rate_hz`, `shot_to_shot_rms` | Hz, — | `pulse_energy_j()`, energy per discharge; stochastic dose jitter | live |
+| `spectral_samples`, `spectral_shape`, `illumination` | count, enum, enum | sampling density, line shape, `intensity_at()` pupil fill | live |
 | out-of-band spectrum, debris, electrode lifetime | — | — | planned |
 
-## Usage
+## Derived quantities
 
-Python:
+`derived_quantities()` (Python `SourceConfig.derived_quantities()` / `derived_quantity(name)`; printed by `highuvlith simulate`) reports the chain plane by plane — informational, never read by the imaging pipeline. Values for the two presets:
+
+<!-- huv-table: stack -->
+
+| Name | Unit | Meaning | Sn (LDP) | Xe |
+|---|---|---|---|---|
+| `in_band_power_2pi_w` | W | CE × P_elec, into 2π sr at the source | 360 | 10 |
+| `collected_power_w` | W | P_2π × Ω_c/2π × η_c | 34.38 | 0.955 |
+| `source_etendue_mm2_sr` | mm²·sr | d · l · Ω_c | 0.6 | 4.5 |
+| `etendue_usable_fraction` | — | min(1, G_ill/G_src) | 1.0 | 0.733 |
+| `power_at_if_w` | W | = `average_power_w()`, at intermediate focus | 34.38 | 0.700 |
+| `in_band_radiance_w_mm2_sr` | W mm⁻² sr⁻¹ | P_2π / (d l 2π) | 143 | 0.53 |
+| `in_band_pulse_energy_2pi_mj` | mJ | in-band energy per discharge into 2π sr | 180 | 5 |
+| `hvm_power_gap` | — | 250 W / P_IF | 7.27 | 357 |
+
+<details markdown="1">
+<summary>The remaining rows</summary>
+
+`photon_rate_at_if` (2.34 × 10¹⁸ photons/s at IF for Sn, 4.76 × 10¹⁶ for Xe) and `electrode_heat_load_w` (P_elec − P_2π: 17.6 kW for the Sn preset, 1.99 kW for Xe — the power-scaling limit). The 17.19 mJ per discharge at IF of the Sn fixture is `in_band_pulse_energy_2pi_mj` × P_IF/P_2π. Through the [throughput model](index.md#dose-limited-throughput) the Sn preset's 34 W at IF gives a few wafers per hour at 30 mJ/cm² — the model's way of saying what the HVM race decided.
+
+</details>
+
+## Use it
+
+### Python
 
 <!-- verify-example -->
 ```python
@@ -128,8 +168,10 @@ import highuvlith as huv
 
 src = huv.SourceConfig.dpp_sn_13nm5(sigma=0.9)   # or .dpp_xe_13nm5()
 dq = {name: value for name, value, *_ in src.derived_quantities()}
-print(dq["in_band_power_2pi_w"], src.average_power_w)   # 360 W at the source, 34.4 W at IF
-print(dq["etendue_usable_fraction"], dq["hvm_power_gap"])   # 1.0, 7.27
+print(f"{dq['in_band_power_2pi_w']:.3g} W into 2 pi at the source, "
+      f"{src.average_power_w:.3g} W at IF")
+print(f"etendue fraction {dq['etendue_usable_fraction']:.3g}, "
+      f"gap to 250 W: {dq['hvm_power_gap']:.3g} x")
 
 optics = huv.OpticsConfig.schwarzschild(numerical_aperture=0.33)
 mask = huv.MaskConfig.line_space(cd_nm=30.0, pitch_nm=90.0)
@@ -137,14 +179,29 @@ engine = huv.SimulationEngine(src, optics, mask, grid=mask.commensurate_grid(siz
 aerial = engine.compute_aerial_image(focus_nm=0.0)
 ```
 
-??? success "Output"
+???+ success "Output"
 
     ```text
-    360.0 34.3774677078494
-    1.0 7.272205216643039
+    360 W into 2 pi at the source, 34.4 W at IF
+    etendue fraction 1, gap to 250 W: 7.27 x
     ```
 
-TOML ([examples/sim_dpp.toml](../../examples/sim_dpp.toml); every field is optional and defaults to the fuel preset):
+## TOML keys
+
+The keys the CLI reads for `type = "dpp"` (`DPP_KEYS` in [`config.rs`](../../crates/highuvlith-cli/src/config.rs)); every field is optional and defaults to the fuel preset. Power at IF = P_elec × CE (2π) × collector × étendue cut.
+
+| Key | Default | Units | Notes |
+|---|---|---|---|
+| `type` | — | — | `"dpp"` |
+| `fuel` | `"sn"` | — | `sn` (laser-assisted) or `xe` |
+| `sigma` | 0.9 | — | top-hat pupil radius, (0, 1]; not with `[illumination]` |
+| `wavelength_nm`, `bandwidth_pm` | 13.5, 270 | nm, pm | the mirror band |
+| `spectral_samples` | 5 | — | polychromatic samples |
+| `electrical_power_w`, `conversion_efficiency` | preset | W, — | P_2π = CE × P_elec |
+| `source_diameter_mm` (or `source_diameter_um`), `source_length_mm` | preset | mm, mm | pinch size (give the diameter once; 1 mm = 1000 µm) |
+| `collection_solid_angle_sr` (alias `collector_solid_angle_sr`), `collector_efficiency` | preset | sr, — | the collector |
+| `illuminator_etendue_mm2_sr` | 3.3 | mm²·sr | the étendue cut |
+| `rep_rate_hz` | preset | Hz | energy per discharge |
 
 ```toml
 [source]
@@ -155,25 +212,42 @@ electrical_power_w         = 18000.0
 conversion_efficiency      = 0.02
 source_diameter_mm         = 0.4
 source_length_mm           = 1.0
-collector_solid_angle_sr   = 1.5   # the LPP key collection_solid_angle_sr is accepted too
+collector_solid_angle_sr   = 1.5
 collector_efficiency       = 0.4
 illuminator_etendue_mm2_sr = 3.3
 rep_rate_hz                = 2000.0
 ```
 
-## Validation
+Example: [`sim_dpp.toml`](../../examples/sim_dpp.toml).
 
-Rust unit tests in [dpp.rs](../../crates/highuvlith-core/src/source_models/dpp.rs):
+<details markdown="1">
+<summary>Validation — 8 tests</summary>
 
-- `test_xe_power_chain_fixture` — 10 W into 2π; 0.95493 W collected; G_src = 4.5 mm²·sr; f_G = 3.3/4.5; radiance 10/(6π) W mm⁻² sr⁻¹.
-- `test_sn_power_chain_fixture_and_hvm_gap` — 360 W into 2π (180 mJ per discharge at 2 kHz); 34.3775 W at IF; gap 250/34.3775 = 7.2722; 17.19 mJ per discharge at IF.
-- `test_etendue_scaling` — doubling the diameter doubles G_src and halves f_G when étendue-limited.
-- `test_fuel_ordering_and_band`, `test_validation`, `test_derived_quantities_finite`.
+| Claim | Test | Tolerance |
+|---|---|---|
+| Xe: 10 W into 2π; 0.95493 W collected; G_src = 4.5 mm²·sr; f_G = 3.3/4.5; radiance 10/(6π) W mm⁻² sr⁻¹ | `dpp.rs::test_xe_power_chain_fixture` | 1e-6 |
+| Sn: 360 W into 2π (180 mJ per discharge at 2 kHz); 34.3775 W at IF; gap 250/34.3775 = 7.2722; 17.19 mJ per discharge at IF | `test_sn_power_chain_fixture_and_hvm_gap` | 1e-4 |
+| doubling the diameter doubles G_src and halves f_G when étendue-limited | `test_etendue_scaling` | exact |
+| fuel ordering and the band; field validation; derived quantities finite | `test_fuel_ordering_and_band`, `test_validation`, `test_derived_quantities_finite` | — |
+| CLI fuel and étendue overrides, the key aliases; Python `TestDpp` and the imaging smoke test | `config.rs::test_dpp_fuel_and_etendue_overrides`, `test_lab_compact_key_names_aliases_and_fallbacks`; `tests/python/test_sources_new.py::TestDpp` | — |
 
-CLI: `test_dpp_fuel_and_etendue_overrides`, `test_lab_compact_key_names_aliases_and_fallbacks`; Python: `tests/python/test_sources_new.py::TestDpp` and the imaging smoke test.
+</details>
+
+<details markdown="1">
+<summary>Changes</summary>
+
+- The two power planes (2π sr at the source; at intermediate focus) have been reported separately since the family was added; `average_power_w()` has always meant the IF value, the convention the [LPP](lpp.md) family later adopted (its change is recorded there).
+- The `Dipole` illumination shape placed both poles at one point until 2026-09-30; the DPP presets never use it.
+
+</details>
+
+## See also
+
+[Laser-produced plasma](lpp.md) (the HVM winner, same power-chain conventions) · [Synchrotron](synchrotron.md) and [XFEL](xfel.md) (the accelerator routes) · history: [The road to EUV](../history/euv.md) · [Throughput, stated once](index.md#dose-limited-throughput) · [configuration](../configuration.md) · [`examples/sim_dpp.toml`](../../examples/sim_dpp.toml)
 
 ## References
 
 1. V. Bakshi (ed.), *EUV Sources for Lithography*, SPIE Press (2006) — DPP/LDP and LPP source technology of the HVM-candidate era.
 2. Real-machine anchors (workshop presentations and product information, linked in the table above): Borisov et al. (2010); Banine & Moors (2011); Vieker (2020); Miyakawa (2024); Energetiq EQ-10 / EQ-10HP.
-3. Related pages: [LPP](./lpp.md) (the HVM winner, with the same in-band power-chain conventions), [capability matrix](../capability-matrix.md).
+
+**Where next:** ← [Laser-produced plasma](lpp.md) · [Synchrotron](synchrotron.md) → · Related: [The road to EUV](../history/euv.md) · [Capability matrix](../capability-matrix.md#light-sources)

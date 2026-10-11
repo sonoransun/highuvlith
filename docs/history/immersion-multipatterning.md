@@ -5,16 +5,27 @@ description: >-
   after the wavelength stopped at 193 nm.
 ---
 
-# Immersion and multiple patterning
+# Immersion & multipatterning
 
-After 157 nm was dropped, lithography stayed at 193 nm for more than fifteen years of
-leading-edge manufacturing. Two ideas carried it through. **Water immersion** raised the
-numerical aperture above 1, the limit for a dry lens. Once even that ran out, **multiple
-patterning** split each dense layer into several exposures, each individually printable.
-Around both grew **computational lithography**: masks and illumination designed by
-simulation rather than by hand.
+<p class="huv-lead">Chapter 5 of 7 — After 157 nm was dropped, lithography stayed at 193 nm for more than fifteen years of leading-edge manufacturing (2003–2023). Two ideas carried it through. <strong>Water immersion</strong> raised the numerical aperture above 1, the limit for a dry lens, because NA = n·sin θ and a liquid of index n under the last lens lets rays reach the wafer that air would reflect back into the glass. Once even that ran out, <strong>multiple patterning</strong> split each dense layer into several exposures, each individually printable, and around both grew <strong>computational lithography</strong>: masks and illumination designed by simulation rather than by hand.</p>
 
-## An old idea: put liquid under the lens
+<figure markdown="span">
+
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-immersion-narrow-light.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-immersion-light.svg#gh-light-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the ArF immersion span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-immersion-narrow-dark.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-immersion-dark.svg#gh-dark-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the ArF immersion span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
+
+<figcaption><strong>You are here on the axis of light.</strong> The chapter's wavelengths and eras at full strength, the rest faded; years are first tool models in litho_tools.csv; the log axis is expanded above 100 nm. <em>Data chart from litho_tools.csv; no model badge.</em></figcaption>
+</figure>
+
+<figure markdown="span">
+
+![Two panels of the last lens element above a wafer: in air a steep ray is totally internally reflected at the glass face because n sin theta cannot exceed 1, so NA stays below 1; with water (n about 1.44 at 193 nm) in the gap the same ray reaches the wafer and NA = n sin theta can reach about 1.35.](../assets/images/history/immersion-principle-light.svg#gh-light-mode-only)
+![Two panels of the last lens element above a wafer: in air a steep ray is totally internally reflected at the glass face because n sin theta cannot exceed 1, so NA stays below 1; with water (n about 1.44 at 193 nm) in the gap the same ray reaches the wafer and NA = n sin theta can reach about 1.35.](../assets/images/history/immersion-principle-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>The immersion principle.</strong> Ray angles follow Snell's law with n ≈ 1.56 for the fused-silica lens and 1.44 for water at 193 nm: the steep ray that air reflects back into the glass, water lets through, and NA = n·sin θ reaches 1.35. <em>Schematic, not to scale.</em></figcaption>
+</figure>
+
+## An old idea: put liquid under the lens, 1847–2001
 
 Microscopists had done it for more than a century. ZEISS credits Giovanni Battista Amici with
 the modern immersion objective, "most probably" in 1847, and Ernst Abbe with homogeneous oil
@@ -25,24 +36,6 @@ air cannot leave the flat last surface of the lens at all: it is totally interna
 reflected. Fill the gap with a liquid of index *n* and those rays reach the wafer, and NA can
 approach *n*.
 
-<figure markdown="span">
-  ![Two panels, each showing the flat-bottomed last lens element above a resist-coated wafer.
-  Left, dry: a moderate ray leaves the lens and reaches the focus, but a steeper ray is totally
-  internally reflected at the glass-air surface because n sin theta would exceed one. Right,
-  immersion: with water between lens and wafer both rays reach the focus, so NA equals n sin
-  theta up to about 1.35, and the wavelength inside the water is about 134
-  nm.](../assets/images/history/immersion-principle-light.svg#only-light){ width="820" }
-  ![Two panels, each showing the flat-bottomed last lens element above a resist-coated wafer.
-  Left, dry: a moderate ray leaves the lens and reaches the focus, but a steeper ray is totally
-  internally reflected at the glass-air surface because n sin theta would exceed one. Right,
-  immersion: with water between lens and wafer both rays reach the focus, so NA equals n sin
-  theta up to about 1.35, and the wavelength inside the water is about 134
-  nm.](../assets/images/history/immersion-principle-dark.svg#only-dark){ width="820" }
-  <figcaption markdown="span">The immersion principle. Ray angles follow Snell's law with n ≈ 1.56 for the
-  fused-silica lens and 1.44 for water at 193 nm. Schematic, not to scale; script:
-  [make_history_schematics.py](../figures/history/make_history_schematics.py).</figcaption>
-</figure>
-
 The idea was patented for lithography early. Werner Tabarelli and Ernst Löbach filed a US
 patent on immersion photolithography in October 1980 (granted 1982) [2]. A Hitachi patent by
 Akihiro Takanashi and co-workers, with Japanese priority from 1981 and granted in 1984,
@@ -52,17 +45,19 @@ in the gap [3]. In 1989 Kawata, Carter, Yen and Smith at MIT described
 [4]. In 2001 Switkes and Rothschild at MIT Lincoln Laboratory demonstrated immersion
 lithography at 157 nm [5].
 
-## 193 nm and water
+## 193 nm and water, 2002–2008
 
 The decisive argument was for 193 nm and ordinary water. Water is transparent at 193 nm and has
 an index of about 1.44 there, so the wavelength inside it is 193/1.44 ≈ 134 nm, shorter than
 157 nm, while the 193 nm lasers, fused-silica lenses, masks and much of the resist knowledge
 stay in use [6, 7]. **Burn J. Lin** of TSMC made the case in 2002, working out the resolution
 and depth-of-focus scaling for immersion at high NA [6]. On 3 December 2003 TSMC became the first chipmaker to commit to
-193 nm immersion, ordering an ASML XT:1250i [8].
+193 nm immersion, ordering an ASML XT:1250i [8]. The comparison that decided it, 157 nm dry
+against 193 nm in water across half-pitch, is on [the 157 nm detour](157nm-detour.md).
 
 The tools arrived fast:
 
+<!-- huv-table: stack -->
 | Year | Tool | NA | Milestone |
 |---|---|---|---|
 | 2003 | ASML AT:1150i | 0.75 | ASML's first immersion system (prototype) [9] |
@@ -91,31 +86,37 @@ announced its POLANO polarized illumination in November 2004 and offered it on i
 NSR-S308F from spring 2005 [16]; hyper-NA immersion
 tools such as ASML's XT:1700i then made it standard [27].
 
-Adoption was quick. IBM described a 45 nm process with immersion lithography at IEDM 2006
-[17]. Intel's 45 nm process of 2007 was still patterned with dry 193 nm tools, as the title of
-its IEDM paper announced [18].
-
-!!! info "Immersion in highuvlith"
-    Refractive optics can carry an immersion medium (✅ Implemented).
-    `OpticsConfig.immersion(numerical_aperture, immersion_index)` accepts NA up to 0.95 *n*, and
-    `OpticsConfig.immersion_193i()` is the ArF water preset: NA 1.35 with *n* = 1.437, close to
-    the measured index of water at 193 nm (about 1.44). The defocus phase is evaluated in the
-    medium (see [optics](../optics.md)). The
-    [vector imaging model](../vector-imaging.md) uses the same image-medium index for the
-    direction of every diffraction order, the obliquity factor and the film interface, and
-    computes the TE/TM polarization effects that made polarized illumination standard. The
-    scalar engine alone is flagged 🔶 above NA ≈ 0.8 in the
-    [capability matrix](../capability-matrix.md), because it ignores polarization.
-
 <figure markdown="span">
 
 ![Contrast versus pitch for 193 nm water immersion at NA 1.35 with TE, TM and unpolarized light: TE keeps the most contrast, TM the least, unpolarized lies between; the scalar model overestimates all but TE.](../assets/images/sim/site/site-193i-polarization-light.png#gh-light-mode-only)
 ![Contrast versus pitch for 193 nm water immersion at NA 1.35 with TE, TM and unpolarized light: TE keeps the most contrast, TM the least, unpolarized lies between; the scalar model overestimates all but TE.](../assets/images/sim/site/site-193i-polarization-dark.png#gh-dark-mode-only)
 
-<figcaption>Polarization at NA 1.35 (water): dense 1:1 lines imaged with the vector model for TE, TM and unpolarized illumination, against the scalar model. Near the resolution limit the two first orders meet at steep angles, so TM light (field in the plane of incidence) interferes poorly; production 193i tools use polarized illumination. Thin mask, ideal lens, image in water (no resist film). Models: vector imaging ✅, immersion optics ✅.</figcaption>
+<figcaption><strong>Polarization decides the contrast at NA 1.35.</strong> Dense 1:1 lines in water imaged with the vector model for TE, TM and unpolarized illumination against the scalar model (conventional σ 0.9): near the resolution limit the two first orders meet at steep angles, so TM light (field in the plane of incidence) interferes poorly — production 193i tools use polarized illumination. Thin mask, ideal lens, image in water, no resist film. <em>Model: vector imaging ✅ · immersion lithography ✅.</em></figcaption>
 </figure>
 
-## Multiple patterning: beyond k₁ = 0.25
+Adoption was quick. IBM described a 45 nm process with immersion lithography at IEDM 2006
+[17]. Intel's 45 nm process of 2007 was still patterned with dry 193 nm tools, as the title of
+its IEDM paper announced [18].
+
+**What highuvlith models here: refractive optics can carry an immersion medium, the defocus
+phase is evaluated in that medium, and a separate vector model computes the TE/TM effects
+that made polarized illumination standard; the scalar engine alone is flagged simplified
+above NA ≈ 0.8 because it ignores polarization.** `OpticsConfig.immersion(numerical_aperture,
+immersion_index)` accepts NA up to 0.95 *n*, and `OpticsConfig.immersion_193i()` is the ArF
+water preset: NA 1.35 with *n* = 1.437, close to the measured index of water at 193 nm (about
+1.44). The overlay and k₁ arithmetic of this era, node by node, is on
+[90 nm to 28 nm](../nodes/90-to-28nm.md).
+
+<!-- huv-table: stack -->
+
+| Issue | In highuvlith | Grade | Link |
+|---|---|---|---|
+| Water between lens and wafer | `immersion_193i()`: NA 1.35 in water, n = 1.437; defocus phase in the medium | ✅ Implemented | [optics](../optics.md) |
+| Polarization at steep angles | vector model with the image-medium index for every order, the obliquity factor and the film interface | ✅ Implemented | [vector imaging](../vector-imaging.md) |
+| The scalar engine above NA ≈ 0.8 | Hopkins imaging without polarization | ✅ Implemented | [pipeline](../pipeline.md) |
+| Bubbles, stains, stage routing | not modelled | — | [architecture](../architecture.md) |
+
+## Multiple patterning: beyond k₁ = 0.25, 2007–2018
 
 Immersion stopped at NA 1.35, and a single exposure cannot print dense lines below
 k₁ = 0.25. At 193 nm that means a smallest pitch of about 72 nm, a half-pitch of 36 nm [19].
@@ -134,27 +135,25 @@ The workaround was to **split the pattern**:
   involved. The method suits the regular lines of memory arrays better than random logic, and
   Mack expected the big memory makers to use it [19].
 - **SAQP.** Repeat the spacer step on the spacers to quarter the pitch. Intel's 10 nm process
-  (IEDM 2017) listed self-aligned quad patterning in the title of its paper [20].
+  (IEDM 2017) listed self-aligned quad patterning in the title of its paper [20]; the
+  [22 nm to 10 nm](../nodes/22-to-10nm.md) chapter follows SADP and SAQP layer by layer.
 
 <figure markdown="span">
-  ![Two rows of cross-section sketches. Top row, LELE: first exposure prints resist lines at
-  pitch P on a hard mask; etch transfers them; a second exposure prints lines shifted by P over
-  2; a second etch leaves hard-mask lines at pitch P over 2, with an overlay error warning on
-  the second exposure. Bottom row, SADP: mandrels at pitch P; a conformal film is deposited;
-  the film is etched back leaving spacers on the mandrel sidewalls; the mandrels are removed
-  leaving spacers at pitch P over 2; the spacer pattern is transferred into the hard
-  mask.](../assets/images/history/multipatterning-lele-sadp-light.svg#only-light){ width="820" }
-  ![Two rows of cross-section sketches. Top row, LELE: first exposure prints resist lines at
-  pitch P on a hard mask; etch transfers them; a second exposure prints lines shifted by P over
-  2; a second etch leaves hard-mask lines at pitch P over 2, with an overlay error warning on
-  the second exposure. Bottom row, SADP: mandrels at pitch P; a conformal film is deposited;
-  the film is etched back leaving spacers on the mandrel sidewalls; the mandrels are removed
-  leaving spacers at pitch P over 2; the spacer pattern is transferred into the hard
-  mask.](../assets/images/history/multipatterning-lele-sadp-dark.svg#only-dark){ width="820" }
-  <figcaption markdown="span">Pitch splitting. LELE needs two exposures and ties the result to their overlay.
-  SADP needs one exposure plus deposition and etch steps, and is self-aligned. Schematic
-  cross-sections; script:
-  [make_history_schematics.py](../figures/history/make_history_schematics.py).</figcaption>
+
+![Top row, litho-etch-litho-etch: two exposures shifted by half a pitch print lines at pitch P/2 that depend on overlay. Bottom row, self-aligned double patterning: mandrels at pitch P, a conformal film, etch-back leaving sidewall spacers, mandrel removal and transfer at pitch P/2.](../assets/images/history/multipatterning-lele-sadp-light.svg#gh-light-mode-only)
+![Top row, litho-etch-litho-etch: two exposures shifted by half a pitch print lines at pitch P/2 that depend on overlay. Bottom row, self-aligned double patterning: mandrels at pitch P, a conformal film, etch-back leaving sidewall spacers, mandrel removal and transfer at pitch P/2.](../assets/images/history/multipatterning-lele-sadp-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Pitch splitting.</strong> LELE needs two exposures and ties the result to their overlay; SADP needs one exposure plus deposition and etch steps and is self-aligned, with the spacer pitch set by mandrel width and film thickness. <em>Model: Multiple patterning (LELE, SADP, SAQP) 🔶 (SADP geometric; LELE as two thresholded exposures).</em></figcaption>
+</figure>
+
+The spacer sequence, one state at a time:
+
+<figure markdown="span">
+
+![Animated cross-section of self-aligned double patterning: mandrels printed at pitch P, a conformal spacer film, an anisotropic etch-back, the mandrel pull and the transfer into the target layer, one state fading into the next; the still shows the five steps as rows.](../assets/images/nodes/sadp-flow-anim-light.svg#gh-light-mode-only)
+![Animated cross-section of self-aligned double patterning: mandrels printed at pitch P, a conformal spacer film, an anisotropic etch-back, the mandrel pull and the transfer into the target layer, one state fading into the next; the still shows the five steps as rows.](../assets/images/nodes/sadp-flow-anim-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Self-aligned double patterning, step by step.</strong> Ideal conformal spacers; no deposition or etch physics. <em>Model: multiple patterning (SADP/SAQP) 🔶 (geometric).</em></figcaption>
 </figure>
 
 Multiple patterning worked. Bruning reported double patterning imaging at an effective k₁ of
@@ -163,14 +162,52 @@ designs into forms the decomposition could handle, and overlay budgets of a few 
 That cost is what finally made the economic case for EUV: when Samsung started EUV production of
 its 7LPP process in 2018, it cited about 20 % fewer masks [21]. See [the road to EUV](euv.md).
 
-!!! info "Multiple patterning in highuvlith"
-    Multiple patterning is 🔶 Simplified. LELE runs two engine exposures, thresholds each one
-    and takes the union, with a sub-pixel overlay shift. SADP and SAQP are purely geometric:
-    line and space widths follow from the mandrel and spacer dimensions, with no deposition or
-    etch physics. See [research modules](../research-modules.md) and the
-    [capability matrix](../capability-matrix.md).
+**What highuvlith models here: LELE runs two engine exposures, thresholds each one and takes
+the union with a sub-pixel overlay shift; SADP and SAQP are purely geometric, with no
+deposition or etch physics.**
 
-## Computational lithography
+<!-- huv-table: stack -->
+
+| Issue | In highuvlith | Grade | Link |
+|---|---|---|---|
+| LELE pitch splitting | two engine exposures, per-exposure threshold, printed union, sub-pixel overlay | 🔶 Simplified | [research modules](../research-modules.md) |
+| SADP and SAQP | line and space widths from the mandrel and spacer dimensions; no deposition or etch physics | 🔶 Simplified | [research modules](../research-modules.md) |
+
+### Try it in highuvlith
+
+A 76 nm pitch cannot be printed in one dry ArF exposure (k₁ = 0.18): its image has no
+modulation at all. Each LELE exposure carries only every other line, at twice the pitch
+(k₁ = 0.37), which a dry NA 0.93 lens can image.
+
+<!-- verify-example -->
+```python
+import highuvlith as huv
+
+source = huv.SourceConfig.arf_laser(sigma=0.8)
+optics = huv.OpticsConfig(numerical_aperture=0.93)
+grid = huv.GridConfig(size=256, pixel_nm=1.1875)  # 304 nm field
+for label, pitch in (("target, 76 nm pitch", 76.0), ("one LELE exposure, 152 nm pitch", 152.0)):
+    mask = huv.MaskConfig.line_space(cd_nm=38.0, pitch_nm=pitch)
+    engine = huv.SimulationEngine(source, optics, mask, grid=grid)
+    print(f"{label}: contrast {engine.compute_aerial_image(focus_nm=0.0).image_contrast():.3f}")
+```
+
+???+ success "Output"
+
+    ```text
+    target, 76 nm pitch: contrast 0.000
+    one LELE exposure, 152 nm pitch: contrast 0.198
+    ```
+
+<figure markdown="span">
+
+![A 76 nm pitch grating gives a flat image in one dry ArF exposure, while each of two LELE exposures at 152 nm pitch is well modulated; thresholding each and taking the union prints all lines at 76 nm pitch.](../assets/images/sim/site/site-lele-pitch-split-light.png#gh-light-mode-only)
+![A 76 nm pitch grating gives a flat image in one dry ArF exposure, while each of two LELE exposures at 152 nm pitch is well modulated; thresholding each and taking the union prints all lines at 76 nm pitch.](../assets/images/sim/site/site-lele-pitch-split-dark.png#gh-dark-mode-only)
+
+<figcaption><strong>Why pitch splitting works.</strong> One dry ArF exposure of a 76 nm pitch (k<sub>1</sub> = 0.18) has no modulation, but each LELE exposure carries every other line at 152 nm pitch; each is thresholded at the dose that prints 38 nm lines (dashed) and the two printed patterns are united (bottom) — the page's LELE example. Default 2 % flare; perfect overlay. <em>Model: Hopkins imaging ✅ · multiple patterning 🔶 (constant-threshold resist, no etch).</em></figcaption>
+</figure>
+
+## Computational lithography, 1994–2023
 
 By the immersion era, what the mask looks like and what prints had drifted far apart, and the
 mask was designed by simulation:
@@ -187,81 +224,27 @@ mask was designed by simulation:
   NVIDIA announced cuLitho, a GPU library for computational lithography, with TSMC, ASML and
   Synopsys, claiming speed-ups of up to 40× [26].
 
-!!! info "Computational lithography in highuvlith"
-    Rule-based and model-based OPC are ✅ Implemented. ILT is ✅ as well: it follows the exact
-    adjoint gradient through the engine's imaging kernels, on a continuous pixel mask without
-    mask-rule checks or polygon output. SRAF insertion, a rule deck with a model print check,
-    is 🔶 Simplified. Joint source–mask optimization is not implemented. See
-    [research modules](../research-modules.md).
-
-## Try it
-
-!!! example "Try it in highuvlith: 45 nm half-pitch, dry against water"
-    At NA 0.93 a 90 nm pitch is below the single-exposure limit (k₁ = 0.22): no first order
-    reaches the pupil. Water immersion at NA 1.35 raises k₁ to 0.31 and the grating prints.
-
-    <!-- verify-example -->
-    ```python
-    import highuvlith as huv
-
-    source = huv.SourceConfig.arf_laser(sigma=0.9)
-    mask = huv.MaskConfig.line_space(cd_nm=45.0, pitch_nm=90.0)
-    grid = huv.GridConfig(size=128, pixel_nm=1.40625)  # 180 nm field = 2 periods
-    for label, optics in (
-        ("dry, NA 0.93", huv.OpticsConfig(numerical_aperture=0.93)),
-        ("water, NA 1.35", huv.OpticsConfig.immersion_193i()),  # n = 1.437
-    ):
-        engine = huv.SimulationEngine(source, optics, mask, grid=grid)
-        print(f"{label}: contrast {engine.compute_aerial_image(focus_nm=0.0).image_contrast():.3f}")
-    ```
-
-    ??? success "Output"
-
-        ```text
-        dry, NA 0.93: contrast 0.000
-        water, NA 1.35: contrast 0.200
-        ```
-
 <figure markdown="span">
 
-![Contrast versus half-pitch for a dry 157 nm lens at NA 0.85, a dry 193 nm lens at NA 0.93 and 193 nm water immersion at NA 1.35: immersion keeps imaging down to about 38 nm half-pitch, the dry 157 nm lens only to about 49 nm and dry 193 nm to about 55 nm.](../assets/images/sim/site/site-why-immersion-light.png#gh-light-mode-only)
-![Contrast versus half-pitch for a dry 157 nm lens at NA 0.85, a dry 193 nm lens at NA 0.93 and 193 nm water immersion at NA 1.35: immersion keeps imaging down to about 38 nm half-pitch, the dry 157 nm lens only to about 49 nm and dry 193 nm to about 55 nm.](../assets/images/sim/site/site-why-immersion-dark.png#gh-dark-mode-only)
+![Inverse lithography for a two-by-two contact array: the target, the continuous mask after 0, 10, 20 and 35 iterations growing serifs and assist-like rings, the printed image of the final binary mask with its contour on the target, and cost histories: the adjoint keeps descending, the proxy stalls.](../assets/images/sim/optim-ilt-contacts-light.png#gh-light-mode-only)
+![Inverse lithography for a two-by-two contact array: the target, the continuous mask after 0, 10, 20 and 35 iterations growing serifs and assist-like rings, the printed image of the final binary mask with its contour on the target, and cost histories: the adjoint keeps descending, the proxy stalls.](../assets/images/sim/optim-ilt-contacts-dark.png#gh-dark-mode-only)
 
-<figcaption>The comparison that ended the 157 nm programme, across half-pitch: conventional σ 0.9, default 2 % flare, two-period commensurate fields. Dotted lines mark each tool's k<sub>1</sub> = 0.25 half-pitch; with σ 0.9 the image vanishes slightly above it, at λ/(2NA·1.9). The dashed line is the 45 nm example on the page. Models: scalar Hopkins imaging ✅, immersion optics ✅ (water n = 1.437; no polarization in this chart).</figcaption>
+<figcaption><strong>Inverse lithography of a contact array.</strong> 100 nm contacts on a 200 nm pitch (F<sub>2</sub> 157.63 nm, NA 0.75, σ 0.6, 8 kernels, 64 × 8 nm grid): sigmoid-resist cost with the exact adjoint gradient through the SOCS kernels, conjugate gradients, binarization penalty switched on after iteration 20 (converged at 35). Bottom right: on 90 nm contacts the legacy local proxy stops after a few iterations while the adjoint drives the cost down ~18×. <em>Model: ILT mask optimization ✅ (constant-threshold sigmoid resist; pixel mask, no MRC or polygon extraction).</em></figcaption>
 </figure>
 
-!!! example "Try it in highuvlith: why pitch splitting works"
-    A 76 nm pitch cannot be printed in one dry ArF exposure (k₁ = 0.18): its image has no
-    modulation at all. Each LELE exposure carries only every other line, at twice the pitch
-    (k₁ = 0.37), which a dry NA 0.93 lens can image.
+**What highuvlith models here: rule-based and model-based OPC and inverse lithography with
+the exact adjoint gradient are implemented, on a continuous pixel mask without mask-rule
+checks or polygon output; SRAF insertion is a rule deck with a model print check, and joint
+source–mask optimization is not implemented.**
 
-    <!-- verify-example -->
-    ```python
-    import highuvlith as huv
+<!-- huv-table: stack -->
 
-    source = huv.SourceConfig.arf_laser(sigma=0.8)
-    optics = huv.OpticsConfig(numerical_aperture=0.93)
-    grid = huv.GridConfig(size=256, pixel_nm=1.1875)  # 304 nm field
-    for label, pitch in (("target, 76 nm pitch", 76.0), ("one LELE exposure, 152 nm pitch", 152.0)):
-        mask = huv.MaskConfig.line_space(cd_nm=38.0, pitch_nm=pitch)
-        engine = huv.SimulationEngine(source, optics, mask, grid=grid)
-        print(f"{label}: contrast {engine.compute_aerial_image(focus_nm=0.0).image_contrast():.3f}")
-    ```
-
-    ??? success "Output"
-
-        ```text
-        target, 76 nm pitch: contrast 0.000
-        one LELE exposure, 152 nm pitch: contrast 0.198
-        ```
-
-<figure markdown="span">
-
-![A 76 nm pitch grating gives a flat image in one dry ArF exposure, while each of two LELE exposures at 152 nm pitch is well modulated; thresholding each and taking the union prints all lines at 76 nm pitch.](../assets/images/sim/site/site-lele-pitch-split-light.png#gh-light-mode-only)
-![A 76 nm pitch grating gives a flat image in one dry ArF exposure, while each of two LELE exposures at 152 nm pitch is well modulated; thresholding each and taking the union prints all lines at 76 nm pitch.](../assets/images/sim/site/site-lele-pitch-split-dark.png#gh-dark-mode-only)
-
-<figcaption>Why pitch splitting works (the page's LELE example): one dry ArF exposure of a 76 nm pitch (k<sub>1</sub> = 0.18) has no modulation, but each LELE exposure carries every other line at 152 nm pitch. Each exposure is thresholded at the dose that prints 38 nm lines (dashed) and the two printed patterns are united (bottom). Default 2 % flare; perfect overlay. Models: scalar imaging ✅, multiple patterning 🔶 (constant-threshold resist, no etch).</figcaption>
-</figure>
+| Issue | In highuvlith | Grade | Link |
+|---|---|---|---|
+| Model-based OPC | per-fragment EPE feedback on the aerial image with the exact mask spectrum; rectilinear features | ✅ Implemented | [research modules](../research-modules.md) |
+| Inverse lithography | exact adjoint gradient through the SOCS kernels, nonlinear CG, binarization penalty; continuous pixel mask | ✅ Implemented | [research modules](../research-modules.md) |
+| Sub-resolution assist features | heuristic λ/NA-scaled rule deck with a model print check | 🔶 Simplified | [research modules](../research-modules.md) |
+| Source–mask optimization | not implemented | — | [capability matrix](../capability-matrix.md#optimization-and-patterning) |
 
 ## Key takeaways
 
@@ -273,6 +256,8 @@ mask was designed by simulation:
   cost, process complexity, design restrictions and overlay control.
 - Mask design became computational: model-based OPC, source–mask optimization and inverse
   lithography, now running on GPUs and printed with multi-beam mask writers.
+
+**Where next:** ← [The 157 nm detour](157nm-detour.md) · [The road to EUV](euv.md) → · Related: [22 nm to 10 nm](../nodes/22-to-10nm.md) · [Vector imaging](../vector-imaging.md) · [Research modules](../research-modules.md) · [Capability matrix](../capability-matrix.md#optimization-and-patterning)
 
 ## References and further reading
 

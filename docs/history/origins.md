@@ -6,13 +6,25 @@ description: >-
 
 # From stone to silicon
 
-Semiconductor lithography borrowed almost everything from printing: the name, the idea of a
-light-sensitive coating that survives where it is exposed (or where it is not), and the
-habit of copying a master pattern many times. This page follows that inheritance from a
-Munich print shop in the 1790s to the contact and proximity aligners of the 1960s and 1970s.
-By then the simplest way to print a circuit had reached its limits.
+<p class="huv-lead">Chapter 1 of 7 — Semiconductor lithography borrowed almost everything from printing: the name, the idea of a light-sensitive coating that survives where it is exposed (or where it is not), and the habit of copying a master pattern many times. This chapter follows that inheritance from a Munich print shop in the 1790s to the contact and proximity aligners of the 1960s and 1970s (1796–1973), by which time the simplest way to print a circuit, a mask pressed against the wafer, had reached its limits.</p>
 
-## Writing on stone
+<figure markdown="span">
+
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-origins-narrow-light.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-origins-light.svg#gh-light-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the Lamp lines, contact and proximity span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-origins-narrow-dark.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-origins-dark.svg#gh-dark-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the Lamp lines, contact and proximity span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
+
+<figcaption><strong>You are here on the axis of light.</strong> The chapter's wavelengths and eras at full strength, the rest faded; years are first tool models in litho_tools.csv; the log axis is expanded above 100 nm. <em>Data chart from litho_tools.csv; no model badge.</em></figcaption>
+</figure>
+
+<figure markdown="span">
+
+![Two timeline lanes joined by an arrow: printing and photography from Senefelder's 1796 lithography through Niépce's 1827 bitumen image to Poitevin's 1855 carbon process, and silicon from the 1955 oxide mask through 1957 photoresist patterning to the first planar integrated circuit in 1960.](../assets/images/history/two-lanes-timeline-light.svg#gh-light-mode-only)
+![Two timeline lanes joined by an arrow: printing and photography from Senefelder's 1796 lithography through Niépce's 1827 bitumen image to Poitevin's 1855 carbon process, and silicon from the 1955 oxide mask through 1957 photoresist patterning to the first planar integrated circuit in 1960.](../assets/images/history/two-lanes-timeline-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Two lanes to the planar integrated circuit.</strong> Lithography the printing craft and light-hardened coatings on one side; oxide masking, photoresist and the planar process on the other, joined by the loop every chip layer still runs: coat · expose · develop · etch. <em>Dates as cited on this page; ranges where sources differ.</em></figcaption>
+</figure>
+
+## Writing on stone, 1796–1813
 
 Lithographic printing is credited to **Alois Senefelder** of Munich, who is said to have
 invented it around 1796 [1]. It rests on the fact that grease and water do not mix. A design
@@ -24,7 +36,7 @@ from the Greek *lithos*, stone, and *graphein*, to write or draw [1].
 Nothing in Senefelder's process involves light. The link to modern lithography came from
 early photography.
 
-## Coatings that light makes insoluble
+## Coatings that light makes insoluble, 1827–1855
 
 **Nicéphore Niépce** coated a polished pewter plate with bitumen dissolved in oil of lavender
 and exposed it in a camera. Bitumen hardens and becomes less soluble where light falls on
@@ -61,7 +73,7 @@ flowchart LR
     F -- "align next mask" --> A
 ```
 
-## Photoresist meets the transistor
+## Photoresist meets the transistor, 1955–1972
 
 When Bell Labs began making silicon devices in the 1950s, the team first used dichromated
 gelatin. It resolved well but did not resist the hydrofluoric acid used to etch silicon
@@ -78,7 +90,9 @@ dioxide. Bell Labs asked Eastman Kodak for help [4]:
   diazonaphthoquinone (DNQ) and novolac printing plates since around 1950; their US outlet,
   Azoplate, sold the chemistry to chipmakers as "AZ Photoresists". Once projection printing
   arrived, DNQ/novolac displaced KTFR at the high end, completely by 1972, because it gave
-  higher contrast and did not swell during development [4].
+  higher contrast and did not swell during development [4]. The simulator's
+  [resist models](../processes/resist-models.md) descend from this positive-tone chemistry:
+  Dill exposure kinetics and a development rate law.
 
 At the same time the silicon process took shape around the oxide:
 
@@ -99,11 +113,23 @@ At the same time the silicon process took shape around the oxide:
 Planar integrated circuits made lithography the step that set both yield and density. Every
 layer needed a mask, and each mask had to be aligned to the patterns already on the wafer.
 
-## Contact and proximity printing
+## Contact and proximity printing, 1961–1973
 
 Throughout the 1960s the pattern was transferred by **shadow printing**: a mask the same size
-as the wafer, held against or just above the resist, lit by a mercury lamp. Making the mask
-was itself a chain of optical steps, as described in Bruning's history [12, 13]:
+as the wafer, held against or just above the resist, lit by a mercury lamp. A lens between
+mask and wafer came later; the three ways of transferring a pattern differ in what touches
+what, and in how sharp the copy is.
+
+<figure markdown="span">
+
+![Three panels: contact printing with the mask on the resist, proximity printing with a gap g that blurs the edges, and projection printing through a lens onto a reduced image field; under each, the intensity reaching the resist against the mask pattern.](../assets/images/history/printing-modes-light.svg#gh-light-mode-only)
+![Three panels: contact printing with the mask on the resist, proximity printing with a gap g that blurs the edges, and projection printing through a lens onto a reduced image field; under each, the intensity reaching the resist against the mask pattern.](../assets/images/history/printing-modes-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Three ways to transfer a mask pattern.</strong> Contact copies sharply but damages mask and wafer; a gap protects the mask and diffraction blurs edges over roughly √(λg); a lens images the mask at R = k₁λ/NA and nothing touches the wafer. The profiles are a 1-D scalar model in arbitrary units (Fresnel propagation averaged over ±20 % of λg; a partially coherent band-limited image). <em>Schematic, not to scale.</em></figcaption>
+</figure>
+
+Making the mask was itself a chain of optical steps, as described in Bruning's history
+[12, 13]:
 
 1. The layout was cut by hand into Rubylith, a red film on clear plastic, at a large scale.
 2. A copy camera reduced it 10–50 times onto a photographic plate.
@@ -115,31 +141,12 @@ was itself a chain of optical steps, as described in Bruning's history [12, 13]:
    defect-sensitive the circuit was [12].
 
 Soft photographic emulsion masks gave way to **chrome on glass**, which survived cleaning and
-reuse [12]. Chipmakers first built their own aligners; Kulicke & Soffa offered the first
-commercial contact aligners in 1965, and Kasper Instruments (founded 1968) and Cobilt (bought
-by Computervision in 1972) took over the market [14, 15]. In Japan, Canon's first mask
+reuse [12]; the simulator's [mask model](../masks.md) is that chrome-on-glass idealization, a
+thin transmittance map. Chipmakers first built their own aligners; Kulicke & Soffa offered the
+first commercial contact aligners in 1965, and Kasper Instruments (founded 1968) and Cobilt
+(bought by Computervision in 1972) took over the market [14, 15]. In Japan, Canon's first mask
 aligner, the PPC-1 of 1970, was in fact a 1:1 projection printer (a g-line lens of NA 0.14
 rated for 2–3 µm). Its PLA-300 contact aligner followed in 1973 [12, 14].
-
-<figure markdown="span">
-  ![Three panels. Contact printing: a mask with chrome openings sits directly on the resist,
-  and the intensity profile under it is a sharp copy of the openings. Proximity printing: the
-  mask is held a gap g above the resist, and the intensity profile shows blurred edges with
-  diffraction ripples. Projection printing: a lens images the mask onto a smaller image field
-  on the wafer, and the intensity profile is a smooth, band-limited version of the
-  openings.](../assets/images/history/printing-modes-light.svg#only-light){ width="820" }
-  ![Three panels. Contact printing: a mask with chrome openings sits directly on the resist,
-  and the intensity profile under it is a sharp copy of the openings. Proximity printing: the
-  mask is held a gap g above the resist, and the intensity profile shows blurred edges with
-  diffraction ripples. Projection printing: a lens images the mask onto a smaller image field
-  on the wafer, and the intensity profile is a smooth, band-limited version of the
-  openings.](../assets/images/history/printing-modes-dark.svg#only-dark){ width="820" }
-  <figcaption markdown="span">Three ways to transfer a mask pattern. The profiles are a 1D scalar model in
-  arbitrary units, drawn at mask scale. Proximity: Fresnel propagation over the gap, averaged
-  over a ±20 % spread of λg as a broadband lamp would give. Projection: a partially coherent,
-  band-limited image. Script:
-  [make_history_schematics.py](../figures/history/make_history_schematics.py).</figcaption>
-</figure>
 
 **Contact printing** gives the sharpest copy of the three, although even in perfect contact
 light diffracts slightly just behind each opening [16]. The trouble is physical. Every contact
@@ -162,80 +169,37 @@ dominate proximity aligners with a reliable gap-setting mechanism and an underst
 Fresnel diffraction [14].
 
 <figure markdown="span">
-  ![Log-log chart of edge blur, the square root of wavelength times gap, against the
-  mask-to-resist gap from 1 to 1000 micrometres, for three wavelengths. The g-line curve
-  gives about 3 micrometres at a 20 micrometre gap. The 1 nm soft-X-ray curve gives about
-  0.12 micrometres at a 15 micrometre gap, marked as 100 nm features per Smith and
-  Schattenburg 1993. The 0.2 nm hard-X-ray curve gives about 0.14 micrometres at the
-  100 micrometre gap of highuvlith's LIGA
-  preset.](../assets/images/history/proximity-gap-light.svg#only-light){ width="820" }
-  ![Log-log chart of edge blur, the square root of wavelength times gap, against the
-  mask-to-resist gap from 1 to 1000 micrometres, for three wavelengths. The g-line curve
-  gives about 3 micrometres at a 20 micrometre gap. The 1 nm soft-X-ray curve gives about
-  0.12 micrometres at a 15 micrometre gap, marked as 100 nm features per Smith and
-  Schattenburg 1993. The 0.2 nm hard-X-ray curve gives about 0.14 micrometres at the
-  100 micrometre gap of highuvlith's LIGA
-  preset.](../assets/images/history/proximity-gap-dark.svg#only-dark){ width="820" }
-  <figcaption markdown="span">The proximity trade-off, R ≈ √(λg). Sub-micrometre shadow printing at a
-  workable gap needs a wavelength near 1 nm. That is the reasoning behind
-  [proximity X-ray lithography](parallel-paths.md#proximity-x-ray-lithography), and why LIGA can print through
-  hundreds of micrometres of resist. The lines are the formula, not data; the marked points
-  are one sourced X-ray example [17] and the simulator's LIGA preset.</figcaption>
+
+![Edge blur of proximity printing, the square root of wavelength times gap, against gap from 1 to 1000 micrometres for 436 nm light, 1 nm soft X-rays and 0.2 nm hard X-rays: about 3 micrometres for g-line at a 20 micrometre gap and sub-micrometre blur for X-rays at tens of micrometres.](../assets/images/history/proximity-gap-light.svg#gh-light-mode-only)
+![Edge blur of proximity printing, the square root of wavelength times gap, against gap from 1 to 1000 micrometres for 436 nm light, 1 nm soft X-rays and 0.2 nm hard X-rays: about 3 micrometres for g-line at a 20 micrometre gap and sub-micrometre blur for X-rays at tens of micrometres.](../assets/images/history/proximity-gap-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>The proximity trade-off, R ≈ √(λg).</strong> Sub-micrometre shadow printing at a workable gap needs a wavelength near 1 nm — the reasoning behind proximity X-ray lithography, and why LIGA can print through hundreds of micrometres of resist. The lines are the formula; the marked points are one sourced X-ray example and the simulator's LIGA preset. <em>Closed form; not the engine.</em></figcaption>
 </figure>
 
 Bruning's 1997 review states the consequence: to reach below 1 µm at reasonable gaps,
-shadow printing needs wavelengths near 1 nm, "the realm of x-ray lithography" [12]. Optical
-lithography went the other way instead and put a lens between mask and wafer, which is the
-subject of [the projection era](projection-era.md).
+shadow printing needs wavelengths near 1 nm, "the realm of x-ray lithography" [12]. The
+marked X-ray point is one sourced example [17]; where that road led is told under
+[proximity X-ray lithography](parallel-paths.md), and the deep-X-ray version that survived,
+LIGA, has its own example there. Optical lithography went the other way instead and put a
+lens between mask and wafer, which is the subject of [the projection era](projection-era.md).
 
-!!! info "The same physics inside highuvlith"
-    highuvlith's [LIGA deep-X-ray model](../processes/liga-deep-xray.md) (🔶 Simplified) is a
-    shadow printer. A synchrotron white beam passes a gold-on-titanium mask and a proximity gap
-    before entering hundreds of micrometres of PMMA. For every energy bin it propagates the
-    transmitted field across the gap and into the resist with scalar Fresnel
-    (angular-spectrum) diffraction; a Gaussian blur of width σ = ½√(λg), the
-    first-Fresnel-zone penumbra, remains as a faster option. Photoelectron transport and beam
-    divergence are not modeled. Optical contact and proximity aligners are not modeled as
-    such: the main pipeline is a projection imager.
+**What highuvlith models here: the simulator's LIGA module is a shadow printer at hard X-ray
+wavelengths; optical contact and proximity aligners are not modelled as such, because the main
+pipeline is a projection imager.** A synchrotron white beam passes a gold-on-titanium mask and
+a proximity gap before entering hundreds of micrometres of PMMA; for every energy bin the
+transmitted field is propagated across the gap and into the resist with scalar Fresnel
+(angular-spectrum) diffraction, and a Gaussian blur of width σ = ½√(λg), the
+first-Fresnel-zone penumbra, remains as a faster option. Photoelectron transport and beam
+divergence are not modelled.
 
-<figure markdown="span">
+<!-- huv-table: stack -->
 
-![Left: dose across an absorber edge at 8 keV, where Fresnel diffraction gives the textbook 25 percent value at the edge and ringing up to 1.37 on the open side, unlike the smooth legacy Gaussian blur. Right: dose profiles across the edge at five depths for the polychromatic beam, with the developed edge moving by about 300 nm over 500 micrometres.](../assets/images/sim/liga-fresnel-edge-light.png#gh-light-mode-only)
-![Left: dose across an absorber edge at 8 keV, where Fresnel diffraction gives the textbook 25 percent value at the edge and ringing up to 1.37 on the open side, unlike the smooth legacy Gaussian blur. Right: dose profiles across the edge at five depths for the polychromatic beam, with the developed edge moving by about 300 nm over 500 micrometres.](../assets/images/sim/liga-fresnel-edge-dark.png#gh-dark-mode-only)
-
-<figcaption>LIGA proximity diffraction. (a) Monochromatic 8 keV straight edge, 100 µm gap: the default Fresnel (angular-spectrum) model gives the knife-edge pattern — 0.25 at the geometric edge, a 1.37 maximum and ringing — while the legacy <code>gaussian</code> option smooths the step with σ = ½√(λg). Both curves are simulator output. (b) Polychromatic bending-magnet beam (no filter): absorbed dose across the edge at five depths and the developed edge at a 2.5 kJ/cm³ threshold. Model: LIGA proximity diffraction ✅/🔶 (thin-screen absorber; no photo-/secondary-electron transport).</figcaption>
-</figure>
-
-## Try it
-
-!!! example "Try it in highuvlith: shadow printing with hard X-rays"
-    The LIGA preset uses a bending magnet with a 6.23 keV critical energy, 500 µm of PMMA and
-    a 100 µm gap. The simulator reports the dose-weighted Fresnel scale √(λg): a few hundred
-    nanometres for its X-rays, against about 3 µm for g-line light across a 20 µm gap.
-    Unfiltered, the soft part of the beam overdoses the top of the resist; the LIGA example on
-    [parallel paths](parallel-paths.md#try-it) shows the cure.
-
-    <!-- verify-example -->
-    ```python
-    import highuvlith as huv
-
-    # Deep X-ray shadow printing: 500 um PMMA, 5 um lines on a 10 um pitch, 100 um gap.
-    result = huv.simulate_liga(critical_energy_kev=6.23, resist_thickness_um=500.0,
-                               grid_size=128, pixel_nm=78.125, nz=32)  # 10 um field
-    top, bottom = result.fresnel_scale_nm  # dose-weighted sqrt(lambda * g), nm
-    print(f"X-rays, 100 um gap: sqrt(lambda g) = {top:.0f} nm (top), {bottom:.0f} nm (bottom)")
-    print(f"g-line light, 20 um gap: sqrt(lambda g) = {(436.0 * 20e3) ** 0.5:.0f} nm")
-    print(f"top/bottom dose ratio {result.dose_ratio:.1f}, "
-          f"damage ceiling exceeded: {result.exceeds_damage_ceiling}")
-    ```
-
-    ??? success "Output"
-
-        ```text
-        X-rays, 100 um gap: sqrt(lambda g) = 227 nm (top), 331 nm (bottom)
-        g-line light, 20 um gap: sqrt(lambda g) = 2953 nm
-        top/bottom dose ratio 20.8, damage ceiling exceeded: True
-        ```
+| Issue | In highuvlith | Grade | Link |
+|---|---|---|---|
+| Shadow printing across a gap | scalar Fresnel (angular-spectrum) propagation of the white beam per energy bin; Gaussian ½√(λg) blur as an option | ✅ Implemented (🔶 thin-screen absorber) | [LIGA deep X-ray](../processes/liga-deep-xray.md) |
+| Depth dose in thick resist | spectral depth dose, top-to-bottom ratio, damage ceiling and exposure time | ✅ Implemented | [LIGA deep X-ray](../processes/liga-deep-xray.md) |
+| Optical contact and proximity aligners | not modelled: the main pipeline images a mask through a pupil | — | [pipeline](../pipeline.md) |
+| Photoresist chemistry | Dill exposure kinetics and a development rate law, depth-averaged or volumetric | 🔶 Simplified | [resist models](../processes/resist-models.md) |
 
 ## Key takeaways
 
@@ -247,6 +211,8 @@ subject of [the projection era](projection-era.md).
   Proximity printing saved the mask but blurred edges by about √(λg).
 - Below about 1 µm, shadow printing needs X-rays. Optical lithography took the projection
   route instead.
+
+**Where next:** ← [History](index.md) · [The projection era](projection-era.md) → · Related: [LIGA deep X-ray](../processes/liga-deep-xray.md) · [Capability matrix](../capability-matrix.md#deep-layer-and-non-projection-processes)
 
 ## References and further reading
 

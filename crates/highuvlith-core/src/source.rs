@@ -1259,7 +1259,9 @@ pub struct SpectralLine {
 }
 
 /// Sample one spectral line without normalization: (wavelength_nm, weight)
-/// pairs over ±2.5×FWHM around the line center.
+/// pairs over ±2.5×FWHM around the line center. `bandwidth_pm` is the FWHM
+/// for every shape: Lorentzian γ = FWHM/2, Gaussian σ = FWHM/(2√(2 ln 2)),
+/// sinc² first zero at FWHM/0.8859.
 fn sample_line_unnormalized(
     wavelength_nm: f64,
     bandwidth_pm: f64,
@@ -1284,7 +1286,10 @@ fn sample_line_unnormalized(
                 gamma * gamma / (dw * dw + gamma * gamma)
             }
             SpectralShape::Gaussian => {
-                let sigma = bw_nm / (2.0 * (2.0_f64.ln()).sqrt());
+                // FWHM = 2 sqrt(2 ln 2) sigma, so sigma = FWHM / 2.3548.
+                // (Before 2026-10-10 this read FWHM / (2 sqrt(ln 2)), which
+                // sampled every Gaussian line sqrt(2) wider than stated.)
+                let sigma = bw_nm / (2.0 * (2.0 * 2.0_f64.ln()).sqrt());
                 (-dw * dw / (2.0 * sigma * sigma)).exp()
             }
             SpectralShape::Tabulated {
@@ -2053,6 +2058,59 @@ mod tests {
         // Zero bandwidth degenerates to a single unit weight, no NaN.
         let w0 = evaluate_spectral_weights(13.5, 0.0, 3, &SpectralShape::SincSquared);
         assert!(w0.iter().all(|(_, w)| w.is_finite()));
+    }
+
+    /// FWHM of a sampled line profile, measured from the weights by linear
+    /// interpolation of the half-maximum crossings on either side of the peak.
+    fn measured_fwhm_pm(samples: &[(f64, f64)]) -> f64 {
+        let peak = samples
+            .iter()
+            .map(|(_, w)| *w)
+            .fold(f64::NEG_INFINITY, f64::max);
+        let half = peak / 2.0;
+        let cross = |pairs: &mut dyn Iterator<Item = (&(f64, f64), &(f64, f64))>| -> f64 {
+            for (a, b) in pairs {
+                if (a.1 - half) * (b.1 - half) <= 0.0 && a.1 != b.1 {
+                    let t = (half - a.1) / (b.1 - a.1);
+                    return a.0 + t * (b.0 - a.0);
+                }
+            }
+            panic!("no half-maximum crossing")
+        };
+        let i_peak = samples
+            .iter()
+            .position(|(_, w)| *w == peak)
+            .expect("peak sample");
+        let left = cross(&mut samples[..=i_peak].iter().zip(samples[1..=i_peak].iter()));
+        let right = cross(&mut samples[i_peak..].iter().zip(samples[i_peak + 1..].iter()));
+        (right - left) * 1e3
+    }
+
+    #[test]
+    fn test_gaussian_line_sampler_fwhm() {
+        // Regression for the 2026-10-10 fix: the Gaussian sampler used
+        // sigma = FWHM / (2 sqrt(ln 2)) and so sampled every Gaussian line
+        // sqrt(2) wider than stated (an ArF 0.2 pm line as 0.283 pm).
+        let fwhm_pm = 0.2;
+        let g = sample_line_unnormalized(193.368, fwhm_pm, 2001, &SpectralShape::Gaussian);
+        let measured = measured_fwhm_pm(&g);
+        assert_relative_eq!(measured, fwhm_pm, max_relative = 1e-2);
+        assert!(
+            (measured - fwhm_pm * std::f64::consts::SQRT_2).abs() > 0.05 * fwhm_pm,
+            "sampler still sqrt(2) too wide: {measured} pm"
+        );
+        // Exactly at +-FWHM/2 the Gaussian weight is 1/2 (5 samples: -2.5,
+        // -1.25, 0, 1.25, 2.5 FWHM; the 1.25 FWHM sample is 2^(-6.25)).
+        let w5 = sample_line_unnormalized(193.368, fwhm_pm, 5, &SpectralShape::Gaussian);
+        assert_relative_eq!(w5[2].1, 1.0, epsilon = 1e-15);
+        // (1e-8: the sample grid is built at 193 nm, where one ulp is 3e-14 nm.)
+        assert_relative_eq!(w5[3].1, 2f64.powf(-1.25 * 1.25 * 4.0), max_relative = 1e-8);
+        // The Lorentzian sampler was always exact and is unchanged.
+        let l = sample_line_unnormalized(157.63, 1.1, 2001, &SpectralShape::Lorentzian);
+        assert_relative_eq!(measured_fwhm_pm(&l), 1.1, max_relative = 1e-2);
+        let l5 = sample_line_unnormalized(157.63, 1.1, 5, &SpectralShape::Lorentzian);
+        // At 1.25 FWHM = 2.5 gamma: 1 / (1 + 2.5^2) = 4/29.
+        assert_relative_eq!(l5[3].1, 4.0 / 29.0, max_relative = 1e-8);
     }
 
     #[test]

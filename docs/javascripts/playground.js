@@ -1,17 +1,29 @@
-/* Playground calculators for docs/playground/index.md.
- *
- * Each <div class="huv-calc" data-huv-calc="rayleigh|shotnoise|aerial"> placeholder is
- * turned into a widget. The physics lives in huv-physics.js (window.HUVPhysics); this
- * file only builds the controls, tables and the canvas plot. Widgets re-mount on every
- * page change (Material's instant navigation) and redraw when the palette changes.
+/* playground.js (owner G0b; DESIGN §3.8, §5.6 R4, §7.10; contract + markup: docs-refactor/impl/G0b.md).
+ * <div class="huv-calc" data-huv-calc="rayleigh|shotnoise|aerial"> placeholders become widgets
+ * (data-huv-mounted="true"); physics = huv-physics.js. Site: window.HUVPlayground; node: api.install(win).
+ * Exports: install(win), mountAll(), WIDGETS, parseLink(search) -> {calc, params}, formatLink(calc, params),
+ *   fallbackFor(root) (the <figure> before a placeholder: hidden on mount as data-huv-fallback="hidden",
+ *   shown for print), ticks, niceStep, logTicks, SERIES (the --huv-series-1…8 fallbacks).
+ * Markup: fieldset.huv-calc__fieldset > legend.huv-calc__title · form.huv-calc__controls · ul.huv-tiles ·
+ *   p.huv-calc__message · ul.huv-legend · div.huv-plot > canvas + div.huv-tooltip · div.huv-calc__row >
+ *   div.huv-pupil > svg.huv-pupil__svg (the D5 live pupil) · div.huv-calc__tablewrap > table.huv-calc__table.
+ * Deep links ?calc=<widget>&preset=…&<param>=…: applied on mount, rewritten (non-default values) after input.
+ *   rayleigh: preset lambda na n k1 k2 · shotnoise: preset lambda dose shape size fabs target · aerial: preset
+ *   lambda n na sigma sigmain pitch cd z t coh (+ k1 read-only: pitch = 2·k1·λ/NA, duty cycle kept).
  */
-(function () {
+(function (root, factory) {
+  "use strict";
+  var api = factory();
+  if (typeof module === "object" && module.exports) module.exports = api;
+  else { root.HUVPlayground = api; api.install(root); }
+})(typeof window !== "undefined" ? window : this, function () {
   "use strict";
 
-  var P = window.HUVPhysics;
-  if (!P) return;
+  var P = null; // window.HUVPhysics (bound by install)
+  var W = null; // window
+  var D = null; // document
 
-  /* ---------------------------------------------------------------- formatting */
+  /* ---- formatting */
 
   var SUPERSCRIPT = { "-": "⁻", "0": "⁰", "1": "¹", "2": "²", "3": "³",
     "4": "⁴", "5": "⁵", "6": "⁶", "7": "⁷", "8": "⁸", "9": "⁹" };
@@ -43,12 +55,14 @@
     return (digits === undefined ? sig(v, 3) : fixed(v, digits)) + " nm";
   }
 
-  /* ---------------------------------------------------------------- DOM helpers */
+  function minus(text) { return String(text).replace("-", "−"); }
+
+  /* ---- DOM helpers */
 
   var uid = 0;
 
   function el(tag, props, children) {
-    var node = document.createElement(tag);
+    var node = D.createElement(tag);
     if (props) {
       Object.keys(props).forEach(function (key) {
         var value = props[key];
@@ -60,30 +74,32 @@
     }
     (children || []).forEach(function (child) {
       if (child === null || child === undefined) return;
-      node.appendChild(typeof child === "string" ? document.createTextNode(child) : child);
+      node.appendChild(typeof child === "string" ? D.createTextNode(child) : child);
     });
     return node;
   }
+
+  function list(nodes) { return Array.prototype.slice.call(nodes || []); }
 
   function decimals(step) {
     var s = String(step);
     return s.indexOf(".") < 0 ? 0 : s.length - s.indexOf(".") - 1;
   }
 
-  /* A labelled slider paired with a number box. Both edit the same value; typing an
-     out-of-range number marks the box invalid until it is fixed or left (then clamped). */
+  /* A slider paired with a number box (or a read-only <output> when opts.output); an out-of-range
+     number is marked invalid until fixed or left (then clamped). */
   function rangeField(opts) {
     var id = "huv-field-" + ++uid;
     var hintId = opts.hint ? id + "-hint" : null;
     var min = opts.min;
     var max = opts.max;
     var step = opts.step;
-    var label = el("label", { for: id, id: id + "-label", text: opts.label + (opts.unit ? " (" + opts.unit + ")" : "") });
+    var label = el("label", { for: opts.output ? id + "-range" : id, id: id + "-label", text: opts.label + (opts.unit ? " (" + opts.unit + ")" : "") });
     var range = el("input", {
       type: "range", id: id + "-range", min: min, max: max, step: step, value: opts.value,
       "aria-labelledby": id + "-label", "aria-describedby": hintId
     });
-    var number = el("input", {
+    var number = opts.output ? el("output", { for: id + "-range", className: "huv-field__output" }) : el("input", {
       type: "number", id: id, min: min, max: max, step: "any", value: opts.value,
       inputmode: "decimal", "aria-describedby": hintId
     });
@@ -98,13 +114,15 @@
     function show(v) {
       value = v;
       range.value = String(v);
-      number.value = String(Number(v.toFixed(Math.max(decimals(step), 0) + 2)));
+      var text = String(Number(v.toFixed(Math.max(decimals(step), 0) + 2)));
+      if (opts.output) number.textContent = text; else number.value = text;
       number.removeAttribute("aria-invalid");
     }
+    if (opts.output) show(value);
 
     range.addEventListener("input", function () {
       value = Number(range.value);
-      number.value = range.value;
+      if (opts.output) number.textContent = range.value; else number.value = range.value;
       number.removeAttribute("aria-invalid");
       opts.onInput();
     });
@@ -154,34 +172,35 @@
     return {
       node: el("div", { className: "huv-field" }, [el("label", { for: id, text: opts.label }), select]),
       get: function () { return select.value; },
-      set: function (v) { select.value = v; }
+      set: function (v) { if (opts.options.some(function (o) { return o[0] === v; })) select.value = v; }
     };
   }
 
   function checkField(opts) {
     var id = "huv-field-" + ++uid;
     var input = el("input", { type: "checkbox", id: id, checked: opts.value ? true : null });
+    input.checked = !!opts.value;
     input.addEventListener("change", opts.onChange);
     return {
       node: el("div", { className: "huv-check" }, [input, el("label", { for: id, text: opts.label })]),
-      get: function () { return input.checked; }
+      get: function () { return input.checked; },
+      set: function (v) { input.checked = !!v; }
     };
   }
 
-  /* Stat tiles: label, value, optional note. Returns setters keyed like `specs`. */
   function tiles(specs) {
-    var list = el("ul", { className: "huv-tiles" });
+    var node = el("ul", { className: "huv-tiles" });
     var setters = {};
     specs.forEach(function (spec) {
       var value = el("span", { className: "huv-tile__value", text: "—" });
       var note = el("span", { className: "huv-tile__note" });
-      list.appendChild(el("li", null, [el("span", { className: "huv-tile__label", text: spec[1] }), value, note]));
+      node.appendChild(el("li", null, [el("span", { className: "huv-tile__label", text: spec[1] }), value, note]));
       setters[spec[0]] = function (text, noteText) {
         value.textContent = text;
         note.textContent = noteText || "";
       };
     });
-    return { node: list, set: setters };
+    return { node: node, set: setters };
   }
 
   function message() {
@@ -221,23 +240,32 @@
     };
   }
 
-  /* The inputs live in a <form> for grouping only: it must never submit. */
   function controls(label, children) {
     var form = el("form", { className: "huv-calc__controls", "aria-label": label }, children);
     form.addEventListener("submit", function (event) { event.preventDefault(); });
     return form;
   }
 
-  /* A polite live region that speaks a one-line summary once the inputs settle, instead
-     of announcing every tile on every slider step. */
+  function card(root, title) {
+    var fieldset = el("fieldset", { className: "huv-calc__fieldset" }, [
+      el("legend", { className: "huv-calc__title", text: root.getAttribute("data-huv-title") || title })
+    ]);
+    root.appendChild(fieldset);
+    return fieldset;
+  }
+
+  function hint(text) { return el("p", { className: "huv-field__hint", text: text }); }
+  var HINT = "hover or focus the plot and use ← → to read values.";
+
+  /* Polite live region: one summary once the inputs settle, not every tile per step. */
   function announcer() {
     var node = el("p", { className: "huv-sr-only", "aria-live": "polite" });
     var timer = null;
     return {
       node: node,
       say: function (text) {
-        window.clearTimeout(timer);
-        timer = window.setTimeout(function () { node.textContent = text; }, 700);
+        W.clearTimeout(timer);
+        timer = W.setTimeout(function () { node.textContent = text; }, 700);
       }
     };
   }
@@ -247,11 +275,21 @@
     return function () {
       if (pending) return;
       pending = true;
-      window.requestAnimationFrame(function () {
+      W.requestAnimationFrame(function () {
         pending = false;
         fn();
       });
     };
+  }
+
+  /* items: [[color, label, "dashed"|"mask"|"dot"|null]] */
+  function legend(items) {
+    return el("ul", { className: "huv-legend", "aria-hidden": "true" }, items.map(function (item) {
+      return el("li", null, [
+        el("span", { className: "huv-legend__key" + (item[2] ? " huv-legend__key--" + item[2] : ""), style: item[0] ? "--huv-key-color: " + item[0] : null }),
+        el("span", { text: item[1] })
+      ]);
+    }));
   }
 
   function presetById(id) {
@@ -259,34 +297,437 @@
     return null;
   }
 
-  function presetOptions(list) {
-    return list.map(function (p) { return [p.id, p.label + (p.illustrative ? " *" : "")]; })
+  function presetOptions(presets) {
+    return presets.map(function (p) { return [p.id, p.label + (p.illustrative ? " *" : "")]; })
       .concat([["custom", "Custom values"]]);
   }
 
-  /* ---------------------------------------------------------------- (a) Rayleigh */
+  /* ---- colours */
 
-  function initRayleigh(root) {
+  /* DESIGN §4.1 tokens.SERIES slots 1–8 (never cycled); --huv-series-N on .huv-calc overrides. */
+  var SERIES = {
+    light: ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"],
+    dark: ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"]
+  };
+
+  function css(node, name, fallback) {
+    var v = W.getComputedStyle(node).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+
+  function seriesColor(node, slot) {
+    return css(node, "--huv-series-" + slot, SERIES[D.body.getAttribute("data-md-color-scheme") === "slate" ? "dark" : "light"][slot - 1]);
+  }
+
+  function palette(node) {
+    var family = css(D.body, "--md-text-font-family", "");
+    return {
+      muted: css(node, "--md-default-fg-color--light", "#777"),
+      faint: css(node, "--md-default-fg-color--lighter", "#aaa"),
+      grid: css(node, "--huv-grid", "rgba(0,0,0,.1)"),
+      axis: css(node, "--huv-axis", "rgba(0,0,0,.35)"),
+      surface: css(node, "--md-default-bg-color", "#fff"),
+      ink: css(node, "--md-default-fg-color", "#111"),
+      font: "11px " + (family ? family + ", " : "") + "system-ui, sans-serif"
+    };
+  }
+
+  /* ---- axes */
+
+  function niceStep(span, target) {
+    var raw = span / Math.max(1, target);
+    var mag = Math.pow(10, Math.floor(Math.log10(raw)));
+    var norm = raw / mag;
+    return (norm < 1.5 ? 1 : norm < 3.5 ? 2 : norm < 7.5 ? 5 : 10) * mag;
+  }
+
+  function ticks(lo, hi, target) {
+    var step = niceStep(hi - lo, target);
+    var out = [];
+    for (var v = Math.ceil(lo / step) * step; v <= hi + step * 1e-9; v += step) out.push(Math.abs(v) < step * 1e-9 ? 0 : v);
+    return { values: out, step: step };
+  }
+
+  function logTicks(lo, hi) {
+    var major = [];
+    var minor = [];
+    for (var e = Math.floor(Math.log10(lo)); e <= Math.ceil(Math.log10(hi)); e++) {
+      var d = Math.pow(10, e);
+      if (d >= lo * (1 - 1e-9) && d <= hi * (1 + 1e-9)) major.push(d);
+      [2, 5].forEach(function (k) { if (k * d >= lo && k * d <= hi) minor.push(k * d); });
+    }
+    return { major: major, minor: minor };
+  }
+
+  function tickLabel(v, step) {
+    if (step !== undefined) return minus(step < 0.1 ? v.toFixed(2) : step < 1 ? v.toFixed(1) : String(Math.round(v)));
+    return v >= 1 ? Math.round(v).toLocaleString("en-US") : minus(String(+v.toPrecision(2)));
+  }
+
+  function decade(v, up) { return Math.pow(10, (up ? Math.ceil : Math.floor)(Math.log10(v))); }
+
+  /* ---- the line plot */
+
+  /* One x axis, `panels` stacked with one y axis each (never two scales on one panel).
+       linePlot({ root, label, height, xLabel, logX, xExtra, panels: [{ yLabel, logY }], extras(ctx, s, pal, data),
+                  readout(i) -> { title, rows: [[color, dashed, value, name]] }, announce(i) -> text })
+       .set({ x, xmin, xmax, marks, panels: [{ min, max, series: [{ y, color, dashed, width, alpha }], points }] }) */
+  function linePlot(opts) {
+    var canvas = el("canvas", { role: "img", tabindex: "0", "aria-label": opts.label });
+    if (opts.height) canvas.style.height = opts.height;
+    var tooltip = el("div", { className: "huv-tooltip", hidden: true });
+    var live = el("p", { className: "huv-sr-only", "aria-live": "polite" });
+    var node = el("div", { className: "huv-plot" }, [canvas, tooltip, live]);
+    var data = null;
+    var hover = null;
+    var geom = null;
+    var xExtra = opts.xExtra || 0;
+
+    function scaleX(x) { return opts.logX ? Math.log10(x) : x; }
+
+    function line(ctx, x0, y0, x1, y1, color, alpha) {
+      ctx.strokeStyle = color;
+      ctx.globalAlpha = alpha || 1;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    }
+
+    function dot(ctx, x, y, color, surface, r) {
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, 2 * Math.PI);
+      ctx.fillStyle = color;
+      ctx.strokeStyle = surface;
+      ctx.lineWidth = 2;
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    function draw() {
+      if (!data) return;
+      var ratio = W.devicePixelRatio || 1;
+      var width = canvas.clientWidth || 480;
+      var height = canvas.clientHeight || 272;
+      if (canvas.width !== Math.round(width * ratio) || canvas.height !== Math.round(height * ratio)) {
+        canvas.width = Math.round(width * ratio);
+        canvas.height = Math.round(height * ratio);
+      }
+      var ctx = canvas.getContext("2d");
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      ctx.clearRect(0, 0, width, height);
+      var pal = palette(opts.root);
+      ctx.font = pal.font;
+      ctx.lineWidth = 1;
+
+      var yTicks = data.panels.map(function (panel, i) {
+        return opts.panels[i].logY ? logTicks(panel.min, panel.max) : ticks(panel.min, panel.max, 5);
+      });
+      var widest = 0;
+      yTicks.forEach(function (t, i) {
+        var log = !!opts.panels[i].logY;
+        (log ? t.major : t.values).forEach(function (v) { widest = Math.max(widest, ctx.measureText(tickLabel(v, log ? undefined : t.step)).width); });
+      });
+      var pad = { left: Math.max(50, Math.ceil(widest) + 24), right: 14, top: 12, bottom: 36 + xExtra };
+      var n = data.panels.length;
+      var gap = 26;
+      var plotW = Math.max(10, width - pad.left - pad.right);
+      var panelH = Math.max(10, (height - pad.top - pad.bottom - gap * (n - 1)) / n);
+      var x0 = scaleX(data.xmin);
+      var x1 = scaleX(data.xmax);
+      var sx = function (x) { return pad.left + ((scaleX(x) - x0) / (x1 - x0)) * plotW; };
+      var tops = [];
+      var sy = data.panels.map(function (panel, i) {
+        var top = pad.top + i * (panelH + gap);
+        tops.push(top);
+        var log = !!opts.panels[i].logY;
+        var lo = log ? Math.log10(panel.min) : panel.min;
+        var hi = log ? Math.log10(panel.max) : panel.max;
+        return function (y) { return top + panelH - (((log ? Math.log10(y) : y) - lo) / (hi - lo)) * panelH; };
+      });
+      var bottom = tops[n - 1] + panelH;
+      geom = { sx: sx, sy: sy, top: tops, bottom: tops.map(function (t) { return t + panelH; }), left: pad.left, right: pad.left + plotW, plotW: plotW, width: width, pad: pad };
+
+      data.panels.forEach(function (panel, i) {
+        var log = !!opts.panels[i].logY;
+        var t = yTicks[i];
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        (log ? t.minor : []).forEach(function (v) { var y = Math.round(sy[i](v)) + 0.5; line(ctx, pad.left, y, pad.left + plotW, y, pal.grid, 0.5); });
+        (log ? t.major : t.values).forEach(function (v) {
+          var y = Math.round(sy[i](v)) + 0.5;
+          line(ctx, pad.left, y, pad.left + plotW, y, !log && v === 0 ? pal.axis : pal.grid);
+          ctx.fillStyle = pal.muted;
+          ctx.fillText(tickLabel(v, log ? undefined : t.step), pad.left - 6, y);
+        });
+        var base = Math.round(tops[i] + panelH) + 0.5;
+        line(ctx, pad.left, base, pad.left + plotW, base, pal.axis);
+        if (opts.panels[i].yLabel) {
+          ctx.save();
+          ctx.translate(11, tops[i] + panelH / 2);
+          ctx.rotate(-Math.PI / 2);
+          ctx.textAlign = "center";
+          ctx.fillStyle = pal.muted;
+          ctx.fillText(opts.panels[i].yLabel, 0, 0);
+          ctx.restore();
+        }
+      });
+
+      var xt = opts.logX ? logTicks(data.xmin, data.xmax) : ticks(data.xmin, data.xmax, Math.max(3, Math.floor(plotW / 90)));
+      var xs = opts.logX ? xt.major.concat(xt.major.length < 3 ? xt.minor : []) : xt.values;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      xs.forEach(function (v) {
+        if (v < data.xmin || v > data.xmax) return;
+        var x = sx(v);
+        if (opts.logX) line(ctx, Math.round(x) + 0.5, tops[0], Math.round(x) + 0.5, bottom, pal.grid);
+        ctx.fillStyle = pal.muted;
+        ctx.fillText(tickLabel(v, opts.logX ? undefined : xt.step), x, bottom + 5 + xExtra);
+      });
+      ctx.textAlign = "right";
+      ctx.fillText(opts.xLabel, pad.left + plotW, bottom + 19 + xExtra);
+
+      if (opts.extras) opts.extras(ctx, geom, pal, data);
+
+      (data.marks || []).forEach(function (x) {
+        if (x < data.xmin || x > data.xmax) return;
+        ctx.save();
+        ctx.setLineDash([3, 3]);
+        line(ctx, Math.round(sx(x)) + 0.5, tops[0], Math.round(sx(x)) + 0.5, bottom, pal.axis);
+        ctx.restore();
+      });
+
+      // Series: gaps where a value is not finite or not drawable on a log axis.
+      data.panels.forEach(function (panel, i) {
+        var log = !!opts.panels[i].logY;
+        panel.series.forEach(function (series) {
+          ctx.save();
+          ctx.strokeStyle = series.color;
+          ctx.lineWidth = series.width || 2;
+          ctx.globalAlpha = series.alpha === undefined ? 1 : series.alpha;
+          ctx.lineJoin = ctx.lineCap = "round";
+          if (series.dashed) ctx.setLineDash([7, 5]);
+          ctx.beginPath();
+          var pen = false;
+          for (var k = 0; k < data.x.length; k++) {
+            var y = series.y[k];
+            if (!isFinite(y) || (log && y <= 0)) { pen = false; continue; }
+            ctx[pen ? "lineTo" : "moveTo"](sx(data.x[k]), sy[i](y));
+            pen = true;
+          }
+          ctx.stroke();
+          ctx.restore();
+        });
+        (panel.points || []).forEach(function (pt) {
+          if (isFinite(pt.y) && (!log || pt.y > 0)) dot(ctx, sx(pt.x), sy[i](pt.y), pt.color, pal.surface, pt.ring ? 6 : 4);
+        });
+      });
+
+      if (hover !== null && hover < data.x.length) {
+        var hx = Math.round(sx(data.x[hover])) + 0.5;
+        line(ctx, hx, tops[0], hx, bottom, pal.axis);
+        data.panels.forEach(function (panel, i) {
+          panel.series.forEach(function (series) {
+            var y = series.y[hover];
+            if (isFinite(y) && (!opts.panels[i].logY || y > 0)) dot(ctx, hx, sy[i](y), series.color, pal.surface, 4);
+          });
+        });
+      }
+    }
+
+    function showTooltip(index, announce) {
+      if (!data || !geom) return;
+      hover = Math.max(0, Math.min(data.x.length - 1, index));
+      draw();
+      var out = opts.readout(hover);
+      tooltip.textContent = "";
+      tooltip.appendChild(el("div", { className: "huv-tooltip__x", text: out.title }));
+      out.rows.forEach(function (row) {
+        tooltip.appendChild(el("div", { className: "huv-tooltip__row" }, [
+          el("span", { className: "huv-legend__key" + (row[1] ? " huv-legend__key--dashed" : ""), style: "--huv-key-color: " + row[0] }),
+          el("strong", { text: row[2] }),
+          el("span", { text: row[3] })
+        ]));
+      });
+      tooltip.hidden = false;
+      var left = geom.sx(data.x[hover]) + 12;
+      var tipWidth = tooltip.offsetWidth || 150;
+      if (left + tipWidth > geom.width) left = geom.sx(data.x[hover]) - tipWidth - 12;
+      tooltip.style.left = Math.max(0, left) + "px";
+      tooltip.style.top = geom.pad.top + "px";
+      if (announce) live.textContent = opts.announce ? opts.announce(hover) : out.title + ": " + out.rows.map(function (r) { return r[3] + " " + r[2]; }).join(", ");
+    }
+
+    function hideTooltip() {
+      hover = null;
+      tooltip.hidden = true;
+      draw();
+    }
+
+    function indexFromEvent(event) {
+      if (!data || !geom) return null;
+      var frac = (event.clientX - canvas.getBoundingClientRect().left - geom.left) / geom.plotW;
+      if (frac < -0.02 || frac > 1.02) return null;
+      var target = scaleX(data.xmin) + frac * (scaleX(data.xmax) - scaleX(data.xmin));
+      var best = 0;
+      for (var i = 1; i < data.x.length; i++) if (Math.abs(scaleX(data.x[i]) - target) < Math.abs(scaleX(data.x[best]) - target)) best = i;
+      return best;
+    }
+
+    canvas.addEventListener("pointermove", function (event) {
+      var i = indexFromEvent(event);
+      if (i === null) hideTooltip(); else showTooltip(i, false);
+    });
+    canvas.addEventListener("pointerleave", hideTooltip);
+    canvas.addEventListener("focus", function () { if (data) showTooltip(hover === null ? Math.floor(data.x.length / 2) : hover, true); });
+    canvas.addEventListener("blur", hideTooltip);
+    canvas.addEventListener("keydown", function (event) {
+      if (!data) return;
+      var n = data.x.length;
+      var stepSize = event.shiftKey ? Math.max(1, Math.round(n / 20)) : Math.max(1, Math.round(n / 100));
+      var current = hover === null ? Math.floor(n / 2) : hover;
+      if (event.key === "ArrowLeft") current -= stepSize;
+      else if (event.key === "ArrowRight") current += stepSize;
+      else if (event.key === "Home") current = 0;
+      else if (event.key === "End") current = n - 1;
+      else if (event.key === "Escape") { hideTooltip(); return; }
+      else return;
+      event.preventDefault();
+      showTooltip(current, true);
+    });
+
+    return {
+      node: node,
+      canvas: canvas,
+      set: function (d) { data = d; draw(); },
+      redraw: draw,
+      label: function (text) { canvas.setAttribute("aria-label", text); }
+    };
+  }
+
+  function watch(plots, update) {
+    var resize = typeof W.ResizeObserver === "function" ? new W.ResizeObserver(scheduler(update)) : null;
+    plots.forEach(function (p) { if (resize) resize.observe(p.node); });
+    var observer = new W.MutationObserver(scheduler(function () { plots.forEach(function (p) { p.redraw(); }); }));
+    observer.observe(D.body, { attributes: true, attributeFilter: ["data-md-color-scheme"] });
+    return function () {
+      if (resize) resize.disconnect();
+      observer.disconnect();
+    };
+  }
+
+  /* ---- deep links */
+
+  function parseLink(search) {
+    var params = {};
+    var calc = null;
+    String(search || "").replace(/^\?/, "").split("&").forEach(function (pair) {
+      if (!pair) return;
+      var i = pair.indexOf("=");
+      var k = decodeURIComponent(i < 0 ? pair : pair.slice(0, i));
+      var v = i < 0 ? "" : decodeURIComponent(pair.slice(i + 1).replace(/\+/g, " "));
+      if (k === "calc") calc = v; else params[k] = v;
+    });
+    return { calc: calc, params: params };
+  }
+
+  function formatLink(calc, params) {
+    var parts = ["calc=" + encodeURIComponent(calc)];
+    Object.keys(params || {}).forEach(function (k) {
+      if (params[k] !== undefined && params[k] !== null) parts.push(encodeURIComponent(k) + "=" + encodeURIComponent(String(params[k])));
+    });
+    return "?" + parts.join("&");
+  }
+
+  function same(a, b) {
+    return typeof a === "number" ? Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(b)) : a === b;
+  }
+
+  /* Applies ?calc=<name>&… on mount; returns the writer (values differing from the preset defaults).
+       spec = { preset: { field, apply(id) }, fields: [[name, field, defaultFn, parseFn]], after() } */
+  function linkFields(name, link, spec) {
+    var q = link && link.calc === name ? link.params : null;
+    if (q) {
+      if (spec.preset && q.preset !== undefined) spec.preset.apply(q.preset);
+      spec.fields.forEach(function (f) {
+        if (q[f[0]] === undefined) return;
+        var v = f[3] ? f[3](q[f[0]]) : parseFloat(q[f[0]]);
+        if (v !== undefined && !(typeof v === "number" && !isFinite(v))) f[1].set(v);
+      });
+      if (spec.after) spec.after();
+    }
+    return function () {
+      var params = {};
+      if (spec.preset) params.preset = spec.preset.field.get();
+      spec.fields.forEach(function (f) {
+        var v = f[1].get();
+        if (v === undefined) return;
+        var d = f[2] ? f[2]() : undefined;
+        if (d === undefined || !same(v, d)) params[f[0]] = typeof v === "number" ? String(+v.toFixed(6)) : typeof v === "boolean" ? (v ? "1" : "0") : String(v);
+      });
+      link.write(name, params);
+    };
+  }
+
+  function readLink() {
+    var link = parseLink(W.location ? W.location.search : "");
+    var timer = null;
+    link.write = function (name, params) {
+      W.clearTimeout(timer);
+      timer = W.setTimeout(function () {
+        try { W.history.replaceState(null, "", W.location.pathname + formatLink(name, params) + (W.location.hash || "")); } catch (e) { /* rate-limited */ }
+      }, 250);
+    };
+    return link;
+  }
+
+  function flag(v) { return v === "1" || v === "true"; }
+
+  function updater(fn) {
+    var dirty = false;
+    var out = { write: null };
+    out.schedule = scheduler(function () { fn(); if (dirty) { dirty = false; out.write(); } });
+    out.touch = function () { dirty = true; out.schedule(); };
+    return out;
+  }
+
+  function presetDefault(preset, pick) {
+    return function () { var p = presetById(preset.get()); return p ? pick(p) : undefined; };
+  }
+
+  /* ---- (a) Rayleigh */
+
+  var NA_GRID = (function () {
+    var out = [];
+    for (var na = 0.05; na <= 1.7 + 1e-9; na += 0.0125) out.push(+na.toFixed(4));
+    return out;
+  })();
+
+  function initRayleigh(root, link) {
+    var box = card(root, "Resolution and depth of focus");
     var update;
-    var schedule = scheduler(function () { update(); });
+    var run = updater(function () { update(); });
+    var touch = run.touch;
+    function usePreset(id) {
+      var p = presetById(id);
+      preset.set(id);
+      if (p) {
+        lambda.set(p.wavelength);
+        na.set(p.na);
+        index.set(p.n);
+      }
+    }
     var preset = selectField({
       label: "Wavelength preset (* = illustrative NA)",
       options: presetOptions(P.PRESETS),
       value: "arf",
-      onChange: function (id) {
-        var p = presetById(id);
-        if (p) {
-          lambda.set(p.wavelength);
-          na.set(p.na);
-          index.set(p.n);
-        }
-        schedule();
-      }
+      onChange: function (id) { usePreset(id); touch(); }
     });
     function edited() {
       var p = presetById(preset.get());
       if (p && (p.wavelength !== lambda.get() || p.na !== na.get() || p.n !== index.get())) preset.set("custom");
-      schedule();
+      touch();
     }
     var lambda = rangeField({ label: "Wavelength λ", unit: "nm", min: 1, max: 500, step: 0.1, value: 193, onInput: edited });
     var na = rangeField({ label: "Numerical aperture NA", min: 0.05, max: 1.7, step: 0.01, value: 0.93, onInput: edited });
@@ -295,11 +736,11 @@
       hint: "1 for air or vacuum; 1.437 for water at 193 nm"
     });
     var k1 = rangeField({
-      label: "Process factor k₁", min: 0.2, max: 1, step: 0.01, value: 0.3, onInput: schedule,
+      label: "Process factor k₁", min: 0.2, max: 1, step: 0.01, value: 0.3, onInput: touch,
       hint: "0.25 is the single-exposure floor for dense lines"
     });
     var k2 = rangeField({
-      label: "DOF factor k₂", min: 0.2, max: 1.5, step: 0.05, value: 1, onInput: schedule,
+      label: "DOF factor k₂", min: 0.2, max: 1.5, step: 0.05, value: 1, onInput: touch,
       hint: "1 reproduces Rayleigh's quarter-wave criterion"
     });
     var out = tiles([
@@ -309,18 +750,48 @@
       ["dofe", "Depth of focus, exact"]
     ]);
     var note = message();
+    var c1 = seriesColor(root, 1);
+    var c2 = seriesColor(root, 2);
+    var key = legend([
+      [c1, "R = k₁λ/NA at your λ", null],
+      [c2, "DOF exact (ends at NA = n)", null],
+      [c2, "DOF paraxial k₂λ/NA²", "dashed"],
+      [null, "dots: every preset at its own λ and NA", "dot"]
+    ]);
+    var plot = linePlot({
+      root: root, label: "Resolution and depth of focus against numerical aperture", xLabel: "numerical aperture NA",
+      panels: [{ yLabel: "nm (log scale)", logY: true }],
+      readout: function (i) {
+        var x = NA_GRID[i];
+        var r = P.rayleigh({ wavelength: lambda.get(), na: x, n: index.get(), k1: k1.get(), k2: k2.get() });
+        var rows = [[c1, false, nm(r.halfPitch), "half-pitch R"], [c2, true, nm(r.dofParaxial), "DOF paraxial"]];
+        if (isFinite(r.dofExact)) rows.push([c2, false, nm(r.dofExact), "DOF exact"]);
+        P.PRESETS.forEach(function (p) {
+          if (Math.abs(p.na - x) <= 0.0063) rows.push([c1, false, nm(P.rayleigh({ wavelength: p.wavelength, na: p.na, n: p.n, k1: k1.get(), k2: k2.get() }).halfPitch), p.label.split(",")[0] + " preset, R"]);
+        });
+        return { title: "NA = " + fixed(x, 2) + " at λ = " + nm(lambda.get()), rows: rows };
+      }
+    });
     var tbl = table("Rayleigh resolution and depth of focus for every preset", [
       "Preset", "λ (nm)", "NA", "R (nm)", "Pitch (nm)", "DOF paraxial (nm)", "DOF exact (nm)"
     ]);
-    var tableNote = el("p", { className: "huv-field__hint" });
+    var tableNote = hint("");
 
     var speak = announcer();
-    root.appendChild(controls("Resolution inputs", [preset.node, lambda.node, na.node, index.node, k1.node, k2.node]));
-    root.appendChild(out.node);
-    root.appendChild(speak.node);
-    root.appendChild(note.node);
-    root.appendChild(tbl.node);
-    root.appendChild(tableNote);
+    [controls("Resolution inputs", [preset.node, lambda.node, na.node, index.node, k1.node, k2.node]), out.node, speak.node, note.node, key, plot.node,
+      hint("H" + HINT.slice(1)), tbl.node, tableNote].forEach(function (n) { box.appendChild(n); });
+
+    run.write = linkFields("rayleigh", link, {
+      preset: { field: preset, apply: usePreset },
+      fields: [
+        ["lambda", lambda, presetDefault(preset, function (p) { return p.wavelength; })],
+        ["na", na, presetDefault(preset, function (p) { return p.na; })],
+        ["n", index, presetDefault(preset, function (p) { return p.n; })],
+        ["k1", k1, function () { return 0.3; }],
+        ["k2", k2, function () { return 1; }]
+      ],
+      after: function () { var p = presetById(preset.get()); if (p && (p.wavelength !== lambda.get() || p.na !== na.get() || p.n !== index.get())) preset.set("custom"); }
+    });
 
     update = function () {
       var r = P.rayleigh({ wavelength: lambda.get(), na: na.get(), n: index.get(), k1: k1.get(), k2: k2.get() });
@@ -339,23 +810,53 @@
         note.show(null);
       }
 
-      tbl.rows(P.PRESETS.map(function (p) {
+      var rows = P.PRESETS.map(function (p) {
         var q = P.rayleigh({ wavelength: p.wavelength, na: p.na, n: p.n, k1: k1.get(), k2: k2.get() });
         return {
           current: p.id === preset.get(),
           cells: [p.label + (p.illustrative ? " *" : ""), sig(p.wavelength, 3), fixed(p.na, 2),
-            sig(q.halfPitch, 3), sig(q.pitch, 3), sig(q.dofParaxial, 3), sig(q.dofExact, 3)]
+            sig(q.halfPitch, 3), sig(q.pitch, 3), sig(q.dofParaxial, 3), sig(q.dofExact, 3)],
+          r: q
         };
-      }));
+      });
+      tbl.rows(rows);
       var caption = "Every preset at k₁ = " + fixed(k1.get(), 2) + " and k₂ = " + fixed(k2.get(), 2) +
         ", each with its own NA and medium index. * Illustrative NA, not a specific tool.";
       tbl.caption(caption);
       tableNote.textContent = caption;
+
+      // Curves at the current settings; dots for every preset at its own λ.
+      var rCurve = [], dofP = [], dofE = [], lo = Infinity, hi = 0;
+      NA_GRID.forEach(function (x) {
+        var q = P.rayleigh({ wavelength: lambda.get(), na: x, n: index.get(), k1: k1.get(), k2: k2.get() });
+        rCurve.push(q.halfPitch);
+        dofP.push(q.dofParaxial);
+        dofE.push(q.dofExact);
+        lo = Math.min(lo, q.halfPitch);
+        hi = Math.max(hi, q.dofParaxial);
+      });
+      var points = [{ x: na.get(), y: r.halfPitch, color: c1, ring: true }, { x: na.get(), y: r.dofExact, color: c2, ring: true }];
+      P.PRESETS.forEach(function (p, i) {
+        var q = rows[i].r;
+        var dof = isFinite(q.dofExact) ? q.dofExact : q.dofParaxial;
+        points.push({ x: p.na, y: q.halfPitch, color: c1, ring: p.id === preset.get() }, { x: p.na, y: dof, color: c2, ring: p.id === preset.get() });
+        lo = Math.min(lo, q.halfPitch);
+        hi = Math.max(hi, dof);
+      });
+      plot.set({
+        x: NA_GRID, xmin: 0.05, xmax: 1.7, marks: [na.get()],
+        panels: [{ min: decade(lo), max: decade(hi, true), points: points,
+          series: [{ y: dofP, color: c2, dashed: true, width: 1.5 }, { y: dofE, color: c2 }, { y: rCurve, color: c1 }] }]
+      });
+      plot.label("Half-pitch and depth of focus against NA at " + nm(lambda.get()) + ", k₁ " + fixed(k1.get(), 2) + ", k₂ " + fixed(k2.get(), 2) +
+        ": at NA " + fixed(na.get(), 2) + " R is " + nm(r.halfPitch) + " and the exact depth of focus " + (isFinite(r.dofExact) ? nm(r.dofExact) : "undefined") +
+        "; dots mark the nine presets at their own wavelengths.");
     };
     update();
+    return watch([plot], update);
   }
 
-  /* ---------------------------------------------------------------- (b) shot noise */
+  /* ---- (b) shot noise */
 
   var WAVELENGTHS = [
     { id: "g", label: "436 nm, g-line", wavelength: 436 },
@@ -367,45 +868,54 @@
     { id: "beuv", label: "6.7 nm, beyond-EUV", wavelength: 6.7 }
   ];
 
+  var SIZE_GRID = (function () {
+    var out = [];
+    for (var i = 0; i <= 60; i++) out.push(+Math.pow(10, Math.log10(2) + (i / 60) * Math.log10(100)).toPrecision(5));
+    return out;
+  })();
+
   function wavelengthById(id) {
     for (var i = 0; i < WAVELENGTHS.length; i++) if (WAVELENGTHS[i].id === id) return WAVELENGTHS[i];
     return null;
   }
 
-  function initShotNoise(root) {
+  function initShotNoise(root, link) {
+    var box = card(root, "Photon shot noise");
     var update;
-    var schedule = scheduler(function () { update(); });
+    var run = updater(function () { update(); });
+    var touch = run.touch;
+    function usePreset(id) {
+      var p = wavelengthById(id);
+      preset.set(id);
+      if (p) lambda.set(p.wavelength);
+    }
     var preset = selectField({
       label: "Wavelength preset",
       options: WAVELENGTHS.map(function (p) { return [p.id, p.label]; }).concat([["custom", "Custom wavelength"]]),
       value: "euv",
-      onChange: function (id) {
-        var p = wavelengthById(id);
-        if (p) lambda.set(p.wavelength);
-        schedule();
-      }
+      onChange: function (id) { usePreset(id); touch(); }
     });
+    function edited() {
+      var p = wavelengthById(preset.get());
+      if (p && p.wavelength !== lambda.get()) preset.set("custom");
+    }
     var lambda = rangeField({
       label: "Wavelength λ", unit: "nm", min: 1, max: 500, step: 0.1, value: 13.5,
-      onInput: function () {
-        var p = wavelengthById(preset.get());
-        if (p && p.wavelength !== lambda.get()) preset.set("custom");
-        schedule();
-      }
+      onInput: function () { edited(); touch(); }
     });
-    var dose = rangeField({ label: "Dose", unit: "mJ/cm²", min: 1, max: 200, step: 1, value: 30, onInput: schedule });
+    var dose = rangeField({ label: "Dose", unit: "mJ/cm²", min: 1, max: 200, step: 1, value: 30, onInput: touch });
     var shape = selectField({
       label: "Feature shape",
       options: [["square", "Square pixel (size = side)"], ["circle", "Round contact (size = diameter)"]],
       value: "square",
-      onChange: schedule
+      onChange: touch
     });
-    var size = rangeField({ label: "Feature size", unit: "nm", min: 2, max: 200, step: 1, value: 20, onInput: schedule });
+    var size = rangeField({ label: "Feature size", unit: "nm", min: 2, max: 200, step: 1, value: 20, onInput: touch });
     var absorbed = rangeField({
-      label: "Fraction absorbed in the resist", min: 0.01, max: 1, step: 0.01, value: 1, onInput: schedule,
+      label: "Fraction absorbed in the resist", min: 0.01, max: 1, step: 0.01, value: 1, onInput: touch,
       hint: "1 counts every incident photon"
     });
-    var target = rangeField({ label: "Target 1σ fluctuation", unit: "%", min: 0.2, max: 10, step: 0.1, value: 2, onInput: schedule });
+    var target = rangeField({ label: "Target 1σ fluctuation", unit: "%", min: 0.2, max: 10, step: 0.1, value: 2, onInput: touch });
     var out = tiles([
       ["energy", "Photon energy"],
       ["density", "Photons per nm²"],
@@ -413,17 +923,47 @@
       ["sigma", "1σ fluctuation 1/√N"],
       ["dose", "Dose for the target"]
     ]);
+    var key = legend(WAVELENGTHS.map(function (p, i) { return [seriesColor(root, i + 1), p.label, null]; }).concat([[seriesColor(root, 8), "custom λ", null]]));
+    function curves() {
+      var set = WAVELENGTHS.map(function (w, i) { return { id: w.id, label: w.label, wavelength: w.wavelength, slot: i + 1 }; });
+      if (!wavelengthById(preset.get())) set.push({ id: "custom", label: "custom " + nm(lambda.get()), wavelength: lambda.get(), slot: 8 });
+      return set;
+    }
+    var plot = linePlot({
+      root: root, label: "Photons per feature and their fluctuation against feature size", xLabel: "feature size (nm, log scale)", logX: true, height: "24rem",
+      panels: [{ yLabel: "incident photons × f_abs, Poisson only", logY: true }, { yLabel: "1σ = 1/√N (%)", logY: true }],
+      readout: function (i) {
+        var area = P.featureArea(shape.get(), SIZE_GRID[i]);
+        return {
+          title: "feature " + nm(SIZE_GRID[i], 0) + " (" + sig(area, 3) + " nm²) at " + sig(dose.get(), 3) + " mJ/cm²",
+          rows: curves().map(function (c) {
+            var q = P.shotNoise({ wavelength: c.wavelength, dose: dose.get(), area: area, absorbed: absorbed.get() });
+            return [seriesColor(root, c.slot), false, sig(q.count, 3), c.label + " · 1σ " + percent(q.relSigma)];
+          })
+        };
+      }
+    });
     var tbl = table("Photon statistics at every preset wavelength", [
       "Wavelength", "E (eV)", "Photons/nm²", "Photons in feature", "1σ", "Dose for target (mJ/cm²)"
     ]);
-    var tableNote = el("p", { className: "huv-field__hint" });
+    var tableNote = hint("");
 
     var speak = announcer();
-    root.appendChild(controls("Shot-noise inputs", [preset.node, lambda.node, dose.node, shape.node, size.node, absorbed.node, target.node]));
-    root.appendChild(out.node);
-    root.appendChild(speak.node);
-    root.appendChild(tbl.node);
-    root.appendChild(tableNote);
+    [controls("Shot-noise inputs", [preset.node, lambda.node, dose.node, shape.node, size.node, absorbed.node, target.node]), out.node, speak.node, key, plot.node,
+      hint("Both panels share the size axis; " + HINT), tbl.node, tableNote].forEach(function (n) { box.appendChild(n); });
+
+    run.write = linkFields("shotnoise", link, {
+      preset: { field: preset, apply: usePreset },
+      fields: [
+        ["lambda", lambda, function () { var p = wavelengthById(preset.get()); return p ? p.wavelength : undefined; }],
+        ["dose", dose, function () { return 30; }],
+        ["shape", shape, function () { return "square"; }, function (v) { return v === "circle" ? "circle" : "square"; }],
+        ["size", size, function () { return 20; }],
+        ["fabs", absorbed, function () { return 1; }],
+        ["target", target, function () { return 2; }]
+      ],
+      after: edited
+    });
 
     update = function () {
       var area = P.featureArea(shape.get(), size.get());
@@ -449,82 +989,162 @@
         " nm² with f = " + fixed(absorbed.get(), 2) + "; last column: dose for a " + sig(target.get(), 2) + " % 1σ fluctuation.";
       tbl.caption(caption);
       tableNote.textContent = caption;
+
+      // One curve per wavelength; the selected one bold.
+      var selected = wavelengthById(preset.get()) ? preset.get() : "custom";
+      var counts = [], sigmas = [], nmin = Infinity, nmax = 0, ringColor = seriesColor(root, 8);
+      curves().forEach(function (c) {
+        var ys = [], ss = [];
+        SIZE_GRID.forEach(function (s) {
+          var q = P.shotNoise({ wavelength: c.wavelength, dose: dose.get(), area: P.featureArea(shape.get(), s), absorbed: absorbed.get() });
+          ys.push(q.count);
+          ss.push(100 * q.relSigma);
+          nmin = Math.min(nmin, q.count);
+          nmax = Math.max(nmax, q.count);
+        });
+        var on = c.id === selected;
+        var style = { color: seriesColor(root, c.slot), width: on ? 2.5 : 1.25, alpha: on ? 1 : 0.7 };
+        if (on) ringColor = style.color;
+        counts.push(Object.assign({ y: ys }, style));
+        sigmas.push(Object.assign({ y: ss }, style));
+      });
+      plot.set({
+        x: SIZE_GRID, xmin: 2, xmax: 200, marks: [size.get()],
+        panels: [
+          { min: decade(nmin), max: decade(nmax, true), series: counts, points: [{ x: size.get(), y: r.count, color: ringColor, ring: true }] },
+          { min: decade(100 / Math.sqrt(nmax)), max: decade(100 / Math.sqrt(nmin), true), series: sigmas, points: [{ x: size.get(), y: 100 * r.relSigma, color: ringColor, ring: true }] }
+        ]
+      });
+      plot.label("Photons in the feature (top) and their 1σ fluctuation (bottom) against feature size from 2 to 200 nm at " + sig(dose.get(), 3) +
+        " mJ/cm², one curve per preset wavelength; at " + nm(size.get(), 0) + " the selected " + nm(lambda.get()) + " receives " + sig(r.count, 3) +
+        " photons, a 1σ fluctuation of " + percent(r.relSigma) + ".");
     };
     update();
+    return watch([plot], update);
   }
 
-  /* ---------------------------------------------------------------- (c) aerial image */
-
-  function css(node, name, fallback) {
-    var v = window.getComputedStyle(node).getPropertyValue(name).trim();
-    return v || fallback;
-  }
-
-  function niceStep(span, target) {
-    var raw = span / Math.max(1, target);
-    var mag = Math.pow(10, Math.floor(Math.log10(raw)));
-    var norm = raw / mag;
-    return (norm < 1.5 ? 1 : norm < 3.5 ? 2 : norm < 7.5 ? 5 : 10) * mag;
-  }
-
-  function ticks(lo, hi, target) {
-    var step = niceStep(hi - lo, target);
-    var out = [];
-    for (var v = Math.ceil(lo / step) * step; v <= hi + step * 1e-9; v += step) out.push(Math.abs(v) < step * 1e-9 ? 0 : v);
-    return { values: out, step: step };
-  }
+  /* ---- (c) aerial image */
 
   function presetGeometry(p) {
-    // A pitch that images comfortably: half-pitch at k1 = 0.45, rounded.
+    // Half-pitch at k1 = 0.45, rounded: a pitch that images comfortably.
     var pitch = Math.max(10, Math.round((2 * 0.45 * p.wavelength) / p.na));
     return { pitch: pitch, cd: Math.round(pitch / 2) };
   }
 
-  function initAerial(root) {
+  /* The live pupil (D5): rim of radius 1 (NA/λ), dashed support circle at 1 + σ, a copy of the
+     source at every order m/(2k₁) tinted by |m|, the sampled diameter through each copy. */
+  function pupilView(root) {
+    function svg(tag, attrs, style) {
+      var n = D.createElementNS("http://www.w3.org/2000/svg", tag);
+      Object.keys(attrs).forEach(function (k) { n.setAttribute(k, String(attrs[k])); });
+      Object.keys(style || {}).forEach(function (k) { n.style[k] = style[k]; });
+      return picture.appendChild(n);
+    }
+    var picture = D.createElementNS("http://www.w3.org/2000/svg", "svg");
+    ["class", "huv-pupil__svg", "viewBox", "-1.95 -1.55 3.9 3.1", "width", "260", "height", "207", "role", "img", "style", "max-width:100%;height:auto;display:block"]
+      .forEach(function (v, i, a) { if (i % 2 === 0) picture.setAttribute(v, a[i + 1]); });
+    var key = legend([
+      [seriesColor(root, 1), "order 0", null], [seriesColor(root, 2), "orders ±1", null], [seriesColor(root, 3), "orders ±2", null],
+      [null, "NA/λ rim · dashed (1+σ)NA/λ support", "dashed"]
+    ]);
+    var node = el("div", { className: "huv-pupil" }, [picture, key]);
+
+    function update(geo, pitch) {
+      var pal = palette(root);
+      picture.textContent = "";
+      svg("circle", { cx: 0, cy: 0, r: geo.support, fill: "none", "stroke-width": 0.02, "stroke-dasharray": "0.08 0.05" }, { stroke: pal.faint });
+      svg("circle", { cx: 0, cy: 0, r: 1, fill: "none", "stroke-width": 0.03 }, { stroke: pal.ink });
+      svg("line", { x1: -1.95, y1: 0, x2: 1.95, y2: 0, "stroke-width": 0.012 }, { stroke: pal.faint });
+      var s = geo.source;
+      var passing = [];
+      geo.samples.forEach(function (sample) {
+        sample.orders.forEach(function (o) { if (o.inside && passing.indexOf(o.m) < 0) passing.push(o.m); });
+      });
+      for (var m = -6; m <= 6; m++) {
+        var cx = m * geo.spacing;
+        if (Math.abs(cx) > 1.95 + s.outer) continue;
+        var slot = Math.abs(m) + 1;
+        var color = slot <= 3 ? seriesColor(root, slot) : pal.faint;
+        var passes = passing.indexOf(m) >= 0;
+        var copies = s.kind === "dipole" ? [cx - s.centre, cx + s.centre] : [cx];
+        copies.forEach(function (c) {
+          if (s.radius <= 0) return;
+          svg("circle", { cx: c, cy: 0, r: s.radius, "stroke-width": 0.015 }, { fill: color, fillOpacity: passes ? "0.22" : "0.08", stroke: color, strokeOpacity: passes ? "0.9" : "0.45" });
+          svg("line", { x1: c - s.radius, y1: 0, x2: c + s.radius, y2: 0, "stroke-width": 0.05, "stroke-linecap": "round" }, { stroke: color, strokeOpacity: passes ? "1" : "0.45" });
+        });
+        svg("circle", { cx: cx, cy: 0, r: 0.065, "stroke-width": 0.03 }, { fill: passes ? color : "none", stroke: color });
+        if (Math.abs(m) <= 3 && Math.abs(cx) <= 1.7) svg("text", { x: cx, y: -(s.outer + 0.16), "text-anchor": "middle", "font-size": 0.17 }, { fill: pal.muted }).textContent = m === 0 ? "0" : (m > 0 ? "+" : "−") + Math.abs(m);
+      }
+      svg("text", { x: 0.74, y: 0.82, "font-size": 0.15 }, { fill: pal.muted }).textContent = "NA/λ";
+      var passText = passing.length ? passing.sort(function (a, b) { return a - b; }).map(function (m) { return m > 0 ? "+" + m : minus(String(m)); }).join(", ") : "none";
+      picture.setAttribute("aria-label", "Pupil diagram: the orders of the " + nm(pitch, 0) + " grating sit every " + fixed(geo.spacing, 2) +
+        " pupil units (NA/λ = 1); a copy of the " + (s.kind === "coherent" ? "on-axis point source" : s.kind === "dipole" ? "two-pole source" : "σ " + fixed(s.outer, 2) + " source") +
+        " is drawn at each order and only its horizontal diameter is sampled; orders reaching the pupil for some source point: " + passText +
+        "; support circle at " + fixed(geo.support, 2) + ".");
+    }
+    return { node: node, update: update };
+  }
+
+  function initAerial(root, link) {
+    var box = card(root, "Partially coherent aerial image (1-D toy)");
     var update;
-    var draw;
-    var schedule = scheduler(function () { update(); });
+    var run = updater(function () { update(); });
+    var touch = run.touch;
     var start = presetById("arf");
+    function usePreset(id) {
+      var p = presetById(id);
+      preset.set(id);
+      if (p) {
+        lambda.set(p.wavelength);
+        index.set(p.n);
+        na.setLimits(0.05, Math.round((p.n - 0.01) * 100) / 100, 0.01);
+        na.set(p.na);
+        var g = presetGeometry(p);
+        pitch.set(g.pitch);
+        cd.setLimits(1, g.pitch - 1, 0.5);
+        cd.set(g.cd);
+        focus.set(0);
+      }
+    }
     var preset = selectField({
       label: "Wavelength preset (* = illustrative NA)",
       options: presetOptions(P.PRESETS),
       value: "arf",
-      onChange: function (id) {
-        var p = presetById(id);
-        if (p) {
-          lambda.set(p.wavelength);
-          index.set(p.n);
-          na.setLimits(0.05, Math.round((p.n - 0.01) * 100) / 100, 0.01);
-          na.set(p.na);
-          var g = presetGeometry(p);
-          pitch.set(g.pitch);
-          cd.setLimits(1, g.pitch - 1, 0.5);
-          cd.set(g.cd);
-          focus.set(0);
-        }
-        schedule();
-      }
+      onChange: function (id) { usePreset(id); touch(); }
     });
     function edited() {
       var p = presetById(preset.get());
       if (p && (p.wavelength !== lambda.get() || p.na !== na.get() || p.n !== index.get())) preset.set("custom");
-      schedule();
     }
-    var lambda = rangeField({ label: "Wavelength λ", unit: "nm", min: 1, max: 500, step: 0.1, value: start.wavelength, onInput: edited });
+    function changed() { edited(); touch(); }
+    var lambda = rangeField({ label: "Wavelength λ", unit: "nm", min: 1, max: 500, step: 0.1, value: start.wavelength, onInput: changed });
     var index = rangeField({
       label: "Medium index n", min: 1, max: 1.9, step: 0.01, value: start.n,
       onInput: function () {
         na.setLimits(0.05, Math.round((index.get() - 0.01) * 100) / 100, 0.01);
-        edited();
+        changed();
       }
     });
-    var na = rangeField({ label: "Numerical aperture NA", min: 0.05, max: 0.99, step: 0.01, value: start.na, onInput: edited });
+    var na = rangeField({ label: "Numerical aperture NA", min: 0.05, max: 0.99, step: 0.01, value: start.na, onInput: changed });
+    /* k₁ = (p/2)·NA/λ: drives the pitch (duty cycle kept) and follows it. */
+    var k1Slider = rangeField({
+      label: "k₁ of the half-pitch (sets the pitch)", min: 0.2, max: 2, step: 0.01, value: 0.45, output: true,
+      onInput: function () { setK1(k1Slider.get()); touch(); },
+      hint: "0.5 coherent limit · 1/(2(1+σ)) partially coherent · 0.25 dipole floor"
+    });
+    function setK1(v) {
+      var p = Math.max(10, Math.round((2 * v * lambda.get()) / na.get()));
+      var duty = cd.get() / pitch.get();
+      pitch.set(p);
+      cd.setLimits(1, Math.max(2, p - 1), 0.5);
+      cd.set(Math.round(duty * p));
+    }
     var sigmaOut = rangeField({
-      label: "Source σ outer", min: 0, max: 1, step: 0.01, value: 0.7, onInput: schedule,
+      label: "Source σ outer", min: 0, max: 1, step: 0.01, value: 0.7, onInput: touch,
       hint: "0 = coherent; extent of the 1-D source in pupil units"
     });
     var sigmaIn = rangeField({
-      label: "Source σ inner", min: 0, max: 1, step: 0.01, value: 0, onInput: schedule,
+      label: "Source σ inner", min: 0, max: 1, step: 0.01, value: 0, onInput: touch,
       hint: "0 = conventional; above 0 = two poles (dipole)"
     });
     var g0 = presetGeometry(start);
@@ -532,16 +1152,16 @@
       label: "Pitch p", unit: "nm", min: 10, max: 2000, step: 1, value: g0.pitch,
       onInput: function () {
         cd.setLimits(1, Math.max(2, pitch.get() - 1), 0.5);
-        schedule();
+        touch();
       }
     });
-    var cd = rangeField({ label: "Line width (opaque)", unit: "nm", min: 1, max: g0.pitch - 1, step: 0.5, value: g0.cd, onInput: schedule });
-    var focus = rangeField({ label: "Defocus z", unit: "nm", min: -1000, max: 1000, step: 1, value: 0, onInput: schedule });
+    var cd = rangeField({ label: "Line width (opaque)", unit: "nm", min: 1, max: g0.pitch - 1, step: 0.5, value: g0.cd, onInput: touch });
+    var focus = rangeField({ label: "Defocus z", unit: "nm", min: -1000, max: 1000, step: 1, value: 0, onInput: touch });
     var threshold = rangeField({
-      label: "Resist threshold", min: 0.02, max: 1.2, step: 0.01, value: 0.3, onInput: schedule,
+      label: "Resist threshold", min: 0.02, max: 1.2, step: 0.01, value: 0.3, onInput: touch,
       hint: "intensity (clear field = 1) below which the line prints"
     });
-    var coherent = checkField({ label: "Compare with coherent illumination (σ = 0)", value: true, onChange: schedule });
+    var coherent = checkField({ label: "Compare with coherent illumination (σ = 0)", value: true, onChange: touch });
 
     var out = tiles([
       ["k1", "k₁ of the half-pitch"],
@@ -551,42 +1171,76 @@
       ["orders", "Orders through the pupil"]
     ]);
     var note = message();
-
-    var legendMain = el("span", { className: "huv-legend__key", style: "--huv-key-color: var(--huv-series-1)" });
-    var legendRef = el("span", { className: "huv-legend__key huv-legend__key--dashed", style: "--huv-key-color: var(--huv-series-2)" });
-    var legendRefItem = el("li", null, [legendRef, el("span", { text: "Coherent (σ = 0)" })]);
-    var legendMainText = el("span", { text: "Partially coherent" });
-    var legend = el("ul", { className: "huv-legend", "aria-hidden": "true" }, [
-      el("li", null, [legendMain, legendMainText]),
-      legendRefItem,
-      el("li", null, [el("span", { className: "huv-legend__key huv-legend__key--dashed", style: "--huv-key-color: var(--md-default-fg-color--light)" }), el("span", { text: "Resist threshold" })]),
-      el("li", null, [el("span", { className: "huv-legend__key huv-legend__key--mask" }), el("span", { text: "Opaque mask lines" })])
-    ]);
-    var canvas = el("canvas", { role: "img", tabindex: "0", "aria-label": "Aerial image intensity plot" });
-    var tooltip = el("div", { className: "huv-tooltip", hidden: true });
-    var live = el("p", { className: "huv-sr-only", "aria-live": "polite" });
-    var plot = el("div", { className: "huv-plot" }, [canvas, tooltip]);
+    var c1 = seriesColor(root, 1);
+    var c2 = seriesColor(root, 2);
+    var key = legend([[c1, "Partially coherent", null], [c2, "Coherent (σ = 0)", "dashed"], ["var(--md-default-fg-color--light)", "Resist threshold", "dashed"], [null, "Opaque mask lines", "mask"]]);
+    var legendMainText = key.children[0].lastElementChild;
+    var legendRefItem = key.children[1];
+    var state = null; // last computed curves, for the readout
+    var plot = linePlot({
+      root: root, label: "Aerial image intensity plot", xLabel: "x (nm)", xExtra: 14,
+      panels: [{ yLabel: "Intensity (clear field = 1)" }],
+      extras: function (ctx, s, pal, d) {
+        // Mask strip (opaque lines dark) under the plot, then the threshold.
+        var stripTop = s.bottom[0] + 6;
+        ctx.fillStyle = pal.grid;
+        ctx.fillRect(s.left, stripTop, s.plotW, 7);
+        ctx.fillStyle = pal.muted;
+        for (var k = Math.floor(d.xmin / d.pitch) - 1; k <= Math.ceil(d.xmax / d.pitch) + 1; k++) {
+          var a = Math.max(d.xmin, k * d.pitch - d.cd / 2);
+          var b = Math.min(d.xmax, k * d.pitch + d.cd / 2);
+          if (b > a) ctx.fillRect(s.sx(a), stripTop, s.sx(b) - s.sx(a), 7);
+        }
+        ctx.save();
+        ctx.setLineDash([4, 4]);
+        ctx.strokeStyle = pal.muted;
+        ctx.beginPath();
+        ctx.moveTo(s.left, Math.round(s.sy[0](d.threshold)) + 0.5);
+        ctx.lineTo(s.right, Math.round(s.sy[0](d.threshold)) + 0.5);
+        ctx.stroke();
+        ctx.restore();
+      },
+      readout: function (i) {
+        var rows = [[c1, false, fixed(state.main.intensity[i], 3), "partially coherent"]];
+        if (state.ref) rows.push([c2, true, fixed(state.ref.intensity[i], 3), "coherent"]);
+        return { title: "x = " + fixed(state.main.x[i], 1) + " nm", rows: rows };
+      },
+      announce: function (i) {
+        return "x " + fixed(state.main.x[i], 1) + " nm: intensity " + fixed(state.main.intensity[i], 3) +
+          (state.ref ? ", coherent " + fixed(state.ref.intensity[i], 3) : "");
+      }
+    });
+    var pupil = pupilView(root);
+    var row = el("div", { className: "huv-calc__row", style: "display:flex;flex-wrap:wrap;gap:1rem;align-items:flex-start" }, [pupil.node, plot.node]);
+    pupil.node.style.flex = "0 1 16rem";
+    plot.node.style.flex = "1 1 18rem";
+    plot.node.style.minWidth = "0";
     var dataTable = table("Aerial image samples over one period", ["x (nm)", "Partially coherent", "Coherent"]);
-    var details = el("details", null, [el("summary", { text: "Show the image as a table" }), dataTable.node]);
-    var keysHint = el("p", { className: "huv-field__hint", text: "Hover or focus the plot and use ← → to read values." });
 
     var speak = announcer();
-    root.appendChild(controls("Aerial image inputs", [
-      preset.node, lambda.node, index.node, na.node, sigmaOut.node, sigmaIn.node, pitch.node, cd.node,
-      focus.node, threshold.node, coherent.node
-    ]));
-    root.appendChild(out.node);
-    root.appendChild(speak.node);
-    root.appendChild(note.node);
-    root.appendChild(legend);
-    root.appendChild(plot);
-    root.appendChild(keysHint);
-    root.appendChild(live);
-    root.appendChild(details);
+    [controls("Aerial image inputs", [preset.node, lambda.node, index.node, na.node, k1Slider.node, sigmaOut.node, sigmaIn.node, pitch.node, cd.node, focus.node, threshold.node, coherent.node]),
+      out.node, speak.node, note.node, key, row,
+      hint("Left: the pupil with a copy of the source at every order. Right: the image; " + HINT),
+      el("details", null, [el("summary", { text: "Show the image as a table" }), dataTable.node])].forEach(function (n) { box.appendChild(n); });
 
-    var state = null; // last computed curves, for drawing and hover
-    var hoverIndex = null;
-    var geometry = null;
+    var k1Field = { get: function () { return undefined; }, set: setK1 };
+    run.write = linkFields("aerial", link, {
+      preset: { field: preset, apply: usePreset },
+      fields: [
+        ["lambda", lambda, presetDefault(preset, function (p) { return p.wavelength; })],
+        ["n", index, presetDefault(preset, function (p) { return p.n; })],
+        ["na", na, presetDefault(preset, function (p) { return p.na; })],
+        ["k1", k1Field],
+        ["pitch", pitch, presetDefault(preset, function (p) { return presetGeometry(p).pitch; })],
+        ["cd", cd, presetDefault(preset, function (p) { return presetGeometry(p).cd; })],
+        ["sigma", sigmaOut, function () { return 0.7; }],
+        ["sigmain", sigmaIn, function () { return 0; }],
+        ["z", focus, function () { return 0; }],
+        ["t", threshold, function () { return 0.3; }],
+        ["coh", coherent, function () { return true; }, flag]
+      ],
+      after: edited
+    });
 
     update = function () {
       if (sigmaIn.get() > sigmaOut.get()) sigmaIn.set(sigmaOut.get());
@@ -600,7 +1254,7 @@
       };
       var model = P.aerialModel(params);
       var metrics = P.imageMetrics(model, params);
-      var samples = Math.min(801, Math.max(241, Math.round(canvas.clientWidth || 480)));
+      var samples = Math.min(801, Math.max(241, Math.round(plot.canvas.clientWidth || 480)));
       var main = model.sample(samples, 2);
       var ref = null;
       var refModel = null;
@@ -614,6 +1268,7 @@
       state = { params: params, model: model, main: main, ref: ref, metrics: metrics };
 
       var k1 = (pitch.get() / 2) * na.get() / lambda.get();
+      k1Slider.set(k1);
       out.set.k1(fixed(k1, 3), "(p/2)·NA/λ");
       out.set.contrast(fixed(metrics.contrast, 3), refMetrics ? "coherent: " + fixed(refMetrics.contrast, 3) : "");
       out.set.nils(isFinite(metrics.nils) ? fixed(metrics.nils, 2) : "—", "w·|d ln I/dx| at x = w/2");
@@ -624,7 +1279,7 @@
       );
       out.set.orders(
         model.ordersOnAxis.length === 1 ? "0th only"
-          : model.ordersOnAxis.map(function (m) { return m > 0 ? "+" + m : String(m).replace("-", "−"); }).join(", "),
+          : model.ordersOnAxis.map(function (m) { return m > 0 ? "+" + m : minus(String(m)); }).join(", "),
         "for the on-axis source point; " + model.sourceCount + " source point" + (model.sourceCount === 1 ? "" : "s") + " in total");
       legendRefItem.hidden = !ref;
       legendMainText.textContent = sigmaOut.get() === 0 ? "Your settings (σ = 0, coherent)"
@@ -639,7 +1294,6 @@
         note.show(null);
       }
 
-      // Table view: one period, 21 samples.
       var rows = [];
       for (var i = 0; i <= 20; i++) {
         var x = -pitch.get() / 2 + (pitch.get() * i) / 20;
@@ -650,254 +1304,93 @@
       speak.say("Contrast " + fixed(metrics.contrast, 2) + ", NILS " +
         (isFinite(metrics.nils) ? fixed(metrics.nils, 1) : "undefined") + ", printed line " +
         (printed === 0 ? "does not print" : printed >= pitch.get() - 1e-9 ? "fills the pitch" : nm(printed, 1)) + ".");
-      canvas.setAttribute("aria-label",
+      plot.label(
         "Aerial image over two periods of " + nm(pitch.get(), 0) + ": intensity from " + fixed(metrics.imin, 2) +
         " to " + fixed(metrics.imax, 2) + " of the clear-field level, contrast " + fixed(metrics.contrast, 2) +
         (ref ? "; the coherent image reaches contrast " + fixed(refMetrics.contrast, 2) : "") + ".");
-      draw();
-    };
-
-    draw = function () {
-      if (!state) return;
-      var ratio = window.devicePixelRatio || 1;
-      var width = canvas.clientWidth || 480;
-      var height = canvas.clientHeight || 272;
-      if (canvas.width !== Math.round(width * ratio) || canvas.height !== Math.round(height * ratio)) {
-        canvas.width = Math.round(width * ratio);
-        canvas.height = Math.round(height * ratio);
-      }
-      var ctx = canvas.getContext("2d");
-      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-      ctx.clearRect(0, 0, width, height);
-
-      var muted = css(root, "--md-default-fg-color--light", "#777");
-      var gridColor = css(root, "--huv-grid", "rgba(0,0,0,.1)");
-      var axisColor = css(root, "--huv-axis", "rgba(0,0,0,.35)");
-      var surface = css(root, "--md-default-bg-color", "#fff");
-      var c1 = css(root, "--huv-series-1", "#2a78d6");
-      var c2 = css(root, "--huv-series-2", "#eb6834");
-      var font = "11px " + (css(document.body, "--md-text-font-family", "") ? css(document.body, "--md-text-font-family", "") + ", " : "") + "system-ui, sans-serif";
-
-      var pad = { left: 44, right: 14, top: 12, bottom: 50 };
-      var plotW = Math.max(10, width - pad.left - pad.right);
-      var plotH = Math.max(10, height - pad.top - pad.bottom);
-      var p = state.params.pitch;
-      var xmin = -p;
-      var xmax = p;
-      var ymaxData = Math.max(state.metrics.imax, state.ref ? Math.max.apply(null, state.ref.intensity) : 0, state.params.threshold);
-      var ymax = Math.max(1, ymaxData) * 1.08;
-      var sx = function (x) { return pad.left + ((x - xmin) / (xmax - xmin)) * plotW; };
-      var sy = function (y) { return pad.top + plotH - (y / ymax) * plotH; };
-      geometry = { sx: sx, pad: pad, plotW: plotW, xmin: xmin, xmax: xmax, width: width };
-
-      ctx.font = font;
-      ctx.lineWidth = 1;
-
-      // Horizontal gridlines and y tick labels.
-      var yt = ticks(0, ymax, 5);
-      ctx.fillStyle = muted;
-      ctx.textAlign = "right";
-      ctx.textBaseline = "middle";
-      yt.values.forEach(function (v) {
-        var y = Math.round(sy(v)) + 0.5;
-        ctx.strokeStyle = v === 0 ? axisColor : gridColor;
-        ctx.beginPath();
-        ctx.moveTo(pad.left, y);
-        ctx.lineTo(pad.left + plotW, y);
-        ctx.stroke();
-        ctx.fillText(yt.step < 0.1 ? v.toFixed(2) : v.toFixed(1), pad.left - 6, y);
+      var series = [{ y: main.intensity, color: c1 }];
+      if (ref) series.unshift({ y: ref.intensity, color: c2, dashed: true });
+      plot.set({
+        x: main.x, xmin: -pitch.get(), xmax: pitch.get(), pitch: pitch.get(), cd: cd.get(), threshold: params.threshold,
+        panels: [{ min: 0, max: Math.max(1, metrics.imax, ref ? Math.max.apply(null, ref.intensity) : 0, params.threshold) * 1.08, series: series }]
       });
-
-      // Mask strip under the plot: opaque lines dark, clear spaces light.
-      var stripTop = pad.top + plotH + 6;
-      var stripH = 7;
-      ctx.fillStyle = gridColor;
-      ctx.fillRect(pad.left, stripTop, plotW, stripH);
-      ctx.fillStyle = muted;
-      var w = state.params.cd;
-      for (var k = Math.floor(xmin / p) - 1; k <= Math.ceil(xmax / p) + 1; k++) {
-        var a = Math.max(xmin, k * p - w / 2);
-        var b = Math.min(xmax, k * p + w / 2);
-        if (b > a) ctx.fillRect(sx(a), stripTop, sx(b) - sx(a), stripH);
-      }
-
-      // X tick labels.
-      var xt = ticks(xmin, xmax, Math.max(3, Math.floor(plotW / 90)));
-      ctx.textAlign = "center";
-      ctx.textBaseline = "top";
-      ctx.fillStyle = muted;
-      xt.values.forEach(function (v) {
-        ctx.fillText(Math.round(v).toString().replace("-", "−"), sx(v), stripTop + stripH + 5);
-      });
-      ctx.textAlign = "right";
-      ctx.fillText("x (nm)", pad.left + plotW, stripTop + stripH + 19);
-      ctx.save();
-      ctx.translate(11, pad.top + plotH / 2);
-      ctx.rotate(-Math.PI / 2);
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText("Intensity (clear field = 1)", 0, 0);
-      ctx.restore();
-
-      // Threshold.
-      ctx.save();
-      ctx.strokeStyle = muted;
-      ctx.setLineDash([4, 4]);
-      ctx.beginPath();
-      var ty = Math.round(sy(state.params.threshold)) + 0.5;
-      ctx.moveTo(pad.left, ty);
-      ctx.lineTo(pad.left + plotW, ty);
-      ctx.stroke();
-      ctx.restore();
-
-      function curve(series, color, dashed) {
-        ctx.save();
-        ctx.strokeStyle = color;
-        ctx.lineWidth = 2;
-        ctx.lineJoin = "round";
-        ctx.lineCap = "round";
-        if (dashed) ctx.setLineDash([7, 5]);
-        ctx.beginPath();
-        for (var i = 0; i < series.x.length; i++) {
-          var X = sx(series.x[i]);
-          var Y = sy(series.intensity[i]);
-          if (i === 0) ctx.moveTo(X, Y);
-          else ctx.lineTo(X, Y);
-        }
-        ctx.stroke();
-        ctx.restore();
-      }
-      if (state.ref) curve(state.ref, c2, true);
-      curve(state.main, c1, false);
-
-      // Crosshair and markers for the hovered sample.
-      if (hoverIndex !== null && hoverIndex < state.main.x.length) {
-        var hx = Math.round(sx(state.main.x[hoverIndex])) + 0.5;
-        ctx.strokeStyle = axisColor;
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(hx, pad.top);
-        ctx.lineTo(hx, pad.top + plotH);
-        ctx.stroke();
-        [[state.ref, c2], [state.main, c1]].forEach(function (pair) {
-          if (!pair[0]) return;
-          var y = sy(pair[0].intensity[hoverIndex]);
-          ctx.beginPath();
-          ctx.arc(hx, y, 4, 0, 2 * Math.PI);
-          ctx.fillStyle = pair[1];
-          ctx.strokeStyle = surface;
-          ctx.lineWidth = 2;
-          ctx.fill();
-          ctx.stroke();
-        });
-      }
+      pupil.update(P.pupilOrders({ k1: k1, sigma: sigmaOut.get(), fill: sigmaIn.get() > 0 ? "dipole" : "conventional", poles: sigmaIn.get() }), pitch.get());
     };
-
-    function showTooltip(index, announce) {
-      if (!state || !geometry) return;
-      hoverIndex = Math.max(0, Math.min(state.main.x.length - 1, index));
-      draw();
-      var x = state.main.x[hoverIndex];
-      tooltip.textContent = "";
-      tooltip.appendChild(el("div", { className: "huv-tooltip__x", text: "x = " + fixed(x, 1) + " nm" }));
-      function row(value, color, dashed, name) {
-        tooltip.appendChild(el("div", { className: "huv-tooltip__row" }, [
-          el("span", { className: "huv-legend__key" + (dashed ? " huv-legend__key--dashed" : ""), style: "--huv-key-color: " + color }),
-          el("strong", { text: fixed(value, 3) }),
-          el("span", { text: name })
-        ]));
-      }
-      row(state.main.intensity[hoverIndex], "var(--huv-series-1)", false, "partially coherent");
-      if (state.ref) row(state.ref.intensity[hoverIndex], "var(--huv-series-2)", true, "coherent");
-      tooltip.hidden = false;
-      var left = geometry.sx(x) + 12;
-      var tipWidth = tooltip.offsetWidth || 150;
-      if (left + tipWidth > geometry.width) left = geometry.sx(x) - tipWidth - 12;
-      tooltip.style.left = Math.max(0, left) + "px";
-      tooltip.style.top = geometry.pad.top + "px";
-      if (announce) {
-        live.textContent = "x " + fixed(x, 1) + " nm: intensity " + fixed(state.main.intensity[hoverIndex], 3) +
-          (state.ref ? ", coherent " + fixed(state.ref.intensity[hoverIndex], 3) : "");
-      }
-    }
-
-    function hideTooltip() {
-      hoverIndex = null;
-      tooltip.hidden = true;
-      draw();
-    }
-
-    function indexFromEvent(event) {
-      if (!state || !geometry) return null;
-      var rect = canvas.getBoundingClientRect();
-      var px = event.clientX - rect.left;
-      var x = geometry.xmin + ((px - geometry.pad.left) / geometry.plotW) * (geometry.xmax - geometry.xmin);
-      var n = state.main.x.length;
-      return Math.round(((x - geometry.xmin) / (geometry.xmax - geometry.xmin)) * (n - 1));
-    }
-
-    canvas.addEventListener("pointermove", function (event) {
-      var i = indexFromEvent(event);
-      if (i === null || i < 0 || i >= state.main.x.length) hideTooltip();
-      else showTooltip(i, false);
-    });
-    canvas.addEventListener("pointerleave", hideTooltip);
-    canvas.addEventListener("focus", function () { showTooltip(hoverIndex === null ? Math.floor(state.main.x.length / 2) : hoverIndex, true); });
-    canvas.addEventListener("blur", hideTooltip);
-    canvas.addEventListener("keydown", function (event) {
-      if (!state) return;
-      var n = state.main.x.length;
-      var stepSize = event.shiftKey ? Math.max(1, Math.round(n / 20)) : Math.max(1, Math.round(n / 100));
-      var current = hoverIndex === null ? Math.floor(n / 2) : hoverIndex;
-      if (event.key === "ArrowLeft") current -= stepSize;
-      else if (event.key === "ArrowRight") current += stepSize;
-      else if (event.key === "Home") current = 0;
-      else if (event.key === "End") current = n - 1;
-      else if (event.key === "Escape") { hideTooltip(); return; }
-      else return;
-      event.preventDefault();
-      showTooltip(current, true);
-    });
-
-    var resize = typeof ResizeObserver === "function" ? new ResizeObserver(scheduler(function () { update(); })) : null;
-    if (resize) resize.observe(plot);
-    var palette = new MutationObserver(scheduler(draw));
-    palette.observe(document.body, { attributes: true, attributeFilter: ["data-md-color-scheme", "data-md-color-primary", "data-md-color-accent"] });
-
     update();
-    return function () {
-      if (resize) resize.disconnect();
-      palette.disconnect();
-    };
+    return watch([plot], update);
   }
 
-  /* ---------------------------------------------------------------- mounting */
+  /* ---- mounting */
 
   var WIDGETS = { rayleigh: initRayleigh, shotnoise: initShotNoise, aerial: initAerial };
   var cleanups = [];
+  var scrolled = false;
+
+  function fallbackFor(root) {
+    var prev = root.previousElementSibling;
+    return prev && prev.tagName === "FIGURE" ? prev : null;
+  }
+
+  function showFallbacks(show) {
+    list(D.querySelectorAll("figure[data-huv-fallback]")).forEach(function (fig) {
+      fig.hidden = !show;
+      fig.style.display = show ? "" : "none";
+    });
+  }
 
   function mountAll() {
     cleanups.forEach(function (fn) { fn(); });
     cleanups = [];
-    document.querySelectorAll("[data-huv-calc]").forEach(function (root) {
+    var link = readLink();
+    list(D.querySelectorAll("[data-huv-calc]")).forEach(function (root) {
       var init = WIDGETS[root.getAttribute("data-huv-calc")];
       if (!init || root.getAttribute("data-huv-mounted")) return;
       root.setAttribute("data-huv-mounted", "true");
+      var fig = fallbackFor(root);
+      if (fig) {
+        fig.setAttribute("data-huv-fallback", "hidden");
+        fig.hidden = true;
+        fig.style.display = "none";
+      }
       try {
-        var cleanup = init(root);
+        var cleanup = init(root, link);
         if (typeof cleanup === "function") cleanups.push(cleanup);
+        if (typeof W.huvMarkOverflow === "function") W.huvMarkOverflow(root);
       } catch (error) {
         root.appendChild(el("p", { className: "huv-calc__message", text: "This calculator failed to start: " + error.message }));
-        if (window.console) window.console.error(error);
+        if (W.console) W.console.error(error);
       }
     });
+    if (link.calc && !scrolled) {
+      scrolled = true;
+      var target = D.querySelector('[data-huv-calc="' + link.calc + '"][data-huv-mounted]');
+      if (target && !(W.location && W.location.hash) && target.scrollIntoView) target.scrollIntoView();
+    }
   }
 
-  if (typeof document$ !== "undefined") {
-    document$.subscribe(mountAll);
-  } else if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", mountAll);
-  } else {
-    mountAll();
+  function install(win) {
+    W = win;
+    D = win.document;
+    P = win.HUVPhysics || (typeof require === "function" ? require("./huv-physics.js") : null);
+    if (!P) return false;
+    win.addEventListener("beforeprint", function () { showFallbacks(true); });
+    win.addEventListener("afterprint", function () { showFallbacks(false); });
+    if (win.document$) win.document$.subscribe(mountAll);
+    else if (D.readyState === "loading") D.addEventListener("DOMContentLoaded", mountAll);
+    else mountAll();
+    return true;
   }
-})();
+
+  return {
+    install: install,
+    mountAll: mountAll,
+    WIDGETS: WIDGETS,
+    parseLink: parseLink,
+    formatLink: formatLink,
+    fallbackFor: fallbackFor,
+    ticks: ticks,
+    niceStep: niceStep,
+    logTicks: logTicks,
+    SERIES: SERIES
+  };
+});

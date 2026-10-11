@@ -1,18 +1,62 @@
-# Laser-Produced Plasma: Sn 13.5 nm EUV and Gd/Tb 6.7/6.5 nm Beyond-EUV
+---
+description: "The tin laser-produced plasma that lights production EUV scanners, and its gadolinium/terbium 6.x nm extrapolation: a calibrated drive → conversion-efficiency → intermediate-focus power chain, étendue, and what the model leaves out."
+---
 
-**Status:** ✅ Implemented — the in-band spectrum, pupil fill, and the drive-power → conversion-efficiency → intermediate-focus power chain are computed and tested against the published NXE:3400B source parameters (21.5 kW CO₂, 6 % CE, 50 kHz → 250 W at IF); 🔶 the drive-laser conversion-efficiency defaults (the 2 µm value is a projection), the Sn-calibrated collection efficiency and the étendue check are simplified, the Gd/Tb in-band powers are projections, and plasma dynamics and debris are out of scope.
+# Laser-produced plasma
 
-## Overview
+**Status:** ✅ Implemented (🔶 CE defaults, étendue; 🧪 Gd/Tb power) — in-band spectrum, pupil fill and the drive → CE → intermediate-focus power chain are live and tested on the published NXE:3400B numbers; 250 W in band at intermediate focus; no plasma dynamics, debris or collector degradation · [matrix](../capability-matrix.md#light-sources)
 
-Laser-produced plasma (LPP) is the light source of production EUV lithography. In ASML's description, tin droplets of around 25 µm diameter leave a generator at 70 m/s; each is flattened by a low-intensity pre-pulse and then hit by the main pulse of a CO₂ laser (~10 µm), 50,000 times per second (Versolato's review quotes ~30 µm droplets — the sources differ). The plasma emits unresolved transition arrays (UTAs) of Sn⁸⁺–Sn¹⁴⁺ into the 2 % band around 13.5 nm that Mo/Si multilayer mirrors reflect [1]. ASML quotes a conversion efficiency (CE) from drive power to in-band radiation into 2π sr of more than 5.5 %; the NXE:3400B source ran at 6 % with a 21.5 kW CO₂ drive at 50 kHz, delivering **250 W in-band at the intermediate focus (IF)** — the hand-off point between the source and the scanner's illuminator — about 5 mJ per pulse [2].
+<p class="huv-lead">Laser-produced plasma is the light source of production EUV lithography: tin droplets of around 25–30 µm leave a generator at 70 m/s, a pre-pulse flattens each one and the main pulse of a ~10 µm CO₂ laser heats it, 50 000 times a second, into a plasma whose Sn⁸⁺–Sn¹⁴⁺ transition arrays emit into the 2 % band that Mo/Si mirrors reflect. The NXE:3400B source ran a 21.5 kW drive at 6 % conversion efficiency and delivered 250 W in band at the intermediate focus — the hand-off to the scanner's illuminator and the plane every HVM figure is quoted at.</p>
 
-Getting there took two decades: source power was "stuck in the watt range for several years", and Cymer passed 10 W only in 2013, with pre-pulse conditioning. The 250 W NXE:3400B source supports ≥125 wafers/hour at 20 mJ/cm² by specification (140 wph was measured at 246 W in 2018, and 250 W-class operation is reported at > 140 wph [3]). Sources have kept climbing: the NXE:3800E ships with a "500W EUV Source" (ASML Investor Day, November 2024 [4]), ~600 W sources are reported shipping (Reuters, February 2026), 740 W has been demonstrated (2024 [4]), and a 1 kW source was demonstrated in April 2025 (ASML Annual Report 2025 [5]); the stated roadmap is 1.5–2 kW. The HVM requirement band for charts is therefore **~250 W → ~1 kW at IF**. Each 13.5 nm photon carries 91.84 eV versus 6.42 eV at 193 nm — 14.3× fewer photons per mJ/cm², which is what makes source power and stochastics so tightly coupled in EUV.
+<div class="huv-physics" markdown>
 
-The same architecture extrapolates to "beyond-EUV" (BEUV) at 6.x nm: gadolinium and terbium plasmas emit UTAs near 6.775 nm (Gd) and 6.515 nm (Tb) [6], matched to La/B-based multilayer mirrors that peak at 6.63–6.65 nm, just longward of the boron K absorption edge (188 eV = 6.595 nm). The 6.7 nm Gd preset therefore sits slightly off the mirror peak. The usable band collapses to ~0.6 % for a full mirror column (≈ 40 pm), and the best peer-reviewed CE inside that band is **0.54–0.8 %** (2011–2015 literature, e.g. 0.54 % by Higashiguchi et al. [7] — the often-quoted 1.8 % is the same measurement expressed in a 2 % band). **No watt-level in-band 6.x nm source has been demonstrated**, so the Gd/Tb powers in this model are projections, and BEUV remains a research target rather than a product. (Russia's separate 11.2 nm program uses a Xe plasma source with Ru/Be mirrors; a widely quoted "3.6 kW light source" figure for it is the drive-laser power.)
+<figure markdown="span">
 
-`LppSource` in [source_models/lpp.rs](../../crates/highuvlith-core/src/source_models/lpp.rs) models both regimes behind one struct, selected by the `LppFuel` discriminator (`Sn`, `Gd`, `Tb`). It also carries the drive-laser technology (`LppDriveLaser`) and the source/collector geometry for an étendue check (`LppGeometry`), and reports everything it derives through `derived_quantities()`.
+![Two lanes to a top-hat pupil of sigma 0.9: a CO2 laser hits 25 to 30 micrometre Sn droplets, the plasma emits into 2 pi sr and a collector focuses it at the intermediate focus; a capacitor bank pinches Xe or Sn, grazing shells collect it and an etendue cut sets the IF power.](../assets/images/diagrams/sources-cluster-plasma-light.svg#gh-light-mode-only)
+![Two lanes to a top-hat pupil of sigma 0.9: a CO2 laser hits 25 to 30 micrometre Sn droplets, the plasma emits into 2 pi sr and a collector focuses it at the intermediate focus; a capacitor bank pinches Xe or Sn, grazing shells collect it and an etendue cut sets the IF power.](../assets/images/diagrams/sources-cluster-plasma-dark.svg#gh-dark-mode-only)
 
-## Generation physics
+<figcaption><strong>Mechanism.</strong> LPP: a CO₂ (or 1–2 µm solid-state) drive laser hits 25–30 µm tin droplets 50 000 times a second, the Sn⁸⁺–Sn¹⁴⁺ plasma emits in band into 2π sr, and a normal-incidence Mo/Si collector brings the light to the intermediate focus where the model states its power. DPP/LDP: a capacitor bank pinches Xe gas or Sn vapour into a millimetre column, grazing shells with a debris trap collect it, and the étendue cut f_G = min(1, G_ill/G_src) decides what reaches IF. Both default to the spatially incoherent top-hat pupil (σ 0.9). <em>Schematic, not to scale; no model badge.</em></figcaption>
+</figure>
+
+<figure markdown="span">
+
+![Log-power waterfall of six laser-produced-plasma chains from drive laser through in-band emission into 2π and power at intermediate focus to the wafer: the tin CO₂ chain lands on 250 W at IF, the NXE:3800E class on 500 W, the Gd and Tb 6.x nm projections near 12 W.](../assets/images/sim/sources-power-chain-lpp-light.png#gh-light-mode-only)
+![Log-power waterfall of six laser-produced-plasma chains from drive laser through in-band emission into 2π and power at intermediate focus to the wafer: the tin CO₂ chain lands on 250 W at IF, the NXE:3800E class on 500 W, the Gd and Tb 6.x nm projections near 12 W.](../assets/images/sim/sources-power-chain-lpp-dark.png#gh-dark-mode-only)
+
+<figcaption><strong>From the drive laser to the wafer, six LPP chains.</strong> Each bar is a number the code reports: drive power × conversion efficiency gives the in-band emission into 2π sr, × η₂π→IF × f_étendue the power at intermediate focus, × the model's Mo/Si (or La/B) column the power on the wafer. η = 250/1290 is calibrated so the NXE:3400B chain lands on its published 250 W; the 2 µm conversion efficiency and the Gd/Tb powers are projections, the 500 W chain assumes a doubled drive. <em>Model: Laser-produced plasma ✅ (🔶 CE defaults, étendue; 🧪 Gd/Tb power) · Dose-limited wafer throughput 🔶.</em></figcaption>
+</figure>
+
+<!-- huv-table: stack -->
+
+| What is modeled | Grade | Dominant approximation | Details |
+|---|---|---|---|
+| In-band spectrum, pupil fill, the drive → CE → IF power chain, the étendue check | ✅ Implemented (🔶 CE defaults, étendue; 🧪 Gd/Tb power) | Gaussian line inside the mirror band; CE defaults are order-of-magnitude; η lumped and calibrated; uniform phase-space density in an assumed NXE-like geometry | [Key equations](#key-equations) |
+| The usable band: Mo/Si and La/B multilayer mirrors | ✅ Implemented | Parratt recursion with CXRO constants; the plasma UTA structure is not modelled | [Materials](../materials.md) |
+| Wafers per hour from the IF power | 🔶 Simplified | ten 0.70 mirrors and a 0.65 mask, lumped overheads | [throughput](index.md#dose-limited-throughput) |
+| Pulse-to-pulse jitter, plasma hydrodynamics, debris, collector lifetime | not modelled | out of scope (`shot_to_shot_rms = 0`) | [What the model does](#what-the-model-does) |
+
+**Same thing elsewhere:** Python `SourceConfig.lpp_sn_13nm5(sigma=0.9)` · TOML `[source] type = "lpp"` · CLI `highuvlith sources --family lpp` · GUI Source panel · physics → [Pipeline](../pipeline.md#stage-1--source)
+
+</div>
+
+<p class="huv-lead">The model keeps that chain live and calibrated to the published 250 W, keeps the étendue check explicit, and extrapolates the same architecture to gadolinium and terbium plasmas at 6.x nm — where the usable band collapses to ~0.6 %, the best measured conversion efficiency is 0.54–0.8 % and no watt-level in-band source has been demonstrated, so the Gd/Tb powers are projections and are labelled so. Plasma hydrodynamics, debris and collector degradation are out of scope.</p>
+
+<div class="huv-glance" markdown>
+
+| Property | Value |
+|---|---|
+| Wavelength | 13.5 nm (Sn), 6.7 nm (Gd), 6.5 nm (Tb) — emission bands fixed by the fuel |
+| Band / class | the mirror-selected band: 2 % ≈ 270 pm (Mo/Si), ~0.6 % ≈ 40 / 39 pm (La/B); laser-driven droplet plasma |
+| Coherence → pupil | incoherent plasma, trait default 0 → top-hat σ 0.9 |
+| Power | Sn 250 W in band **at intermediate focus** (NXE:3400B chain: 21.5 kW CO₂ × 6 % × η 250/1290); 500 W (NXE:3800E class, assumed doubled drive); Gd 13.6 W, Tb 11.6 W at IF — projections |
+| Presets | `lpp_sn_13nm5(sigma, drive_laser=…)`, `lpp_sn_13nm5_500w()`, `lpp_gd_6nm7()`, `lpp_tb_6nm5()` |
+| Grade | ✅ Implemented (🔶 CE defaults, étendue; 🧪 Gd/Tb power) |
+| Compare with | [DPP](dpp.md) · [XFEL](xfel.md) · [SSMB](ssmb.md) · history: [The road to EUV](../history/euv.md#the-source-problem-20012013) · future: [Beyond EUV](../future/beyond-euv.md) |
+
+</div>
+
+<details markdown="1">
+<summary>How the light is made (flowchart)</summary>
 
 ```mermaid
 flowchart LR
@@ -24,256 +68,184 @@ flowchart LR
     F -. "illuminator + mask +<br/>projection optics (~1–4 %)" .-> G["Wafer<br/><i>source_models::throughput</i>"]
 ```
 
-The plasma emits broadband UTA radiation; the **multilayer mirror train, not the plasma, defines the usable band**. In-band power at intermediate focus follows the live power chain:
+</details>
+
+## Key equations
+
+The plasma emits broadband unresolved-transition-array radiation; the **multilayer mirror train, not the plasma, defines the usable band**: 2 % ≈ 270 pm around 13.5 nm for Mo/Si, ~0.6 % ≈ 40 pm for La/B near 6.65 nm, just longward of the boron K edge (188 eV = 6.595 nm) — the 6.7 nm Gd preset sits slightly off that peak.
+
+<figure markdown="span">
+
+![Three reflectance charts: a Mo/Si multilayer peaking near 73 percent at 13.5 nm with a 0.6 nm bandwidth; La/B4C and La/B multilayers near 6.7 nm with much narrower peaks; and Mo/Si reflectance falling with angle of incidence, faster for p polarization.](../assets/images/sim/materials-multilayer-light.png#gh-light-mode-only)
+![Three reflectance charts: a Mo/Si multilayer peaking near 73 percent at 13.5 nm with a 0.6 nm bandwidth; La/B4C and La/B multilayers near 6.7 nm with much narrower peaks; and Mo/Si reflectance falling with angle of incidence, faster for p polarization.](../assets/images/sim/materials-multilayer-dark.png#gh-dark-mode-only)
+
+<figcaption><strong>Multilayer mirrors from Parratt recursion with CXRO/Henke constants.</strong> (a) Mo/Si 40 × 6.9 nm (Mo fraction 0.4, ideal interfaces) against the best reported measured reflectance; (b) La/B<sub>4</sub>C and La/B with periods tuned to 6.7 / 6.65 nm sit well above the 64.1 % La/B record (Opt. Lett. 40, 3778, 2015) because interdiffusion and roughness are off; (c) Mo/Si at 13.5 nm against the angle of incidence, s and p. <em>Model: EUV/BEUV multilayer mirrors ✅ (matches the CXRO calculator within 3·10⁻³; no interdiffusion layers by default).</em></figcaption>
+</figure>
+
+In-band power at intermediate focus follows the live power chain, where η₂π→IF (the `transport_efficiency` field) lumps collector solid angle, collector reflectance and debris / buffer-gas / spectral-purity losses, and f_étendue is the étendue-limited usable fraction:
 
 ```math
 P_\text{2π} = P_\text{drive}\,\mathrm{CE}, \qquad
-P_\text{IF} = P_\text{2π}\;\eta_{2\pi\to\text{IF}}\;f_\text{étendue}
+P_\text{IF} = P_\text{2π}\;\eta_{2\pi\to\text{IF}}\;f_\text{étendue}, \qquad
+E_\text{pulse} = \frac{P_\text{IF}}{f_\text{rep}}
 ```
 
-where $\eta_{2\pi\to\text{IF}}$ (the `transport_efficiency` field) lumps collector solid angle, collector reflectance, and debris / buffer-gas / spectral-purity losses, and $f_\text{étendue}$ is the étendue-limited usable fraction (below). Per-droplet in-band energy at IF is $E_\text{pulse} = P_\text{IF}/f_\text{rep}$. For the NXE:3400B chain: 21.5 kW × 6 % = 1290 W into 2π sr; the presets use $\eta_{2\pi\to\text{IF}} = 250/1290 \approx 0.194$, **calibrated** so this chain lands on the published 250 W at IF (5 mJ per pulse at 50 kHz).
-
-Photon energy sets dose statistics downstream:
-
-```math
-E_\gamma = \frac{hc}{\lambda} = 91.84\ \text{eV at } 13.5\ \text{nm}, \qquad 185\ \text{eV at } 6.7\ \text{nm}
-```
-
-### Drive laser and critical density
-
-A laser of wavelength $\lambda_L$ cannot propagate beyond the plasma critical density and deposits its energy near it:
+For the NXE:3400B chain, 21.5 kW × 6 % = 1290 W into 2π sr; the presets use η₂π→IF = 250/1290 ≈ 0.194, **calibrated** so the chain lands on the published 250 W at IF (5 mJ per droplet at 50 kHz). A drive laser of wavelength λ_L cannot propagate beyond the plasma critical density and deposits its energy near it,
 
 ```math
 n_c = \frac{\varepsilon_0 m_e \omega_L^2}{e^2} = \frac{1.115\times10^{21}}{\lambda_L^2[\mu\text{m}]}\ \text{cm}^{-3}
 ```
 
-| Drive laser (`LppDriveLaser`) | λ_L | $n_c$ (cm⁻³) | Default Sn CE (2π sr, 2 % band) | Provenance | Sn preset at 21.5 kW → IF |
-|---|---|---|---|---|---|
-| `Co2` (with pre-pulse) | 10.6 µm | 9.92 × 10¹⁸ | 6 % | reported (NXE:3400B source [2]; ASML quotes > 5.5 %) | 250 W |
-| `SolidState1um` (Nd:YAG / Yb class) | 1.064 µm | 9.85 × 10²⁰ | 3 % | reported, laboratory ("few-percent class") | 125 W |
-| `Thulium2um` | 2.0 µm | 2.79 × 10²⁰ | 4.5 % | **projection** — laboratory values reported so far are lower | 187.5 W |
-
-The ~100× lower critical density of CO₂ light means the energy is deposited in a lower-density, optically thinner plasma, so less of the Sn UTA is lost to opacity broadening — the standard explanation for why CO₂-driven Sn plasmas reach the highest in-band conversion efficiencies (see the Versolato review [1]). Solid-state drivers (1 µm today, 2 µm as a research direction) trade some CE for the much higher electrical efficiency of solid-state lasers. In the model the drive laser **only** sets the CE default at construction (via `LppSource::sn_with_drive_laser`, at the same 21.5 kW) and the reported critical density; plasma physics itself is not simulated. The CE values are order-of-magnitude defaults — override `conversion_efficiency` with your own data.
-
-### Étendue
-
-Étendue (area × solid angle) is conserved through an optical system, so the illuminator can only accept light from a source whose étendue fits its budget. For a small, isotropic emitting region of diameter $d$ collected over a solid angle $\Omega$:
+— ~100× lower for CO₂ light than for 1 µm, so the energy goes into a lower-density, optically thinner plasma and less of the Sn array is lost to opacity broadening, the standard explanation for the highest conversion efficiencies being CO₂-driven [1]. In the model the drive laser only sets the CE default at construction (`Co2` 6 %, reported; `SolidState1um` 3 %, reported laboratory class; `Thulium2um` 4.5 %, a projection) and the reported critical density; plasma physics itself is not simulated. Étendue (area × solid angle) is conserved, so the illuminator accepts only a source whose étendue fits its budget; for a small isotropic emitter of diameter d collected over Ω:
 
 ```math
 G_\text{src} = \frac{\pi d^2}{4}\,\Omega, \qquad f_\text{étendue} = \min\!\left(1,\ \frac{G_\text{ill}}{G_\text{src}}\right)
 ```
 
-The fraction assumes uniform phase-space density. With the assumed NXE-like geometry (`LppGeometry::nxe_like()`: $d$ = 200 µm, $\Omega$ = 5 sr, $G_\text{ill}$ = 3.3 mm²·sr — a commonly quoted EUV-illuminator budget, but scanner-specific: it depends on NA, field size and pupil fill), $G_\text{src} = 0.157$ mm²·sr, a **margin of 21**, so the LPP loses nothing. A DPP-like 1 mm emitter would have $G_\text{src} = 3.93$ mm²·sr and keep only **84 %** of its collected power — étendue is one of the reasons larger discharge-produced plasmas are harder to use.
+With the assumed NXE-like geometry (`LppGeometry::nxe_like()`: d = 200 µm, Ω = 5 sr, G_ill = 3.3 mm²·sr — a commonly quoted illuminator budget, but scanner-specific), G_src = 0.157 mm²·sr, a margin of 21, so the LPP loses nothing; a DPP-like 1 mm emitter would keep only 84 % — one reason larger discharge plasmas are harder to use ([DPP](dpp.md)).
 
-## Real-machine parameters
+## Real machines
 
-**Sn 13.5 nm source power (in-band, at IF unless noted)**
+<!-- huv-table: stack -->
 
-| Source / milestone | Power | Status | Source |
+| Machine / measurement | Value | Plane / provenance | Reference |
 |---|---|---|---|
-| Cymer LPP with pre-pulse | passed 10 W (2013) | demonstrated | history accounts; power had been "stuck in the watt range for several years" |
-| NXE:3400B source | 250 W; 21.5 kW CO₂, CE 6 %, 50 kHz, ~5 mJ/pulse | production (end-2017) | Fomenkov, 2017 EUV Source Workshop [2] |
-| NXE:3400B throughput | ≥125 wph at 20 mJ/cm² (spec, 96 shots); 140 wph measured at 246 W (2018); > 140 wph at 250 W | production | ASML spec; workshop data; Miyazaki & Yen [3] |
-| NXE:3800E source | 500 W | production | ASML Investor Day, 14 Nov 2024 [4] |
-| Industrial source | ~600 W (plane not stated) | reported shipping | Reuters, 23 Feb 2026 |
-| Research source | 740 W | demonstrated (2024) | ASML Investor Day 2024 [4] |
-| 1 kW source (~100 kHz, two-burst droplet shaping) | 1000 W | demonstrated (April 2025) | ASML Annual Report 2025, p. 31 [5] |
-| Roadmap | 1.5–2 kW | projected | ASML statements (Reuters 2026) |
+| Cymer LPP with pre-pulse (2013) | passed 10 W after years "stuck in the watt range" | at IF, demonstrated | history accounts |
+| NXE:3400B source (end-2017) | 250 W; 21.5 kW CO₂, CE 6 %, 50 kHz, ~5 mJ/pulse; ≥ 125 wph at 20 mJ/cm², 140 wph measured at 246 W | at IF, production | Fomenkov [2]; Miyazaki & Yen [3] |
+| NXE:3800E source (2024) | 500 W | at IF, production | ASML Investor Day [4] |
+| Industrial source (2026) | ~600 W | plane not stated, reported shipping | Reuters, 23 Feb 2026 |
+| Research sources | 740 W (2024); 1 kW at ~100 kHz with two-burst droplet shaping (April 2025); roadmap 1.5–2 kW | at IF, demonstrated / projected | ASML [4], [5] |
+| Gd plasma, 0.6 % band (2011–2015) | CE 0.54 % (Higashiguchi; = 1.8 % in a 2 % band), 0.4 % (Cummins), 0.7 % (CO₂-driven), 0.8 % (Yoshida, best per O'Sullivan's review) | measured | [7], [8] |
+| Gd plasma, 1064 nm drive (2010) | CE 1.3 %, bandwidth not stated | measured | Otsuka [9] |
+| Endo kW-class BEUV concept (2012) | 1 kW at IF from CE 1.5 % and a 160 kW CO₂ drive | design | 2012 EUVL workshop |
 
-**BEUV 6.x nm (conversion efficiency in the La/B band)**
+The HVM band for charts is therefore ~250 W → ~1 kW at IF. Each 13.5 nm photon carries 91.84 eV against 6.42 eV at 193 nm — 14.3× fewer photons per mJ/cm², which is what couples source power to stochastics so tightly ([the stochastic frontier](../future/stochastic-frontier.md)). The preset chains — Sn CO₂, 500 W class, 1 µm, 2 µm, Gd, Tb — are the Physics Strip figure above; Russia's separate 11.2 nm programme (Xe plasma, Ru/Be mirrors) is on [Beyond EUV](../future/beyond-euv.md).
 
-| Measurement | CE | Bandwidth | Source |
+## What the model does
+
+`LppSource` in [`lpp.rs`](../../crates/highuvlith-core/src/source_models/lpp.rs) models both regimes behind one struct selected by `LppFuel` (`Sn`, `Gd`, `Tb`), with the drive-laser technology (`LppDriveLaser`) and the source/collector geometry (`LppGeometry`).
+
+- **`wavelength_nm()` / `bandwidth_pm()`** — the in-band centre (13.5 / 6.7 / 6.5 nm) and the *mirror-selected* FWHM (270 / 40 / 39 pm); the in-band spectrum is a Gaussian within the band.
+- **`spectral_weights()`** — five samples by default; the narrow-band path is an approximation for these 0.6–2 % bands, `compute_multiwavelength` (`[imaging] spectrum = "per_wavelength"`) rebuilds the kernels at every sample.
+- **`intensity_at()`** — plasma emission is spatially incoherent: `transverse_coherence()` stays 0 and the default pupil is `Conventional { sigma: 0.9 }` (σ validated in (0, 1]).
+- **Power chain (live)** — `in_band_emission_w() = drive × CE` (2π sr); `in_band_power_w()` = × transport × étendue fraction is the power **at IF**, reported by `average_power_w()`; `pulse_energy_j()` divides by `rep_rate_hz`. Sn CO₂: 1290 W into 2π → 250 W at IF, 5 mJ per droplet, 1.70 × 10¹⁹ photons/s.
+- **Presets** — `sn_13nm5` (= `sn_with_drive_laser(σ, Co2)`), `sn_13nm5_500w` (NXE:3800E class: 500 W at IF is ASML's stated source power; the preset reaches it by an **assumed** doubling of the drive to 43 kW at the same efficiencies), `gd_6nm7`, `tb_6nm5` (10 kW 1 µm drive and 10 kHz assumed; the Sn-calibrated collection, optimistic for La/B collectors; `in_band_power_at_if` labelled a projection).
+- **Not modelled** — pulse-to-pulse energy jitter (`shot_to_shot_rms = 0`, so pulses per point has no stochastic effect for LPP today), plasma hydrodynamics, UTA opacity, debris, collector degradation.
+
+<!-- huv-table: stack -->
+
+| Field | Unit | Consumed by | Status |
 |---|---|---|---|
-| Gd plasma, Higashiguchi et al. (2011) | 0.54 % (= 1.8 % in 2 %) | 0.6 % | APL 99, 191502 [7] |
-| Gd plasma, Cummins et al. (2012) | 0.4 % | 0.6 % | as reported in the 2011–2015 literature |
-| CO₂-laser-driven Gd plasma (2013) | 0.7 % | 0.6 % | Opt. Express 21, 31837 [8] |
-| Yoshida et al. (2014) | 0.8 % (best in the 0.6 % band, per O'Sullivan's 2015 review) | 0.6 % | as reported |
-| Otsuka et al. (2010), 1064 nm drive | 1.3 % | not stated | APL 97, 111503 [9] |
-| Endo, kW-class BEUV source concept | 1 kW at IF with CE 1.5 %, 160 kW CO₂ | 0.6 % | **projected design** (2012 EUVL workshop) |
-
-| Parameter | Sn 13.5 nm (production) | Gd 6.7 nm (model preset) | Tb 6.5 nm (model preset) |
-|---|---|---|---|
-| Drive laser | 21.5 kW CO₂ (NXE:3400B) | 10 kW solid-state, 1 µm (assumed) | 10 kW solid-state, 1 µm (assumed) |
-| Conversion efficiency (in-band, 2π sr) | 6 % | 0.7 % | 0.6 % |
-| Mirror band (FWHM) | 2 % ≈ 270 pm (Mo/Si) | ~0.6 % ≈ 40 pm (La/B) | ~39 pm (La/B) |
-| In-band power at IF | 250 W | 13.6 W — **projection** | 11.6 W — **projection** |
-| Repetition rate | 50 kHz | 10 kHz (assumed) | 10 kHz (assumed) |
-| Photon energy | 91.8 eV | 185 eV | 191 eV |
-
-## Simulation model
-
-`LppSource` (in [lpp.rs](../../crates/highuvlith-core/src/source_models/lpp.rs)) implements `LithographySource`:
-
-- **Wavelength / bandwidth** — `wavelength_nm()` returns the in-band center (13.5 / 6.7 / 6.5 nm per fuel preset); `bandwidth_pm()` is the *mirror-selected* FWHM (270 / 40 / 39 pm). The plasma UTA structure is not modeled; the in-band spectrum is a Gaussian within the mirror band.
-- **Spectral model** — `spectral_weights()` samples the Gaussian line at `spectral_samples` (default 5) points via the shared `evaluate_spectral_weights` helper; weights sum to 1. The narrow-band path (`compute_polychromatic`) shifts focus per sample with the kernels built at the center wavelength — an approximation for these 0.6–2 % bands; `compute_multiwavelength` (CLI `[imaging] spectrum = "per_wavelength"`) rebuilds the kernels at every sample.
-- **Pupil model** — plasma emission is spatially incoherent: `transverse_coherence()` keeps the trait default 0.0, and the default pupil is `Conventional { sigma: 0.9 }` (large disk fill). Constructors reject σ outside (0, 1] via `validate_sigma`.
-- **Power chain (live)** — `in_band_emission_w() = drive_laser_power_w × conversion_efficiency` (2π sr); `in_band_power_w() = in_band_emission_w() × transport_efficiency × etendue_limited_fraction()` is the in-band power **at IF**; `average_power_w()` reports it and `pulse_energy_j()` divides by `rep_rate_hz`. For the Sn preset: 21.5 kW × 6 % = 1290 W into 2π sr, × 250/1290 → **250 W at IF**, 5 mJ per droplet, 1.70 × 10¹⁹ photons/s.
-- **Drive laser** — `drive_laser: Option<LppDriveLaser>`. `sn_with_drive_laser(sigma, laser)` builds the Sn preset at the same 21.5 kW with the laser's CE default (CO₂ → 250 W, 2 µm projection → 187.5 W, 1 µm → 125 W at IF). `None` (configs written before the field existed) omits the laser-specific derived quantities.
-- **Étendue** — `geometry: Option<LppGeometry>`; with a geometry the étendue-limited fraction multiplies the IF power. `None` applies no étendue limit.
-- **Presets** — `LppSource::sn_13nm5(sigma)` (= `sn_with_drive_laser(sigma, Co2)`), `sn_13nm5_500w(sigma)`, `gd_6nm7(sigma)`, `tb_6nm5(sigma)`; all carry `LppGeometry::nxe_like()`, the Gd/Tb presets a 1 µm solid-state drive laser. The Gd/Tb presets use the Sn-calibrated collection efficiency, which is optimistic (La/B collectors reflect less than Mo/Si), and their `in_band_power_at_if` derived quantity is labelled **PROJECTION**. `sn_13nm5_500w` is the NXE:3800E class: **500 W at IF** is the source power ASML states for that scanner [4]; nothing else about its drive chain is sourced here, so the preset reaches 500 W by an **assumed** doubling of the NXE:3400B drive (43 kW CO₂ at the same 6 % CE, collection and 50 kHz → 10 mJ per droplet at IF).
-
-### Behaviour change: power is quoted at intermediate focus (NXE:3400B chain)
-
-The first versions of this model documented `transport_efficiency` as a "collector-to-wafer" factor (preset 0.05) and reported **68.75 W "at the wafer"** (25 kW × 5.5 % × 0.05) for the Sn preset — which contradicted the ~250 W *at IF* the same page quoted and would double-count optics losses in any throughput estimate. `average_power_w()` now follows the convention of every other source family and of the industry: **usable power delivered into the illuminator, i.e. in-band at IF**. The redefinition happened in two steps:
-
-1. `transport_efficiency` became "in-band emission (2π sr) → IF", with a lumped 0.18 (25 kW × 5.5 % × 0.18 = 247.5 W);
-2. the Sn preset now uses the published NXE:3400B chain instead of rounded numbers: **21.5 kW, 6 % CE, η = 250/1290 ≈ 0.194 → 250 W at IF**.
-
-Consequences:
-
-- Gd/Tb presets report **13.6 W / 11.6 W at IF** (they were 3.5 / 3.0 W "at the wafer" originally, 12.6 / 10.8 W after step 1) — projections, as above.
-- A TOML that sets only `transport_efficiency = 0.05` on the Sn preset now gives 21.5 kW × 6 % × 0.05 = **64.5 W** (at IF); a fully serialized legacy source that also stores 25 kW and 5.5 % still gives 68.75 W (pinned by the CLI test `test_legacy_family_tomls_unchanged_by_new_fields` and by `test_legacy_toml_without_new_fields_parses`).
-
-### From IF to the wafer: the throughput model
-
-Wafer-side losses belong to the dose-limited throughput model in [`source_models::throughput`](../../crates/highuvlith-core/src/source_models/throughput.rs) (🔶 simplified: one optics transmission factor, dose-limited scan speed, two lumped overheads; the scanner numbers are illustrative assumptions, not vendor data). An NXE scanner has six projection mirrors, at least two condenser/illuminator mirrors and a reflective mask; at ~70 % per reflection only a few percent — roughly **1–4 %** — of the IF power reaches the wafer (a dozen reflections at 70 % leaves ≈ 1.4 %; 0.7¹⁰ ≈ 2.8 %). The EUV-like defaults (`ThroughputParams::euv_hvm_like`: 10 Mo/Si mirrors at R = 0.70 and a mask at 0.65 → 1.84 %, 300 mm wafer, 26 × 33 mm fields, 2 mm slit, 0.1 s per-field and 10 s per-wafer overheads, no stage-speed cap) give, for the 250 W Sn preset:
-
-| Quantity | 20 mJ/cm² | 30 mJ/cm² |
-|---|---|---|
-| Power at the wafer | 250 W × 0.70¹⁰ × 0.65 = **4.59 W** | 4.59 W |
-| Fields per wafer | 84 (field centres on a 300 mm wafer) | 84 |
-| Dose-limited scan speed | 883 mm/s | 588 mm/s |
-| Time per wafer | 3.3 s scanning + 8.4 s field + 10 s wafer overhead = 21.7 s | 5.0 + 8.4 + 10 = 23.4 s |
-| Throughput | **≈ 166 wph** | **≈ 154 wph** |
-| Pulses per exposure point | 50 kHz × 2 mm / 883 mm/s ≈ 113 | ≈ 170 |
-| Photons per (16 nm)² | 3480 → 1.7 % Poisson noise | 5219 → 1.4 % |
-
-For comparison, the NXE:3400B specification is ≥125 wph and the NXE:3400C ≥170 wph at 20 mJ/cm². The NXE:3400B specification counts 96 exposure fields (shots); with `fields_per_wafer=96` the model gives ≈ 154 wph at 20 mJ/cm². The default overheads are illustrative and cap the model near 196 wph however much power is supplied (3600 s / (84 × 0.1 s + 10 s)), whereas the NXE:3800E reaches ≥220 wph at 30 mJ/cm² with its 500 W source — faster stages, not modeled here.
-
-For BEUV, `ThroughputParams::beuv_la_b_like` keeps the geometry but uses the record La/B multilayer reflectance (64.1 % at 6.65 nm) for all ten mirrors and the mask: 0.641¹¹ ≈ **0.75 %** of the IF power reaches the wafer (vs ≈ 1.8–2 % at 13.5 nm), and the column bandwidth shrinks from ~2 % to ~0.6 %. The 13.6 W Gd projection through that column delivers 0.10 W to the wafer, ≈ 15 wph at 30 mJ/cm² (≈ 1530 pulses per point at 10 kHz).
-
-The same model ranks every family (`SourceConfig.wafer_throughput(...)` in Python). The pulses-per-point figure is what `StochasticParams::from_source_multi_pulse` expects for multi-pulse dose averaging; for LPP it has no effect today because pulse-to-pulse energy jitter is not modeled (`shot_to_shot_rms()` = 0).
+| `fuel` | enum | preset selection; gates the Sn CE report and the Gd/Tb projection label | stored (construction-time) |
+| `wavelength_nm`, `bandwidth_pm` | nm, pm | imaging, photon energy and density; `spectral_weights()` → polychromatic focus shifts | live |
+| `drive_laser_power_w`, `conversion_efficiency`, `transport_efficiency` | W, —, — | `in_band_emission_w()` → `in_band_power_w()` → `average_power_w()` (transport = 2π sr → IF) | live |
+| `rep_rate_hz` | Hz | `pulse_energy_j()`; pulses per exposure point in the throughput model | live |
+| `spectral_samples`, `spectral_shape`, `illumination`; `drive_laser`, `geometry` | count, enum, enum; options | sampling density, line shape, `intensity_at()` pupil fill; Sn CE default and critical density, étendue-limited fraction | live |
+| pulse jitter; hydrodynamics, opacity, debris, collector lifetime | — | — | not modelled |
 
 ## Derived quantities
 
-`LppSource::derived_quantities()` (Python: `SourceConfig.derived_quantities()` / `derived_quantity(name)`; also printed by `highuvlith simulate`). Values for the presets:
+`LppSource::derived_quantities()` (Python `SourceConfig.derived_quantities()` / `derived_quantity(name)`; printed by `highuvlith simulate`). Values for the presets:
+
+<!-- huv-table: stack -->
 
 | Name | Unit | Meaning | Sn (CO₂) | Sn (2 µm, projected CE) | Gd 6.7 nm | Tb 6.5 nm |
 |---|---|---|---|---|---|---|
 | `photon_energy` | eV | hc/λ | 91.84 | 91.84 | 185.05 | 190.75 |
 | `in_band_emission_2pi` | W | P_drive × CE | 1290 | 967.5 | 70 | 60 |
-| `drive_laser_wavelength` | µm | drive laser | 10.6 | 2.0 | 1.064 | 1.064 |
-| `critical_density` | cm⁻³ | ε₀mₑω²/e² | 9.92e18 | 2.79e20 | 9.85e20 | 9.85e20 |
-| `conversion_efficiency_default` | – | Sn CE default for the laser (+ provenance) | 0.06 (reported) | 0.045 (projection) | — | — |
-| `source_etendue` | mm²·sr | πd²/4 · Ω | 0.157 | 0.157 | 0.157 | 0.157 |
-| `etendue_margin` | – | G_ill / G_src | 21.0 | 21.0 | 21.0 | 21.0 |
-| `etendue_limited_fraction` | – | min(1, G_ill/G_src) | 1 | 1 | 1 | 1 |
-| `in_band_power_at_if` | W | = `average_power_w()` (Gd/Tb labelled PROJECTION) | 250 | 187.5 | 13.57 | 11.63 |
-| `pulse_energy_at_if` | J | per droplet | 5.0e-3 | 3.75e-3 | 1.36e-3 | 1.16e-3 |
-| `photon_rate_at_if` | photons/s | in-band at IF | 1.70e19 | 1.27e19 | 4.58e17 | 3.80e17 |
-| `drive_watts_per_if_watt` | – | P_drive / P_IF | 86 | 115 | 737 | 860 |
-| `hvm_power_ratio` | – | P_IF / 250 W | 1.00 | 0.75 | 0.054 | 0.047 |
+| `conversion_efficiency_default` | — | Sn CE default for the laser (+ provenance) | 0.06 (reported) | 0.045 (projection) | — | — |
+| `etendue_margin` | — | G_ill / G_src | 21.0 | 21.0 | 21.0 | 21.0 |
+| `in_band_power_at_if` | W | = `average_power_w()` (Gd/Tb labelled projection) | 250 | 187.5 | 13.57 | 11.63 |
+| `pulse_energy_at_if` | J | per droplet | 5.0 × 10⁻³ | 3.75 × 10⁻³ | 1.36 × 10⁻³ | 1.16 × 10⁻³ |
+| `drive_watts_per_if_watt` | — | P_drive / P_IF | 86 | 115 | 737 | 860 |
+| `hvm_power_ratio` | — | P_IF / 250 W | 1.00 | 0.75 | 0.054 | 0.047 |
 
-(The 1 µm-driven Sn variant: CE 3 %, 645 W into 2π sr, 125 W at IF, ratio 0.50.)
+<details markdown="1">
+<summary>The remaining rows</summary>
 
-## Model coverage
+`drive_laser_wavelength` 10.6 / 2.0 / 1.064 / 1.064 µm; `critical_density` 9.92 × 10¹⁸ / 2.79 × 10²⁰ / 9.85 × 10²⁰ / 9.85 × 10²⁰ cm⁻³; `source_etendue` 0.157 mm²·sr and `etendue_limited_fraction` 1 for all four; `photon_rate_at_if` 1.70 × 10¹⁹ / 1.27 × 10¹⁹ / 4.58 × 10¹⁷ / 3.80 × 10¹⁷ photons/s (Sn CO₂ / Sn 2 µm / Gd / Tb). The 1 µm-driven Sn variant: CE 3 %, 645 W into 2π sr, 125 W at IF, ratio 0.50. From IF to the wafer the [throughput model](index.md#dose-limited-throughput) applies ten 0.70 mirrors and a 0.65 mask (1.84 %): 4.59 W on the wafer for the 250 W preset, ≈ 154 wafers/h at 30 mJ/cm² (≈ 166 at 20 mJ/cm²; ≈ 154 with the specification's 96 fields), ≈ 170 pulses per point and 5 219 photons per (16 nm)² (1.4 % Poisson noise); the overheads cap the model near 196 wph, whereas the NXE:3800E reaches ≥ 220 wph with faster stages that are not modelled. Through record La/B mirrors (0.641¹¹ ≈ 0.75 %) the 13.6 W Gd projection delivers 0.10 W, ≈ 15 wph.
 
-| Field | Unit | Consumed by | Status |
-|---|---|---|---|
-| `fuel` | enum (`Sn`/`Gd`/`Tb`) | preset selection at construction; gates the Sn CE-default report and the Gd/Tb projection label | stored (construction-time) |
-| `wavelength_nm` | nm | TCC/aerial imaging, photon energy, photon density | live |
-| `bandwidth_pm` | pm | `spectral_weights()` → polychromatic focus shifts | live |
-| `drive_laser_power_w` | W | `in_band_emission_w()` → `in_band_power_w()` → `average_power_w()` | live |
-| `conversion_efficiency` | — | `in_band_emission_w()` | live |
-| `transport_efficiency` | — | in-band 2π sr → IF in `in_band_power_w()` (meaning changed, see above) | live |
-| `rep_rate_hz` | Hz | `pulse_energy_j()`; pulses per exposure point in the throughput model | live |
-| `spectral_samples` | count | spectral sampling density | live |
-| `spectral_shape` | enum | line shape in `spectral_weights()` | live |
-| `illumination` | enum | `intensity_at()` pupil fill | live |
-| `drive_laser` | `Option<LppDriveLaser>` | Sn CE default at construction; drive wavelength and critical density in `derived_quantities()` | live (construction-time + derived quantities) |
-| `geometry` | `Option<LppGeometry>` | étendue-limited fraction → `in_band_power_w()`; étendue derived quantities | live |
-| pulse-to-pulse energy jitter | — | trait default `shot_to_shot_rms()` = 0 | not modeled |
-| plasma hydrodynamics, UTA opacity, debris, collector degradation | — | — | not modeled (out of scope) |
+</details>
 
-## Usage
+## Use it
 
-Python (factories from [py_config.rs](../../crates/highuvlith-py/src/py_config.rs)):
+### Python
+
+Factories from [`py_config.rs`](../../crates/highuvlith-py/src/py_config.rs):
 
 <!-- verify-example -->
 ```python
 import highuvlith as huv
 
-src = huv.SourceConfig.lpp_sn_13nm5(sigma=0.9)               # NXE:3400B chain, CO2 drive
-print(src.average_power_w)                                    # 250.0 — in-band W at IF
-print(src.derived_quantity("etendue_margin"))                 # 21.0
-tm = huv.SourceConfig.lpp_sn_13nm5(drive_laser="thulium_2um") # projected 4.5 % CE
-print(tm.average_power_w)                                     # 187.5
-e = huv.SourceConfig.lpp_sn_13nm5_500w()                      # NXE:3800E class: 500 W at IF
+src = huv.SourceConfig.lpp_sn_13nm5(sigma=0.9)                # NXE:3400B chain, CO2 drive
+tm = huv.SourceConfig.lpp_sn_13nm5(drive_laser="thulium_2um")  # projected 4.5 % CE
 gd = huv.SourceConfig.lpp_gd_6nm7()                           # 13.6 W at IF (projection)
-tb = huv.SourceConfig.lpp_tb_6nm5()                           # 11.6 W at IF (projection)
-
+print(f"{src.average_power_w:.3g} W at IF, etendue margin {src.derived_quantity('etendue_margin'):.3g}; "
+      f"2 um drive {tm.average_power_w:.3g} W; Gd {gd.average_power_w:.3g} W")
 r = src.wafer_throughput(dose_mj_cm2=30.0, cd_nm=16.0)        # simplified scanner model
-print(r["power_at_wafer_w"], r["wafers_per_hour"], r["pulses_per_point"])  # 4.59, ~154, ~170
-
-# BEUV through record La/B mirrors (0.641 per reflection, 11 reflections):
 rg = gd.wafer_throughput(dose_mj_cm2=30.0, optics_transmission=0.641**10, mask_efficiency=0.641)
-print(rg["wafers_per_hour"])                                  # ~15
-
-optics = huv.OpticsConfig.euv_nxe()                          # NA 0.33 EUV projection pupil
+print(f"{r['power_at_wafer_w']:.3g} W at the wafer, {r['wafers_per_hour']:.3g} wph, "
+      f"{r['pulses_per_point']:.3g} pulses per point; Gd through La/B: {rg['wafers_per_hour']:.3g} wph")
 mask = huv.MaskConfig.line_space(cd_nm=27.0, pitch_nm=81.0)
-grid = mask.commensurate_grid(size=128, target_pixel_nm=2.0)  # whole periods in the field
-engine = huv.SimulationEngine(src, optics, mask, grid=grid)
+engine = huv.SimulationEngine(src, huv.OpticsConfig.euv_nxe(), mask,   # NA 0.33 EUV projection pupil
+                              grid=mask.commensurate_grid(size=128, target_pixel_nm=2.0))
 aerial = engine.compute_aerial_image(focus_nm=0.0)
 ```
 
-??? success "Output"
+???+ success "Output"
 
     ```text
-    250.00000000000003
-    21.008452488130185
-    187.5
-    4.590222796249997 153.87353586508289 169.926392382789
-    14.778737737794975
+    250 W at IF, etendue margin 21; 2 um drive 188 W; Gd 13.6 W
+    4.59 W at the wafer, 154 wph, 170 pulses per point; Gd through La/B: 14.8 wph
     ```
 
-TOML (field names from [config.rs](../../crates/highuvlith-cli/src/config.rs); every field is optional and defaults to the fuel preset):
+`highuvlith simulate --config examples/sim_lpp_sn.toml` prints the derived quantities in a "Derived source physics" block and includes them in the JSON output.
 
-```toml
-[source]
-type = "lpp"
-fuel = "sn"                        # "sn" | "gd" | "tb"
-# preset = "nxe3800e"              # Sn only: 500 W at IF (default "nxe3400b", 250 W)
-sigma = 0.9
-drive_laser = "co2"                # "co2" | "solid_state_1um" ("1um") | "thulium_2um" ("2um")
-drive_laser_power_w = 21500.0
-conversion_efficiency = 0.06       # overrides the drive-laser default
-transport_efficiency = 0.194       # in-band emission (2π sr) → intermediate focus
-rep_rate_hz = 50000.0
-source_diameter_um = 200.0         # étendue check (any of these three enables it)
-collection_solid_angle_sr = 5.0
-illuminator_etendue_mm2_sr = 3.3
-# wavelength_nm / bandwidth_pm override the preset band if set
-```
+## TOML keys
 
-`highuvlith simulate --config examples/sim_lpp_sn.toml` prints the derived quantities above in a "Derived source physics" block (and includes them in the JSON output).
+The keys the CLI reads for `type = "lpp"` (`LPP_KEYS` in [`config.rs`](../../crates/highuvlith-cli/src/config.rs)); every field is optional and defaults to the fuel preset. Power at IF = drive × CE × transport × étendue fraction.
 
-## Validation
+| Key | Default | Units | Notes |
+|---|---|---|---|
+| `type`, `fuel` | —, `"sn"` | — | `"lpp"`; `sn` (13.5 nm), `gd` (6.7 nm), `tb` (6.5 nm) |
+| `preset` | `"nxe3400b"` | — | Sn only: `nxe3400b` (250 W at IF) or `nxe3800e` (500 W; the 43 kW drive behind it is an assumed scaling) |
+| `drive_laser` | CO₂ (Sn) | — | `co2`, `solid_state_1um` (`1um`, `nd_yag`), `thulium_2um` (`2um`, `thulium`); sets the Sn CE default |
+| `sigma` | 0.9 | — | top-hat pupil radius, (0, 1]; not with `[illumination]` |
+| `wavelength_nm`, `bandwidth_pm`, `spectral_samples` | fuel preset, 5 | nm, pm, — | override the preset band; polychromatic samples |
+| `drive_laser_power_w`, `conversion_efficiency`, `transport_efficiency`, `rep_rate_hz` | preset | W, —, —, Hz | `transport_efficiency` is in-band 2π sr → IF |
+| `source_diameter_um` / `source_diameter_mm`, `collection_solid_angle_sr`, `illuminator_etendue_mm2_sr` | NXE-like geometry when any is given | µm / mm, sr, mm²·sr | turn on the étendue check; give the diameter once (1 mm = 1000 µm) |
 
-Rust unit tests in [lpp.rs](../../crates/highuvlith-core/src/source_models/lpp.rs):
+Examples: [`sim_lpp_sn.toml`](../../examples/sim_lpp_sn.toml), [`sim_lpp_gd.toml`](../../examples/sim_lpp_gd.toml).
 
-- `test_sn_preset_band_and_energy` — 13.5 nm ⇒ 91.84 eV; bandwidth is exactly the 2 % band.
-- `test_power_chain_is_live` — 21.5 kW × 6 % = 1290 W into 2π sr; η = 250/1290; 250 W at IF; 5 mJ per droplet; photon rate 250 W / 91.84 eV; `hvm_power_ratio` = 1; the NXE:3800E-class preset gives 500 W, 10 mJ per droplet, ratio 2.
-- `test_etendue_check` — G_src = 0.1571 mm²·sr, margin 21.008; a 1 mm source keeps 0.8403 of its power; no geometry ⇒ no limit.
-- `test_drive_laser_options` — CE ordering sets the IF-power ordering; critical densities for CO₂ and 1.064 µm.
-- `test_beuv_presets_in_band` — Gd at 6.7 nm (184–186 eV, 70 W × 250/1290 = 13.57 W at IF, note labelled PROJECTION), Tb at 6.5 nm (11.63 W).
-- `test_spectral_weights_sum_to_one`, `test_incoherent_plasma`, `test_invalid_sigma_rejected`.
-- `test_legacy_toml_without_new_fields_parses` — a source serialized before `drive_laser` / `geometry` existed still parses (68.75 W with its legacy 25 kW / 5.5 % / 0.05 values).
+<details markdown="1">
+<summary>Validation — 12 tests</summary>
 
-Shared physics and throughput: `physics.rs::test_plasma_critical_density_fixture` (1.1149 × 10²¹ cm⁻³ at 1 µm, 9.922 × 10¹⁸ at 10.6 µm, 1/λ² scaling); `throughput.rs::test_field_count_300mm`, `test_euv_hvm_like_fixture`, `test_beuv_column_transmission` (0.641¹¹ = 0.75 %; the EUV column inside 1–4 %; ~166 wph at 250 W and 20 mJ/cm²), `test_throughput_scaling_limits`, `test_photons_per_square_fixture`, `test_throughput_through_trait`.
+| Claim | Test | Tolerance |
+|---|---|---|
+| 13.5 nm ⇒ 91.84 eV and exactly the 2 % band; 21.5 kW × 6 % = 1290 W into 2π sr, η = 250/1290, 250 W at IF, 5 mJ per droplet, `hvm_power_ratio` 1 (the 500 W class: 500 W, 10 mJ, ratio 2); G_src = 0.1571 mm²·sr, margin 21.008, a 1 mm source keeps 0.8403, no geometry ⇒ no limit | `lpp.rs::test_sn_preset_band_and_energy`, `test_power_chain_is_live`, `test_etendue_check` | exact / 1e-4 |
+| CE ordering sets the IF-power ordering and the critical densities for CO₂ and 1.064 µm; Gd 6.7 nm → 13.57 W at IF labelled a projection, Tb 11.63 W; weights sum to one, incoherent plasma, σ validation; a pre-`drive_laser` TOML parses (68.75 W with its legacy 25 kW / 5.5 % / 0.05) | `test_drive_laser_options`, `physics.rs::test_plasma_critical_density_fixture`, `test_beuv_presets_in_band`, `test_spectral_weights_sum_to_one`, `test_incoherent_plasma`, `test_invalid_sigma_rejected`, `test_legacy_toml_without_new_fields_parses` | fixtures |
+| 0.641¹¹ = 0.75 %, the EUV column inside 1–4 %, ≈ 166 wph at 250 W and 20 mJ/cm²; CLI presets, drive-laser and étendue fields, the legacy 0.05 factor → 64.5 W; Python `TestLpp`, `TestThroughput` and the NA 0.33 imaging smoke test | `throughput.rs::test_beuv_column_transmission`, `test_euv_hvm_like_fixture`; `config.rs::test_lpp_nxe3800e_preset`, `test_lpp_drive_laser_and_etendue_fields`, `test_legacy_family_tomls_unchanged_by_new_fields`; `tests/python/test_sources_physics.py` | — |
 
-CLI ([config.rs](../../crates/highuvlith-cli/src/config.rs)): `test_lpp_nxe3800e_preset`, `test_lpp_drive_laser_and_etendue_fields`, `test_legacy_family_tomls_unchanged_by_new_fields` (64.5 W for a legacy 0.05 factor on the NXE:3400B preset), `test_family_example_tomls_validate`.
+</details>
 
-Python: `tests/python/test_sources.py::TestLppSource`, `tests/python/test_sources_physics.py::TestLpp` (`test_power_at_intermediate_focus`, `test_drive_laser_options`, `test_tb_preset`) and `TestThroughput`, plus the end-to-end imaging smoke test at NA 0.33.
+<details markdown="1">
+<summary>Changes</summary>
+
+- **Power is quoted at intermediate focus.** The first versions documented `transport_efficiency` as a "collector-to-wafer" factor (0.05) and reported 68.75 W "at the wafer" (25 kW × 5.5 % × 0.05), contradicting the ~250 W at IF the page quoted and double-counting optics losses. `average_power_w()` now follows every other family and the industry convention — usable power into the illuminator, in band at IF — in two steps: `transport_efficiency` became 2π sr → IF (lumped 0.18 → 247.5 W), then the Sn preset adopted the published chain (21.5 kW, 6 %, η = 250/1290 → 250 W). Gd/Tb moved from 3.5 / 3.0 W "at the wafer" to 13.6 / 11.6 W at IF (projections). A TOML that sets only `transport_efficiency = 0.05` on the Sn preset now gives 64.5 W at IF; a fully serialised legacy source still gives 68.75 W (pinned by `test_legacy_family_tomls_unchanged_by_new_fields`).
+- The `Dipole` illumination shape placed both poles at one point until 2026-09-30; the LPP presets never use it.
+
+</details>
+
+## See also
+
+[Discharge-produced plasma](dpp.md) (the same power-chain conventions, the HVM runner-up) · [XFEL](xfel.md) and [SSMB](ssmb.md) (the kilowatt-class accelerator alternatives) · [Materials](../materials.md) (multilayer mirrors) · history: [The road to EUV](../history/euv.md) · future: [Beyond EUV](../future/beyond-euv.md), [Accelerator light sources](../future/accelerator-light-sources.md#the-bar-to-clear-power-at-intermediate-focus), [The stochastic frontier](../future/stochastic-frontier.md) · [Throughput, stated once](index.md#dose-limited-throughput) · [configuration](../configuration.md) · [`examples/sim_lpp_sn.toml`](../../examples/sim_lpp_sn.toml)
 
 ## References
 
 1. O. O. Versolato, "Physics of laser-driven tin plasma sources of EUV radiation for nanolithography," *Plasma Sources Sci. Technol.* **28**, 083001 (2019), doi:10.1088/1361-6595/ab3302.
-2. I. Fomenkov, NXE:3400B source parameters (250 W at IF, 50 kHz, 21.5 kW CO₂, CE 6 %), 2017 Source Workshop, https://www.euvlitho.com/2017/S1.pdf; see also I. Fomenkov et al., "Light sources for high-volume manufacturing EUV lithography," *Adv. Opt. Technol.* **6**, 173 (2017), doi:10.1515/aot-2017-0029.
-3. Miyazaki & Yen (2019), doi:10.2494/photopolymer.32.195 — 250 W-class sources at >140 wph, 20 mJ/cm².
-4. ASML Investor Day, 14 November 2024 (SEC exhibit 99.4): NXE:3800E "500W EUV Source"; 740 W demonstrated.
-5. ASML Annual Report 2025, p. 31 — 1 kW EUV source demonstrated (April 2025).
-6. Gd/Tb emission optima (6.775 nm / 6.515 nm), doi:10.1063/1.3506520.
-7. T. Higashiguchi et al., *Appl. Phys. Lett.* **99**, 191502 (2011), doi:10.1063/1.3660275 — 0.54 % CE in the 0.6 % band (1.8 % in 2 %).
-8. CO₂-laser-driven Gd plasma, 0.7 % CE in the 0.6 % band, *Opt. Express* **21**, 31837 (2013).
-9. T. Otsuka et al., "Rare-earth plasma extreme ultraviolet sources at 6.5–6.7 nm," *Appl. Phys. Lett.* **97**, 111503 (2010) — 1.3 % CE with a 1064 nm drive, bandwidth not stated.
-10. Capability ledger: [../capability-matrix.md](../capability-matrix.md). Related sources: [inverse Compton](./inverse-compton.md), [SSMB](./ssmb.md), [XFEL](./xfel.md) (the ERL-FEL design point is the kW-class alternative).
+2. I. Fomenkov, NXE:3400B source parameters, 2017 Source Workshop, https://www.euvlitho.com/2017/S1.pdf; I. Fomenkov et al., *Adv. Opt. Technol.* **6**, 173 (2017), doi:10.1515/aot-2017-0029; Miyazaki & Yen (2019), doi:10.2494/photopolymer.32.195 [3].
+3. ASML Investor Day, 14 November 2024 (SEC exhibit 99.4): NXE:3800E "500W EUV Source", 740 W demonstrated [4]; ASML Annual Report 2025, p. 31 — 1 kW EUV source demonstrated (April 2025) [5].
+4. Gd/Tb emission optima (6.775 nm / 6.515 nm), doi:10.1063/1.3506520 [6]; T. Higashiguchi et al., *Appl. Phys. Lett.* **99**, 191502 (2011), doi:10.1063/1.3660275 — 0.54 % CE in the 0.6 % band [7].
+5. CO₂-laser-driven Gd plasma, 0.7 % CE in the 0.6 % band, *Opt. Express* **21**, 31837 (2013) [8]; T. Otsuka et al., *Appl. Phys. Lett.* **97**, 111503 (2010) — 1.3 % CE with a 1064 nm drive [9].
+
+**Where next:** ← [VUV excimer](vuv-excimer.md) · [Discharge-produced plasma](dpp.md) → · Related: [The road to EUV](../history/euv.md) · [Beyond EUV](../future/beyond-euv.md) · [Capability matrix](../capability-matrix.md#light-sources)

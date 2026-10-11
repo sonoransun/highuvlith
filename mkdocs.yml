@@ -68,10 +68,12 @@ theme:
     - navigation.indexes
     - navigation.instant
     - navigation.instant.prefetch
+    - navigation.instant.preview
     - navigation.instant.progress
     - navigation.path
     - navigation.sections
     - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.top
     - navigation.tracking
     - search.highlight
@@ -95,12 +97,41 @@ hooks:
   - docs/hooks/repo_links.py
   # Nav entries for pages not yet in this checkout are skipped locally, strict in CI.
   - docs/hooks/pending_nav.py
-  # **Status:** lines and the ✅ 🔶 🧪 🗺️ markers -> styled, labelled badges.
+  # **Status:** lines and the ✅ 🔶 🧪 🗺️ markers -> styled badges; a marker followed by
+  # its own word becomes a chip (glyph + word).
   - docs/hooks/status_badges.py
+  # The page kit: lazy images with their pixel size (read from the asset file), -anim-
+  # stills, <!-- huv-table: … --> classes, Where-next / Rosetta / strip paragraphs, rung
+  # chips, matrix row ids and tints, data-preview on capability-matrix links; raw <img>/
+  # <source> paths resolved like Markdown images.
+  - docs/hooks/page_kit.py
 
 plugins:
   - search:
       separator: '[\s​\-_,:!=\[\]()"`/]+|\.(?!\d)|&[lg]t;|(?!\b)(?=[A-Z][a-z])'
+  # Click-to-zoom for every Markdown-image figure (the phone strategy for 2x PNGs).
+  # auto_themed puts #gh-light-mode-only images in gallery "light" and the others in
+  # "dark", so a reader only ever opens the variant they can see; raw <picture> embeds
+  # carry class huv-no-zoom and stay out of the lightbox.
+  - glightbox:
+      touchNavigation: true
+      loop: false
+      effect: fade
+      slide_effect: fade
+      width: auto
+      height: auto
+      zoomable: true
+      draggable: false
+      auto_themed: true
+      auto_caption: false
+      caption_position: bottom
+      skip_classes: [huv-no-zoom]
+  # Site-side redirects for renamed pages (mkdocs-redirects forwards location.hash, so a
+  # stale masks-and-metrics/#fragment lands on masks/#fragment). GitHub readers follow the
+  # re-pointed Markdown links instead; every inbound link was rewritten by its owner.
+  - redirects:
+      redirect_maps:
+        masks-and-metrics.md: masks.md
 
 markdown_extensions:
   # Python-Markdown
@@ -171,8 +202,13 @@ extra_javascript:
   # MathJax for pymdownx.arithmatex (Material for MkDocs recipe), pinned to v3.2.2.
   - javascripts/mathjax.js
   - https://unpkg.com/mathjax@3.2.2/es5/tex-mml-chtml.js
-  # Wide mermaid diagrams scroll instead of shrinking on narrow screens.
+  # Wide mermaid diagrams scroll instead of shrinking on narrow screens (the cue is
+  # drawn by layout.js).
   - javascripts/diagrams.js
+  # Overflow cue, motion toggle + still swap, Rosetta tabs (window.HUVLayout).
+  - javascripts/layout.js
+  # Grade filter chips; self-activates on the capability matrix only.
+  - javascripts/matrix-filter.js
   # Playground calculators (self-activate only on pages that contain them).
   - javascripts/huv-physics.js
   - javascripts/playground.js
@@ -208,6 +244,7 @@ nav:
       - Immersion & multipatterning: history/immersion-multipatterning.md
       - The road to EUV: history/euv.md
       - Parallel paths: history/parallel-paths.md
+      - The tool data: history/tool-data.md
   - Process Nodes:
       - nodes/index.md
       - 90 nm to 28 nm: nodes/90-to-28nm.md
@@ -224,31 +261,40 @@ nav:
       - The stochastic frontier: future/stochastic-frontier.md
       - Alternatives to projection: future/alternative-patterning.md
       - Quantum and exotic lithography: future/quantum-and-exotic.md
+  # Simulator: reading order (index -> getting started -> the imaging chain -> the wings
+  # -> architecture last, "under the hood").
   - Simulator:
+      - simulator/index.md
       - Getting started: getting-started.md
-      - Architecture: architecture.md
       - Simulation pipeline: pipeline.md
       - Optical systems: optics.md
       - Vector imaging: vector-imaging.md
-      - Masks & metrics: masks-and-metrics.md
+      - Masks: masks.md
+      - Metrics & process window: metrics-and-process-window.md
       - Materials: materials.md
       - Sources:
           - sources/index.md
-          - DUV/UV heritage: sources/duv-heritage.md
-          - VUV excimer: sources/vuv-excimer.md
-          - Laser-produced plasma: sources/lpp.md
-          - Discharge-produced plasma: sources/dpp.md
-          - Synchrotron: sources/synchrotron.md
-          - XFEL: sources/xfel.md
-          - LPA-FEL: sources/lpa-fel.md
-          - High-harmonic generation: sources/hhg.md
-          - Soft X-ray laser: sources/soft-xray-laser.md
-          - Inverse Compton: sources/inverse-compton.md
-          - Betatron: sources/betatron.md
-          - SSMB: sources/ssmb.md
-          - Smith–Purcell: sources/smith-purcell.md
-          - X-ray tube: sources/xray-tube.md
-          - Entangled photons: sources/entangled-photon.md
+          - Excimer & lamp lines:
+              - DUV/UV heritage: sources/duv-heritage.md
+              - VUV excimer: sources/vuv-excimer.md
+          - Plasma EUV:
+              - Laser-produced plasma: sources/lpp.md
+              - Discharge-produced plasma: sources/dpp.md
+          - Accelerator EUV concepts:
+              - Synchrotron: sources/synchrotron.md
+              - XFEL: sources/xfel.md
+              - LPA-FEL: sources/lpa-fel.md
+              - SSMB: sources/ssmb.md
+              - Inverse Compton: sources/inverse-compton.md
+              - Smith–Purcell: sources/smith-purcell.md
+          - Table-top coherent EUV:
+              - High-harmonic generation: sources/hhg.md
+              - Soft X-ray laser: sources/soft-xray-laser.md
+          - Lab white-beam (LIGA):
+              - X-ray tube: sources/xray-tube.md
+              - Betatron: sources/betatron.md
+          - Quantum:
+              - Entangled photons: sources/entangled-photon.md
       - Processes:
           - processes/index.md
           - Thin film: processes/thin-film.md
@@ -259,12 +305,15 @@ nav:
           - Interference & two-photon: processes/interference-volumetric.md
           - Talbot lithography: processes/talbot.md
       - Research modules: research-modules.md
+      - Architecture: architecture.md
   - Reference:
+      - reference/index.md
       - Capability matrix: capability-matrix.md
       - TOML configuration: configuration.md
       - CLI: cli.md
       - GUI: gui.md
       - Python API: python-api.md
+      - Python API modules: python-api-modules.md
   - Develop:
       - Extending highuvlith: extending.md
       - Roadmap: roadmap.md

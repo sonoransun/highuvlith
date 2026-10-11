@@ -150,12 +150,18 @@ samply.json*
 # Generated assets (CLI image output, demo videos)
 # ============================================================
 
-# Demo videos produced by examples/generate_demo.py
+# Demo videos and stills produced by examples/generate_demo.py (the documentation animations
+# come from docs/figures/sim/make_all.py, never from the demo)
 examples/*.mp4
 examples/*.webm
 examples/*.avi
 examples/*.mkv
 examples/*.gif
+examples/out/
+
+# The figure registry's diagnostic export (make_all.py / check_figures.py --export-registry);
+# nothing reads it and nothing commits it — page_kit.py reads image sizes from the assets
+docs/figures/registry.json
 
 # OpenEXR exports (the CLI can also emit PNG/TIFF; those paths are user-chosen
 # so we do not blanket-ignore those extensions — add project outputs explicitly

@@ -4,53 +4,74 @@ description: "What raising the numerical aperture of EUV optics from 0.33 to 0.5
 
 # High-NA and Hyper-NA EUV
 
-EUV lithography reached volume manufacturing with 13.5 nm light and projection optics
-of numerical aperture (NA) 0.33. There are only two optical knobs left once the
-wavelength is fixed: the process factor $k_1$, which is already close to its floor, and
-the NA. ASML's EXE platform raises the NA to **0.55** ("High-NA"), and the first such
-scanners are now exposing production wafers. A further step to about **0.75**
-("Hyper-NA") is being studied, but no one has committed to building it.
+<p class="huv-lead">Once the wavelength is fixed at 13.5 nm, only the process factor k₁ and the numerical aperture are left to turn, and k₁ is already near its floor. ASML's EXE platform raises the NA from 0.33 to 0.55 ("High-NA"); a step to about 0.75 ("Hyper-NA") is being studied. Every step up buys resolution in proportion to 1/NA and pays for it in depth of focus, at the mask, in the mirrors and in polarization — this page works through those costs one at a time, with what highuvlith can honestly simulate of each.</p>
 
-Every step up in NA buys resolution in proportion to $1/\mathrm{NA}$. It pays for it
-several times over. Depth of focus shrinks faster than resolution improves. The mask sees
-steeper angles, so the optics become anamorphic and the exposure field halves. The
-mirrors get larger and the pupil acquires a central hole. Light polarized in the plane of
-incidence stops interfering usefully. This page works through those trade-offs one at a
-time.
+**Verdict (as of September 2026):** 0.55 NA EUV is in production on selected layers at an 8 nm half-pitch spec; Hyper-NA at 0.75 NA is a feasibility study on ASML's roadmap, not a product.
 
-The deployment chronology (which company inserts High-NA into which node, and when) is
-told in the [Ångström era](../nodes/angstrom-era.md) page of the Process Nodes section.
-Here the focus is the optics physics, and how much of it highuvlith can honestly
-simulate.
+<figure markdown="span">
+
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-future-narrow-light.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-future-light.svg#gh-light-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the EUV → X-ray span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-future-narrow-dark.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-future-dark.svg#gh-dark-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the EUV → X-ray span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
+
+<figcaption><strong>You are here on the axis of light.</strong> The chapter's wavelengths and eras at full strength, the rest faded; years are first tool models in litho_tools.csv; the log axis is expanded above 100 nm. <em>Data chart from litho_tools.csv; no model badge.</em></figcaption>
+</figure>
+
+**Five limits:** [k₁ ≥ 0.25](index.md#diffraction-and-the-resolution-floor) · [photons ∝ λ³/NA²](index.md#photons-and-shot-noise) · [Z-factor](index.md#resolution-roughness-and-dose) · [electron blur](index.md#electron-blur) · [throughput](index.md#throughput-and-cost)
+
+<figure markdown="span">
+
+![Incident and reflected light cones at an EUV mask in three panels: separate at NA 0.33 and 4x (mask-side half-angle 4.7 degrees), overlapping around the normal at NA 0.55 and 4x (7.9 degrees), separate again with 8x in the scan direction (3.9 degrees); angles drawn three times larger than real.](../assets/images/future/anamorphic-why-light.svg#gh-light-mode-only)
+![Incident and reflected light cones at an EUV mask in three panels: separate at NA 0.33 and 4x (mask-side half-angle 4.7 degrees), overlapping around the normal at NA 0.55 and 4x (7.9 degrees), separate again with 8x in the scan direction (3.9 degrees); angles drawn three times larger than real.](../assets/images/future/anamorphic-why-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Why High-NA optics are anamorphic.</strong> The mask-side half-angles asin(NA/M) are computed — 4.7° (0.33 NA, 4×), 7.9° (0.55 NA, 4×), 3.9° (0.55 NA, 8× in scan); every panel uses the same illustrative 6° chief-ray angle and every angle is drawn 3× larger than real. <em>Schematic, not to scale.</em></figcaption>
+</figure>
+
+The deployment chronology (which company inserts High-NA into which node, and when) is told in the [Ångström era](../nodes/angstrom-era.md) page of the Process Nodes section. Here the focus is the optics physics, and how much of it highuvlith can honestly simulate.
+
+## What raising the NA buys and costs
+
+<!-- huv-table: stack -->
+| Raising NA to 0.55 at λ = 13.5 nm | Buys | Costs | Where on this page |
+|---|---|---|---|
+| Resolution | half-pitch ∝ λ/NA: 13 → 8 nm at k₁ ≈ 0.32 | — | [what more NA buys](#what-more-na-buys-resolution) |
+| Depth of focus | — | DOF ∝ λ/NA², 2.8–2.9× less; thinner resist, flatter wafers, fewer absorbed photons | [part 1](#what-it-costs-part-1-depth-of-focus) |
+| The mask | — | steeper cone, half-angle asin(NA/M): anamorphic 4×/8×, a half field, stitching | [part 2](#what-it-costs-part-2-the-mask-and-why-the-optics-are-anamorphic) |
+| The optics | — | metre-class mirrors and a central obscuration in the pupil | [part 3](#what-it-costs-part-3-bigger-mirrors-and-a-central-obscuration) |
+| Polarization | — | TM contrast follows cos 2θ: polarizers lose light, or new sources are needed | [part 4](#what-it-costs-part-4-polarization) |
 
 ## Readiness at a glance
 
-| Technology | Readiness (as of Sep 2026) | highuvlith model |
+<!-- huv-table: stack -->
+| Technology | Readiness (Sep 2026) | highuvlith model |
 |---|---|---|
-| 0.33 NA EUV (NXE), 4× isotropic, 26 × 33 mm field | In production | ✅ [Hopkins imaging](../pipeline.md) through 🔶 [EUV projection optics](../optics.md) (`euv_nxe()`: ideal, unobscured, isotropic pupil); ✅ [Sn LPP source](../sources/lpp.md) |
-| 0.55 NA EUV (EXE:5000 / EXE:5200B), anamorphic 4×/8× | In production on selected layers (Intel 18A, since July 2026); TSMC has announced volume use from 2030 | 🔶 [EUV projection optics](../optics.md) `euv_high_na()` (isotropic pupil, assumed 0.2·NA obscuration) with ✅ [vector pupil](../vector-imaging.md); anamorphic reduction and mask-3D effects not modeled (thin mask at wafer scale) |
-| Stitching two half fields for large dies | Required for dies larger than 26 × 16.5 mm; throughput penalty press-reported (about 175 → 125 wph), no ASML-published measurement found | not modeled |
-| 6 × 12-inch masks restoring a 26 × 33 mm High-NA field | Announced / in development (pilot line planned for 2031) | not modeled |
-| Centrally obscured projection pupil | In production (EXE optics) | 🔶 [EUV projection optics](../optics.md) with `central_obscuration` (the EXE's real value is not public; 0.2·NA is assumed) |
-| Polarized illumination for EUV | Proposed (design study): IRDS 2024 lists polarized sources among the Hyper-NA challenges | ✅ X/Y/TE/TM/linear illumination states in the [vector pupil](../vector-imaging.md) |
-| Hyper-NA EUV (NA ≈ 0.75) | Proposed (design study): on ASML's roadmap as feasibility studies | 🔶 the engines run at NA 0.75 with an idealized pupil; no Hyper-NA lens design, mask-3D or polarized source model |
-| NA ≈ 0.85 | Theoretical / speculative: reported as "under investigation" | 🔶 same idealized-pupil caveat |
-| 5 nm half-pitch by EUV interference (no projection optics) | Demonstrated in the lab (PSI, 2024) | ✅/🔶 [interference module](../processes/interference-volumetric.md); see [Alternative patterning](alternative-patterning.md) |
+| 0.33 NA EUV (NXE), 4× isotropic, 26 × 33 mm field | **In production** | ✅ [Hopkins imaging](../pipeline.md) through 🔶 [EUV projection optics](../optics.md) (`euv_nxe()`); ✅ [Sn LPP source](../sources/lpp.md) |
+| 0.55 NA EUV (EXE:5000 / EXE:5200B), anamorphic 4×/8× | **In production** (selected layers; TSMC volume use announced for 2030) | 🔶 [EUV projection optics](../optics.md) (`euv_high_na()`) with ✅ [vector pupil](../vector-imaging.md) |
+| Stitching two half fields for large dies | needed above 26 × 16.5 mm; the throughput penalty (about 175 → 125 wph) is press-reported [10, 11], no ASML-published measurement | not modelled |
+| 6 × 12-inch masks restoring a 26 × 33 mm field | **Announced** (pilot line planned for 2031) | not modelled |
+| Centrally obscured projection pupil | **In production** (EXE optics) | 🔶 [EUV projection optics](../optics.md) with `central_obscuration` (0.2·NA assumed) |
+| Polarized illumination for EUV | **Proposed** (an IRDS 2024 Hyper-NA challenge) | ✅ X/Y/TE/TM/linear states in the [vector pupil](../vector-imaging.md) |
+| Hyper-NA EUV (NA ≈ 0.75) | **Proposed** (ASML feasibility studies) | 🔶 idealized pupil at NA 0.75; no lens design, mask-3D or polarized source |
+| NA ≈ 0.85 | **Speculative** (reported "under investigation") | 🔶 the same idealized-pupil caveat |
+| 5 nm half-pitch by EUV interference, no projection optics | **Demonstrated** (PSI, 2024) | ✅ [interference module](../processes/interference-volumetric.md) (🔶 absorption, interfaces); see [alternatives](alternative-patterning.md) |
 
-Badges follow the [capability matrix](../capability-matrix.md): ✅ implemented,
-🔶 simplified, 🧪 theoretical, 🗺️ planned.
+Rung words follow the [readiness ladder](index.md#readiness-ladder); chips are the simulator's grades from the [capability matrix](../capability-matrix.md).
 
-```mermaid
-flowchart LR
-    NA["Raise NA at λ = 13.5 nm<br/>0.33 → 0.55 → 0.75?"] --> RES["Finer resolution<br/>half-pitch ∝ λ/NA"]
-    NA --> DOF["Less depth of focus<br/>∝ λ/NA²"]
-    NA --> MASK["Steeper angles at the mask<br/>half-angle asin(NA/M)"]
-    NA --> POL["TM light loses contrast<br/>|cos 2θ|"]
-    NA --> OPT["Larger mirrors,<br/>central obscuration"]
-    DOF --> THIN["Thinner resist, flatter wafers<br/>→ fewer absorbed photons"]
-    MASK --> ANA["Anamorphic 4×/8×<br/>→ half field, stitching"]
-    POL --> POLS["Polarized illumination<br/>→ light loss or new sources"]
-```
+<details markdown="1">
+<summary>Why these rungs</summary>
+
+| Technology | Evidence for the rung | What the model leaves out |
+|---|---|---|
+| 0.33 NA EUV (NXE) | the production baseline since 2017; the NXE:3800E spec is 13 nm resolution [3] | `euv_nxe()` is an ideal, unobscured, isotropic pupil |
+| 0.55 NA EUV (EXE) | in production on selected Intel 18A layers since July 2026 (further reading); TSMC has announced volume use from 2030 [12] | isotropic pupil with an assumed 0.2·NA obscuration; anamorphic reduction and mask-3D effects not modelled (thin mask at wafer scale) |
+| Stitching two half fields | no rung: it is a way of using the 0.55 NA tool, not a technology with its own evidence; required for dies larger than 26 × 16.5 mm; the throughput penalty (about 175 → 125 wph) is press-reported [10, 11] and we found no ASML-published measurement | — |
+| 6 × 12-inch masks | ASML, Intel, Samsung and TSMC back the format; TSMC plans a pilot line in 2031 and production by 2033 [11, 12] | — |
+| Centrally obscured pupil | the EXE optics are obscured [9]; the real value is not public | 0.2·NA is an assumption |
+| Polarized illumination | IRDS 2024 lists polarized sources among the Hyper-NA challenges [8] | — |
+| Hyper-NA (≈ 0.75) | on ASML's roadmap as feasibility studies [17, 19, 20]; no product specified or priced | the engines run at NA 0.75 with an idealized pupil |
+| NA ≈ 0.85 | reported as "under investigation" [19] | as above |
+| 5 nm half-pitch by interference | printed at 13.5 nm by PSI in 2024 [5] | the arithmetic sin θ = 0.675 is ours, not the paper's |
+
+</details>
 
 ## What more NA buys: resolution
 
@@ -69,11 +90,13 @@ and $k_1 = 0.25$. Production processes sit above that floor. ASML's resolution s
 imply $k_1 \approx 0.32$ at both NAs: 13 nm at NA 0.33 for the NXE:3800E and 8 nm at NA
 0.55 for the EXE systems [3, 4].
 
-| NA | HP at the floor ($k_1 = 0.25$) | HP at $k_1 = 0.32$ | Vendor spec (implied $k_1$) |
+| NA | HP at the floor (k₁ = 0.25) | HP at k₁ = 0.32 | Vendor spec (implied k₁) |
 |---|---|---|---|
 | 0.33 | 10.2 nm | 13.1 nm | 13 nm (0.318) |
 | 0.55 | 6.1 nm | 7.9 nm | 8 nm (0.326) |
 | 0.75 (Hyper-NA) | 4.5 nm | 5.8 nm | none: no product |
+
+**ASML's "8 nm resolution" is a half-pitch — a 16 nm pitch at k₁ ≈ 0.33 — not an 8 nm pitch.**
 
 !!! warning "Myth: "8 nm resolution" means an 8 nm pitch"
     ASML quotes the EXE's resolution as a critical dimension of 8 nm [4]. That is a
@@ -113,7 +136,7 @@ uses the same exact phase: the defocus term is
 $(2\pi/\lambda) z (1 - \sqrt{1 - \mathrm{NA}^2\rho^2})$ at every pupil point
 ([pipeline](../pipeline.md)).
 
-| Step | DOF shrinks by (paraxial, $\propto \mathrm{NA}^{-2}$) | DOF shrinks by (Lin, $\propto \sin^{-2}(\theta/2)$) |
+| Step | DOF shrinks by (paraxial, ∝ 1/NA²) | DOF shrinks by (Lin, ∝ 1/sin²(θ/2)) |
 |---|---|---|
 | 0.33 → 0.55 | 2.78× | 2.94× |
 | 0.55 → 0.75 | 1.86× | 2.05× |
@@ -133,7 +156,7 @@ focus systems and wafer flatness [9].
 ![Contrast versus focus for 0.33 and 0.55 NA EUV: at the same 32 nm pitch the 0.55 NA image starts higher but fades faster with defocus; at equal k1 both start near 0.5 and the 0.55 NA image fades about three times faster.](../assets/images/sim/site/site-euv-depth-of-focus-light.png#gh-light-mode-only)
 ![Contrast versus focus for 0.33 and 0.55 NA EUV: at the same 32 nm pitch the 0.55 NA image starts higher but fades faster with defocus; at equal k1 both start near 0.5 and the 0.55 NA image fades about three times faster.](../assets/images/sim/site/site-euv-depth-of-focus-dark.png#gh-dark-mode-only)
 
-<figcaption>The depth-of-focus price of 0.55 NA (Sn LPP, conventional σ 0.9). (a) The angstrom-era page's example: a 32 nm pitch through the NXE and High-NA presets. (b) The High-NA page's example: equal k<sub>1</sub> (32 nm at 0.33, 19.2 nm at 0.55) through ideal unobscured pupils. The engine applies the exact non-paraxial defocus phase per source point; image in air, no resist, no mask-3D best-focus shifts. Models: defocus / through-focus imaging ✅, EUV projection optics 🔶.</figcaption>
+<figcaption><strong>The depth-of-focus price of NA 0.55.</strong> Sn LPP, conventional σ 0.9: (a) the angstrom-era example, a 32 nm pitch through the NXE and High-NA presets; (b) the High-NA page's example, equal k<sub>1</sub> (32 nm at 0.33, 19.2 nm at 0.55) through ideal unobscured pupils. The engine applies the exact non-paraxial defocus phase per source point; image in air, no resist, no mask-3D best-focus shifts. <em>Model: defocus / through-focus imaging ✅ · EUV projection optics 🔶.</em></figcaption>
 </figure>
 
 ## What it costs, part 2: the mask, and why the optics are anamorphic
@@ -155,11 +178,7 @@ cones would then overlap around the normal unless the illumination were tilted f
 still, and every degree of extra tilt pushes the steepest rays further off the
 multilayer's reflection peak and deepens mask shadowing.
 
-<figure markdown="span">
-  ![Three panels show the incident and reflected light cones at an EUV mask. At NA 0.33 with 4x reduction the cones are separate; at NA 0.55 with 4x they overlap around the mask normal; with 8x reduction in the scan direction they separate again.](../assets/images/future/anamorphic-why-light.svg#only-light){ width="860" }
-  ![Three panels show the incident and reflected light cones at an EUV mask. At NA 0.33 with 4x reduction the cones are separate; at NA 0.55 with 4x they overlap around the mask normal; with 8x reduction in the scan direction they separate again.](../assets/images/future/anamorphic-why-dark.svg#only-dark){ width="860" }
-  <figcaption>Why High-NA optics are anamorphic. The mask-side half-angles asin(NA/M) are computed: 4.7° (0.33 NA, 4×), 7.9° (0.55 NA, 4×), 3.9° (0.55 NA, 8×). All three panels use the same illustrative chief-ray angle of about 6°, and every angle is drawn 3× larger than real. Own work, generated by docs/figures/future/make_future_schematics.py.</figcaption>
-</figure>
+The figure at the top of this page draws the three cases: the cones separate at 0.33 NA and 4× (mask-side half-angle 4.7°), overlap around the normal at 0.55 NA and 4× (7.9°), and separate again with 8× along the scan direction (3.9°).
 
 ASML explains the design choice in plain terms. The bigger mirrors needed for 0.55 NA
 "increase the angle at which light hit the reticle", and "at the larger angle the reticle
@@ -187,6 +206,16 @@ it will start High-NA volume production in 2030 on conventional 6 × 6-inch mask
 6 × 12-inch pilot line in 2031, and bring 6 × 12-inch High-NA systems into production by
 2033 [12]. These are announced plans, not delivered results.
 
+<figure markdown="span">
+
+![Three wafer fields to scale: 26 by 33 mm from a 6-inch mask at 4x, a 26 by 16.5 mm anamorphic half field with a stitching seam for larger dies, and 26 by 33 mm restored by a 6 by 12-inch mask; stitching is press-reported to cut 175 wafers per hour to about 125; the dates are announced plans.](../assets/images/future/field-size-light.svg#gh-light-mode-only)
+![Three wafer fields to scale: 26 by 33 mm from a 6-inch mask at 4x, a 26 by 16.5 mm anamorphic half field with a stitching seam for larger dies, and 26 by 33 mm restored by a 6 by 12-inch mask; stitching is press-reported to cut 175 wafers per hour to about 125; the dates are announced plans.](../assets/images/future/field-size-dark.svg#gh-dark-mode-only)
+
+<figcaption><strong>Half the field, then a new mask to get it back.</strong> A 6-inch mask exposes 26 × 33 mm at 4×, anamorphic optics 26 × 16.5 mm (dies larger than a half field are stitched across a seam), and a 6 × 12-inch mask restores 26 × 33 mm; 175 → ~125 wafers per hour with stitching is press-reported and TSMC's 2030–33 dates are announced plans. <em>Stitching throughput is press-reported; dates are plans.</em></figcaption>
+</figure>
+
+**Mask 3D effects are real, they grow with NA, and they are outside this simulator, which uses a thin (Kirchhoff) mask everywhere.**
+
 !!! note "Mask 3D effects: real, and outside this simulator"
     An EUV absorber is tens of nanometres thick, several wavelengths, and it is lit at an
     angle. The reflections can cause shadowing and mask-induced imaging aberrations [21].
@@ -212,7 +241,7 @@ further down reproduces these numbers.
 ![Reflectance of an ideal molybdenum-silicon mask blank versus angle of incidence, with bars marking the range of angles each scanner design sends to the mask; at 0.55 NA with 4x reduction the range runs into the steep fall-off, with 8x it stays on the plateau.](../assets/images/sim/site/site-mask-cone-reflectance-light.png#gh-light-mode-only)
 ![Reflectance of an ideal molybdenum-silicon mask blank versus angle of incidence, with bars marking the range of angles each scanner design sends to the mask; at 0.55 NA with 4x reduction the range runs into the steep fall-off, with 8x it stays on the plateau.](../assets/images/sim/site/site-mask-cone-reflectance-dark.png#gh-dark-mode-only)
 
-<figcaption>Why the High-NA mask wants 8× in one direction (the High-NA page's example): reflectance of an ideal 40-period Mo/Si blank at 13.5 nm, period tuned for the chief-ray angle (max(6°, cone half-angle)), against the mask-side cone half-angle asin(NA/M). Bars show each design's cone and the reflectance at its two edges. Ideal multilayer: no absorber, capping or roughness, and the single worst ray — not a mask-3D calculation. Model: multilayer mirrors ✅.</figcaption>
+<figcaption><strong>Why the High-NA mask wants 8× in one direction.</strong> Reflectance of an ideal 40-period Mo/Si blank at 13.5 nm, period tuned for the chief-ray angle (max(6°, cone half-angle)), against the mask-side cone half-angle asin(NA/M) — the High-NA page's example; bars show each design's cone and the reflectance at its two edges. Ideal multilayer (no absorber, capping or roughness) and the single worst ray, not a mask-3D calculation. <em>Model: multilayer mirrors ✅.</em></figcaption>
 </figure>
 
 ## What it costs, part 3: bigger mirrors and a central obscuration
@@ -236,6 +265,14 @@ near-coherent illumination with an obscured pupil unless you want dark-field ima
 the zero order then falls into the hole. The examples on this page use an unobscured
 `euv_projection` pupil so that NA is the only thing that changes.
 
+<figure markdown="span">
+
+![Amplitude and phase of the High-NA EUV pupil at NA 0.55 at one Rayleigh unit of defocus: a ring with the assumed 0.2 NA central obscuration above, the exact defocus phase wrapping towards the rim below.](../assets/images/sim/optics-four-pupils-high-na-light.png#gh-light-mode-only)
+![Amplitude and phase of the High-NA EUV pupil at NA 0.55 at one Rayleigh unit of defocus: a ring with the assumed 0.2 NA central obscuration above, the exact defocus phase wrapping towards the rim below.](../assets/images/sim/optics-four-pupils-high-na-dark.png#gh-dark-mode-only)
+
+<figcaption><strong>The High-NA pupil the engine images through.</strong> Isotropic wafer-side pupil at NA 0.55 with the assumed 0.2·NA central obscuration (not a published figure); amplitude above, the exact defocus phase at z = λ/NA² ≈ 45 nm below, wrapped to (−π, π]. <em>Model: EUV scanner projection optics (NA 0.33 / High-NA 0.55) 🔶 (obscuration assumed; no anamorphic magnification, no mask 3-D).</em></figcaption>
+</figure>
+
 ## What it costs, part 4: polarization
 
 Light is a transverse wave, and at high NA that starts to matter. When two diffraction
@@ -255,24 +292,19 @@ These are standard vector-imaging results [16]. At the pitch limit the two order
 the pupil edge, so $\sin\theta = \mathrm{NA}$ in the recording medium, or $\mathrm{NA}/n$
 inside a resist of index $n$.
 
-<figure markdown="span">
-  ![Line chart of two-beam fringe contrast versus the sine of the beam angle. TE contrast stays at 1. TM contrast falls as the absolute value of cos 2 theta and reaches zero at 45 degrees. Unpolarized contrast falls as cos squared theta. Markers show EUV NA 0.33, High-NA 0.55, Hyper-NA 0.75 and ArF immersion at NA 1.35 inside a resist of index about 1.7.](../assets/images/future/polarization-contrast-light.svg#only-light){ width="860" }
-  ![Line chart of two-beam fringe contrast versus the sine of the beam angle. TE contrast stays at 1. TM contrast falls as the absolute value of cos 2 theta and reaches zero at 45 degrees. Unpolarized contrast falls as cos squared theta. Markers show EUV NA 0.33, High-NA 0.55, Hyper-NA 0.75 and ArF immersion at NA 1.35 inside a resist of index about 1.7.](../assets/images/future/polarization-contrast-dark.svg#only-dark){ width="860" }
-  <figcaption>Two-beam fringe contrast for TE, TM and unpolarized light (closed-form optics, computed). Markers sit at the pitch limit (orders at the pupil edge) for EUV 0.33, 0.55 and 0.75 NA, with resist index ≈ 1 at 13.5 nm, and for ArF immersion at NA 1.35 inside a resist of index ≈ 1.7. Own work, generated by docs/figures/future/make_future_figures.py.</figcaption>
-</figure>
+<details markdown="1">
+<summary>Data: contrast at the pitch limit</summary>
 
-??? info "Data: contrast at the pitch limit"
+| Case | sin θ | TE | TM (magnitude of cos 2θ) | Unpolarized (cos²θ) |
+|---|---|---|---|---|
+| EUV, NA 0.33 | 0.33 | 1 | 0.78 | 0.89 |
+| High-NA, 0.55 | 0.55 | 1 | 0.40 | 0.70 |
+| Hyper-NA, 0.75 | 0.75 | 1 | 0.13 | 0.44 |
+| ArF immersion, NA 1.35, in resist n ≈ 1.7 | 0.79 | 1 | 0.26 | 0.37 |
 
-    | Case | $\sin\theta$ | TE | TM, $\lvert\cos 2\theta\rvert$ | Unpolarized, $\cos^2\theta$ |
-    |---|---|---|---|---|
-    | EUV, NA 0.33 | 0.33 | 1 | 0.78 | 0.89 |
-    | High-NA, 0.55 | 0.55 | 1 | 0.40 | 0.70 |
-    | Hyper-NA, 0.75 | 0.75 | 1 | 0.13 | 0.44 |
-    | ArF immersion, NA 1.35, in resist $n \approx 1.7$ | 0.79 | 1 | 0.26 | 0.37 |
+The same numbers come out of highuvlith's vector pupil (example below). Inside a real resist, the Fresnel transmission at the film entrance differs for s and p, so the unpolarized ArF value computed with a film comes out at 0.34 rather than 0.37.
 
-    The same numbers come out of highuvlith's vector pupil (example below). Inside a real
-    resist, the Fresnel transmission at the film entrance differs for s and p, so the
-    unpolarized ArF value computed with a film comes out at 0.34 rather than 0.37.
+</details>
 
 The table reads directly as a roadmap. At 0.33 NA an unpolarized source loses little. At
 0.55 the TM half of the light has already lost more than half its contrast at the tightest
@@ -303,7 +335,7 @@ overstates contrast.
 ![Two charts versus numerical aperture: TE contrast stays at one while TM contrast falls to zero at NA 0.71 and reverses; unpolarized sits in between; the same ordering appears in simulated dense line images.](../assets/images/sim/imaging-vector-te-tm-light.png#gh-light-mode-only)
 ![Two charts versus numerical aperture: TE contrast stays at one while TM contrast falls to zero at NA 0.71 and reverses; unpolarized sits in between; the same ordering appears in simulated dense line images.](../assets/images/sim/imaging-vector-te-tm-dark.png#gh-dark-mode-only)
 
-<figcaption>Polarization at high NA. (a) Fringe contrast of two diffraction orders at the pupil edge from the vector pupil model: TE stays at 1, TM follows |cos 2θ| and vanishes at NA = 1/√2, unpolarized light gives cos²θ; inside a resist film (n = 1.7) the refracted angle is smaller and TM recovers. (b) Full vector imaging of dense 1:1 lines (193.368 nm, pitch 1.1 λ/NA, conventional σ 0.3) shows the same ordering. Model: vector (TE/TM) imaging ✅ — thin mask, no mask-3D or lens polarization aberrations.</figcaption>
+<figcaption><strong>Polarization at high NA.</strong> (a) Fringe contrast of two diffraction orders at the pupil edge from the vector pupil model: TE stays at 1, TM follows |cos 2θ| and vanishes at NA = 1/√2, unpolarized light gives cos²θ; inside a resist film (n = 1.7) the refracted angle is smaller and TM recovers. (b) Full vector imaging of dense 1:1 lines (193.368 nm, pitch 1.1 λ/NA, conventional σ 0.3) shows the same ordering. <em>Model: vector (polarized) high-NA imaging ✅; thin mask, no mask-3D or lens polarization aberrations.</em></figcaption>
 </figure>
 
 ## Hyper-NA: the next step, if it is taken
@@ -350,6 +382,8 @@ decision in the next few years as to whether hyper-NA 13.5 nm or BEUV is preferr
 The shorter-wavelength branch of that choice is on the
 [Beyond EUV](beyond-euv.md) page.
 
+**No Hyper-NA scanner has been announced, specified or priced as of September 2026.**
+
 !!! warning "Myth: Hyper-NA has been announced"
     As of September 2026 no Hyper-NA scanner has been announced as a product, specified,
     or priced by ASML. Every public statement on this page is a roadmap option, a vision,
@@ -362,132 +396,170 @@ Each example runs in under half a minute; the imaging ones spend most of it buil
 kernels. Contrast values quoted in the text come from the current engine and may shift
 slightly as the models improve.
 
-!!! example "Try it in highuvlith: resolution at 0.33 vs 0.55 NA"
-    The same 13.5 nm source through an ideal, unobscured EUV projection pupil at two NAs.
-    Grids are commensurate: the field is 8 pitches wide.
+### Resolution at 0.33 vs 0.55 NA
 
-    <!-- verify-example -->
-    ```python
-    import highuvlith as huv
+The same 13.5 nm source through an ideal, unobscured EUV projection pupil at two NAs.
+Grids are commensurate: the field is 8 pitches wide.
 
-    src = huv.SourceConfig.lpp_sn_13nm5(0.9)            # 13.5 nm, conventional sigma 0.9
-    for na in (0.33, 0.55):
-        opt = huv.OpticsConfig.euv_projection(numerical_aperture=na)   # isotropic, unobscured
-        for pitch in (32.0, 24.0, 16.0):
-            mask = huv.MaskConfig.line_space(pitch / 2, pitch)
-            grid = huv.GridConfig(128, pitch / 16)      # field = 8 pitches (commensurate)
-            c = huv.SimulationEngine(src, opt, mask, grid=grid).compute_aerial_image().image_contrast()
-            print(f"NA {na:.2f}  pitch {pitch:4.0f} nm  k1 {pitch / 2 * na / 13.5:.2f}  contrast {c:.2f}")
-    ```
+<!-- verify-example -->
+```python
+import highuvlith as huv
 
-    ??? success "Output"
-
-        ```text
-        NA 0.33  pitch   32 nm  k1 0.39  contrast 0.51
-        NA 0.33  pitch   24 nm  k1 0.29  contrast 0.11
-        NA 0.33  pitch   16 nm  k1 0.20  contrast 0.00
-        NA 0.55  pitch   32 nm  k1 0.65  contrast 0.89
-        NA 0.55  pitch   24 nm  k1 0.49  contrast 0.75
-        NA 0.55  pitch   16 nm  k1 0.33  contrast 0.25
-        ```
-
-    At 0.33 NA the contrast falls from about 0.50 (32 nm pitch) to 0.10 (24 nm) and zero
-    at 16 nm, where $k_1 = 0.20$ is below the floor. At 0.55 NA the same pitches give about
-    0.89, 0.75 and 0.26. Conventional illumination keeps the example simple; real scanners
-    use dipole or other off-axis illumination to recover contrast near the limit.
-
-!!! example "Try it in highuvlith: why the mask wants 8× (multilayer angular acceptance)"
-    Reflectance of an ideal Mo/Si mask blank across the mask-side cone, with the period
-    tuned for the chief ray.
-
-    <!-- verify-example -->
-    ```python
-    import math
-    from highuvlith.api import MultilayerMirror, tune_multilayer_period
-
-    for label, na, mag in (("NXE 0.33, 4x", 0.33, 4), ("0.55 at 4x", 0.55, 4), ("EXE 0.55, 8x", 0.55, 8)):
-        half = math.degrees(math.asin(na / mag))        # mask-side cone half-angle
-        cra = max(6.0, half)                            # chief ray must clear the mask normal
-        d = tune_multilayer_period("mo_si", 13.5, 40, angle_deg=cra)
-        ml = MultilayerMirror.mo_si(period_nm=d)        # Mo/Si tuned for the chief ray
-        lo, hi = (ml.reflectance(13.5, angle_deg=a) for a in (cra - half, cra + half))
-        print(f"{label:13s} cone {half:3.1f} deg, chief ray {cra:3.1f} deg: R = {lo:.2f} ... {hi:.2f}")
-    ```
-
-    ??? success "Output"
-
-        ```text
-        NXE 0.33, 4x  cone 4.7 deg, chief ray 6.0 deg: R = 0.72 ... 0.63
-        0.55 at 4x    cone 7.9 deg, chief ray 7.9 deg: R = 0.71 ... 0.11
-        EXE 0.55, 8x  cone 3.9 deg, chief ray 6.0 deg: R = 0.72 ... 0.68
-        ```
-
-    This prints roughly R = 0.72 … 0.63 for NXE, 0.71 … 0.11 for 0.55 NA at 4×, and
-    0.72 … 0.68 for the EXE's 8× direction. It models an ideal multilayer (no absorber,
-    capping or roughness) and the single worst ray, not a full mask-3D calculation.
-
-!!! example "Try it in highuvlith: TE, TM and unpolarized two-beam contrast"
-    The [vector pupil](../vector-imaging.md) reproduces the closed forms above. For orders
-    along x, `"y"` is TE and `"x"` is TM; `p0=1` (the default) puts both orders at the
-    pupil edge.
-
-    <!-- verify-example -->
-    ```python
-    from highuvlith.api import vector_two_beam_contrast
-
-    for na in (0.33, 0.55, 0.75):
-        te = vector_two_beam_contrast(na, "y")            # E perpendicular to the plane of incidence
-        tm = vector_two_beam_contrast(na, "x")            # E in the plane of incidence
-        un = vector_two_beam_contrast(na, "unpolarized")
-        print(f"NA {na:.2f}:  TE {te:.3f}  TM {tm:.3f}  unpolarized {un:.3f}")
-    # ArF immersion, NA 1.35 in water (n = 1.437), recorded inside a resist of index 1.7:
-    print(f"NA 1.35 water, TM in resist: {vector_two_beam_contrast(1.35, 'x', image_index=1.437, film_n=1.7):.3f}")
-    ```
-
-    ??? success "Output"
-
-        ```text
-        NA 0.33:  TE 1.000  TM 0.782  unpolarized 0.891
-        NA 0.55:  TE 1.000  TM 0.395  unpolarized 0.697
-        NA 0.75:  TE 1.000  TM 0.125  unpolarized 0.437
-        NA 1.35 water, TM in resist: 0.261
-        ```
-
-    Expected: TM 0.782, 0.395 and 0.125 and unpolarized 0.891, 0.697 and 0.437 at 0.33,
-    0.55 and 0.75 NA. The ArF TM value inside the resist is 0.261.
-
-!!! example "Try it in highuvlith: depth of focus at equal k1"
-    Compare 0.33 and 0.55 NA at the same $k_1 \approx 0.39$ (32 nm and 19.2 nm pitch)
-    through focus. The engine applies the exact non-paraxial defocus phase at every
-    source point.
-
-    <!-- verify-example -->
-    ```python
-    import highuvlith as huv
-
-    src = huv.SourceConfig.lpp_sn_13nm5(0.9)
-    focus = [0.0, 30.0, 60.0, 90.0]                         # nm of defocus
-    for na, pitch in ((0.33, 32.0), (0.55, 19.2)):          # same k1 = 0.39
-        opt = huv.OpticsConfig.euv_projection(numerical_aperture=na)
+src = huv.SourceConfig.lpp_sn_13nm5(0.9)            # 13.5 nm, conventional sigma 0.9
+for na in (0.33, 0.55):
+    opt = huv.OpticsConfig.euv_projection(numerical_aperture=na)   # isotropic, unobscured
+    for pitch in (32.0, 24.0, 16.0):
         mask = huv.MaskConfig.line_space(pitch / 2, pitch)
-        eng = huv.SimulationEngine(src, opt, mask, grid=huv.GridConfig(128, pitch / 16))
-        cs = [img.image_contrast() for img in eng.compute_through_focus(focus)]
-        print(f"NA {na}: " + "  ".join(f"{z:+4.0f} nm {c:.2f}" for z, c in zip(focus, cs)))
+        grid = huv.GridConfig(128, pitch / 16)      # field = 8 pitches (commensurate)
+        c = huv.SimulationEngine(src, opt, mask, grid=grid).compute_aerial_image().image_contrast()
+        print(f"NA {na:.2f}  pitch {pitch:4.0f} nm  k1 {pitch / 2 * na / 13.5:.2f}  contrast {c:.2f}")
+```
+
+???+ success "Output"
+
+    ```text
+    NA 0.33  pitch   32 nm  k1 0.39  contrast 0.51
+    NA 0.33  pitch   24 nm  k1 0.29  contrast 0.11
+    NA 0.33  pitch   16 nm  k1 0.20  contrast 0.00
+    NA 0.55  pitch   32 nm  k1 0.65  contrast 0.89
+    NA 0.55  pitch   24 nm  k1 0.49  contrast 0.75
+    NA 0.55  pitch   16 nm  k1 0.33  contrast 0.25
     ```
 
-    ??? success "Output"
+At 0.33 NA the contrast falls from about 0.51 (32 nm pitch) to 0.11 (24 nm) and zero
+at 16 nm, where $k_1 = 0.20$ is below the floor. At 0.55 NA the same pitches give about
+0.89, 0.75 and 0.25. Conventional illumination keeps the example simple; real scanners
+use dipole or other off-axis illumination to recover contrast near the limit.
 
-        ```text
-        NA 0.33:   +0 nm 0.51   +30 nm 0.48   +60 nm 0.41   +90 nm 0.31
-        NA 0.55:   +0 nm 0.51   +30 nm 0.32   +60 nm 0.03   +90 nm 0.05
-        ```
+### Why the mask wants 8× (multilayer angular acceptance)
 
-    Both start near 0.50 contrast in focus. The 0.55 NA image fades roughly three times
-    faster with defocus, in line with the 2.8–2.9× DOF ratio in the table above.
+Reflectance of an ideal Mo/Si mask blank across the mask-side cone, with the period
+tuned for the chief ray.
+
+<!-- verify-example -->
+```python
+import math
+from highuvlith.api import MultilayerMirror, tune_multilayer_period
+
+for label, na, mag in (("NXE 0.33, 4x", 0.33, 4), ("0.55 at 4x", 0.55, 4), ("EXE 0.55, 8x", 0.55, 8)):
+    half = math.degrees(math.asin(na / mag))        # mask-side cone half-angle
+    cra = max(6.0, half)                            # chief ray must clear the mask normal
+    d = tune_multilayer_period("mo_si", 13.5, 40, angle_deg=cra)
+    ml = MultilayerMirror.mo_si(period_nm=d)        # Mo/Si tuned for the chief ray
+    lo, hi = (ml.reflectance(13.5, angle_deg=a) for a in (cra - half, cra + half))
+    print(f"{label:13s} cone {half:3.1f} deg, chief ray {cra:3.1f} deg: R = {lo:.2f} ... {hi:.2f}")
+```
+
+???+ success "Output"
+
+    ```text
+    NXE 0.33, 4x  cone 4.7 deg, chief ray 6.0 deg: R = 0.72 ... 0.63
+    0.55 at 4x    cone 7.9 deg, chief ray 7.9 deg: R = 0.71 ... 0.11
+    EXE 0.55, 8x  cone 3.9 deg, chief ray 6.0 deg: R = 0.72 ... 0.68
+    ```
+
+This prints roughly R = 0.72 … 0.63 for NXE, 0.71 … 0.11 for 0.55 NA at 4×, and
+0.72 … 0.68 for the EXE's 8× direction. It models an ideal multilayer (no absorber,
+capping or roughness) and the single worst ray, not a full mask-3D calculation.
+
+### TE, TM and unpolarized two-beam contrast
+
+The [vector pupil](../vector-imaging.md) reproduces the closed forms above. For orders
+along x, `"y"` is TE and `"x"` is TM; `p0=1` (the default) puts both orders at the
+pupil edge.
+
+<!-- verify-example -->
+```python
+from highuvlith.api import vector_two_beam_contrast
+
+for na in (0.33, 0.55, 0.75):
+    te = vector_two_beam_contrast(na, "y")            # E perpendicular to the plane of incidence
+    tm = vector_two_beam_contrast(na, "x")            # E in the plane of incidence
+    un = vector_two_beam_contrast(na, "unpolarized")
+    print(f"NA {na:.2f}:  TE {te:.3f}  TM {tm:.3f}  unpolarized {un:.3f}")
+# ArF immersion, NA 1.35 in water (n = 1.437), recorded inside a resist of index 1.7:
+print(f"NA 1.35 water, TM in resist: {vector_two_beam_contrast(1.35, 'x', image_index=1.437, film_n=1.7):.3f}")
+```
+
+???+ success "Output"
+
+    ```text
+    NA 0.33:  TE 1.000  TM 0.782  unpolarized 0.891
+    NA 0.55:  TE 1.000  TM 0.395  unpolarized 0.697
+    NA 0.75:  TE 1.000  TM 0.125  unpolarized 0.437
+    NA 1.35 water, TM in resist: 0.261
+    ```
+
+Expected: TM 0.782, 0.395 and 0.125 and unpolarized 0.891, 0.697 and 0.437 at 0.33,
+0.55 and 0.75 NA. The ArF TM value inside the resist is 0.261.
+
+### Depth of focus at equal k1
+
+Compare 0.33 and 0.55 NA at the same $k_1 \approx 0.39$ (32 nm and 19.2 nm pitch)
+through focus. The engine applies the exact non-paraxial defocus phase at every
+source point.
+
+<!-- verify-example -->
+```python
+import highuvlith as huv
+
+src = huv.SourceConfig.lpp_sn_13nm5(0.9)
+focus = [0.0, 30.0, 60.0, 90.0]                         # nm of defocus
+for na, pitch in ((0.33, 32.0), (0.55, 19.2)):          # same k1 = 0.39
+    opt = huv.OpticsConfig.euv_projection(numerical_aperture=na)
+    mask = huv.MaskConfig.line_space(pitch / 2, pitch)
+    eng = huv.SimulationEngine(src, opt, mask, grid=huv.GridConfig(128, pitch / 16))
+    cs = [img.image_contrast() for img in eng.compute_through_focus(focus)]
+    print(f"NA {na}: " + "  ".join(f"{z:+4.0f} nm {c:.2f}" for z, c in zip(focus, cs)))
+```
+
+???+ success "Output"
+
+    ```text
+    NA 0.33:   +0 nm 0.51   +30 nm 0.48   +60 nm 0.41   +90 nm 0.31
+    NA 0.55:   +0 nm 0.51   +30 nm 0.32   +60 nm 0.03   +90 nm 0.05
+    ```
+
+Both start near 0.50 contrast in focus. The 0.55 NA image fades roughly three times
+faster with defocus, in line with the 2.8–2.9× DOF ratio in the table above.
+
+### One pitch, four futures
+
+A 16 nm pitch (the High-NA "8 nm" half-pitch) through ideal, unobscured projection
+pupils. The 0.75 NA and 6.7 nm cases are hypothetical optics.
+
+<!-- verify-example -->
+```python
+import highuvlith as huv
+
+pitch = 16.0
+mask = huv.MaskConfig.line_space(pitch / 2, pitch)
+grid = huv.GridConfig(128, pitch / 16)              # field = 8 pitches (commensurate)
+sn, gd = huv.SourceConfig.lpp_sn_13nm5(0.9), huv.SourceConfig.lpp_gd_6nm7(0.9)
+for src, na in ((sn, 0.33), (sn, 0.55), (sn, 0.75), (gd, 0.33)):
+    opt = huv.OpticsConfig.euv_projection(numerical_aperture=na)
+    c = huv.SimulationEngine(src, opt, mask, grid=grid).compute_aerial_image().image_contrast()
+    k1 = pitch / 2 * na / src.wavelength_nm
+    print(f"{src.wavelength_nm:4.1f} nm, NA {na:.2f}: k1 = {k1:.2f}, contrast {c:.2f}")
+```
+
+???+ success "Output"
+
+    ```text
+    13.5 nm, NA 0.33: k1 = 0.20, contrast 0.00
+    13.5 nm, NA 0.55: k1 = 0.33, contrast 0.25
+    13.5 nm, NA 0.75: k1 = 0.44, contrast 0.65
+     6.7 nm, NA 0.33: k1 = 0.39, contrast 0.51
+    ```
+
+Expect zero contrast at 13.5 nm and NA 0.33 ($k_1 = 0.20$, below the floor), a weak
+image at NA 0.55 (about 0.25), a strong one at NA 0.75 (about 0.65), and a usable image
+(about 0.51) from 6.7 nm light through the same 0.33 NA optics. The contrast is scalar (no polarization loss) and the pupils are
+ideal, which flatters the high-NA case; part 4 above is the correction.
 
 ## Key takeaways
 
-- High-NA (0.55) is in production for selected layers. Its resolution spec is an **8 nm
+- **The verdict:** High-NA (0.55) is in production for selected layers and Hyper-NA is a study. The 0.55 NA resolution spec is an **8 nm
   half-pitch** at $k_1 \approx 0.33$, and the gain over 0.33 NA is about 1.7× in
   dimension and 2.9× in density.
 - Depth of focus shrinks about 2.8–2.9× from 0.33 to 0.55 NA, and another 1.9–2.1× to
@@ -504,6 +576,8 @@ slightly as the models improve.
   vector pupil with polarized illumination, isotropic EUV projection pupils with an
   optional (assumed) central obscuration, and ideal multilayers. It does **not** model
   mask 3D effects, the anamorphic reduction, or real EXE lens aberrations.
+
+**Where next:** ← [The future of lithography](index.md) · [Beyond EUV](beyond-euv.md) → · Related: [Ångström era](../nodes/angstrom-era.md) · [vector imaging](../vector-imaging.md) · [optics](../optics.md) · [capability matrix](../capability-matrix.md)
 
 ## References and further reading
 

@@ -7,47 +7,27 @@ description: >-
 
 # Parallel paths
 
-For fifty years, lithographers expected optical projection to hit a wall that some other
-technology would then get past. Each "next-generation lithography" had a real physical
-advantage: shorter wavelengths, no diffraction limit, or no lens at all. Each also ran into
-the same problem, which Bruning describes as optics' unmatched pixel rate. A 45 nm immersion
-scanner exposing 300 mm wafers at 100 per hour writes roughly 10¹⁵ pixels per second [1]. None
-of the alternatives displaced optical projection for high-volume chips, but almost all of them
-found places where they are still essential.
+<p class="huv-lead">Chapter 7 of 7 — This chapter is a thematic survey, not an era. For fifty years lithographers expected optical projection to hit a wall that some other technology would then get past, and each "next-generation lithography" had a real physical advantage: shorter wavelengths, no diffraction limit, or no lens at all (1960–2025). Each also ran into the same problem, which Bruning describes as optics' unmatched pixel rate: a 45 nm immersion scanner exposing 300 mm wafers at 100 per hour writes roughly 10¹⁵ pixels per second [1]. None of the alternatives displaced optical projection for high-volume chips, but almost all of them found places where they are still essential.</p>
 
-```mermaid
-flowchart LR
-    subgraph P["Technology (first reported)"]
-        XRL["Proximity X-ray<br/>lithography (1972)"]
-        EPL["Electron projection<br/>SCALPEL, PREVAIL"]
-        EBL["Electron-beam<br/>lithography (1960)"]
-        IPL["Ion projection<br/>(IPL)"]
-        IONB["Focused ion beams"]
-        NIL["Nanoimprint (1995)"]
-        DSA["Directed<br/>self-assembly (2001 landmark)"]
-    end
-    subgraph S["Where it lives on"]
-        LIGA["LIGA microstructures<br/>at synchrotrons"]
-        GONE["Abandoned<br/>(1998–2005)"]
-        MASK["Photomask writing:<br/>VSB and multi-beam"]
-        RD["R&D and low-volume<br/>direct write"]
-        FIB["Mask repair and<br/>circuit edit"]
-        NILP["Canon NIL tools<br/>(fab delivery 2017,<br/>launch 2023)"]
-        EUVA["EUV line<br/>rectification (research)"]
-    end
-    XRL --> LIGA
-    EPL -.->|"never commercialized"| GONE
-    EBL --> MASK
-    EBL --> RD
-    IPL -.->|"IMS pivots to<br/>multi-beam e-beam"| MASK
-    IONB --> FIB
-    NIL --> NILP
-    DSA --> EUVA
-```
+<figure markdown="span">
 
-## Proximity X-ray lithography
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-parallel-narrow-light.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-parallel-light.svg#gh-light-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the X-rays, LIGA and the lensless paths span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
+<picture><source media="(max-width: 600px)" srcset="../assets/images/diagrams/spectrum-strip-ribbon-parallel-narrow-dark.svg"><img class="huv-no-zoom" src="../assets/images/diagrams/spectrum-strip-ribbon-parallel-dark.svg#gh-dark-mode-only" alt="The spectrum strip from 500 to 0.05 nm with the X-rays, LIGA and the lensless paths span highlighted and labelled 'You are here'; the other lines, optics and era pills are faded."></picture>
 
-The [proximity-printing trade-off](origins.md#contact-and-proximity-printing), a blur of about
+<figcaption><strong>You are here on the axis of light.</strong> The chapter's wavelengths and eras at full strength, the rest faded; years are first tool models in litho_tools.csv; the log axis is expanded above 100 nm. <em>Data chart from litho_tools.csv; no model badge.</em></figcaption>
+</figure>
+
+<figure markdown="span">
+
+<picture><source media="(max-width: 600px)" srcset="../assets/images/history/parallel-lanes-narrow-light.svg"><img class="huv-no-zoom" src="../assets/images/history/parallel-lanes-light.svg#gh-light-mode-only" alt="Nine timeline lanes from 1960 to 2025 for proximity X-ray, LIGA, electron-beam writing, electron projection, ion beams, multi-beam writers, nanoimprint, directed self-assembly and interference lithography, with dated first-report, milestone, abandoned and still-used markers and reference numbers."></picture>
+<picture><source media="(max-width: 600px)" srcset="../assets/images/history/parallel-lanes-narrow-dark.svg"><img class="huv-no-zoom" src="../assets/images/history/parallel-lanes-dark.svg#gh-dark-mode-only" alt="Nine timeline lanes from 1960 to 2025 for proximity X-ray, LIGA, electron-beam writing, electron projection, ion beams, multi-beam writers, nanoimprint, directed self-assembly and interference lithography, with dated first-report, milestone, abandoned and still-used markers and reference numbers."></picture>
+
+<figcaption><strong>Nine paths beside projection, 1960–2025.</strong> Filled dots are first reports, small dots milestones, rings an abandoned or shelved line, arrows a path still in use; every marker carries its reference number from this chapter, and 'abandoned' appears only where a decision is cited. <em>Data chart from the chapter's references; no model badge.</em></figcaption>
+</figure>
+
+## Proximity X-ray lithography, 1972–1998
+
+The [proximity-printing trade-off](origins.md), a blur of about
 √(λg), has an obvious fix: make λ tiny. In 1972 D. L. Spears and H. I. Smith at MIT Lincoln
 Laboratory reported "high-resolution pattern replication using soft X rays" [2]. Proximity X-ray
 lithography (XRL) used wavelengths of about 0.8–1.5 nm and a gap of tens of micrometres, shrinking
@@ -70,9 +50,9 @@ electron projection, while adding that X-ray and ion-projection work need not st
 Proximity XRL never entered mainstream manufacturing; Cerrina's review describes the state of the
 art around 2000 [40]. In 1993 Smith and Schattenburg had doubted that projection XRL with
 multilayer mirrors at 13 nm could ever match proximity XRL [3]. That projection approach became
-[EUV](euv.md).
+[EUV](euv.md); [beyond EUV](../future/beyond-euv.md#where-x-rays-still-pattern-liga) returns to X-ray proximity printing.
 
-## LIGA: deep X-rays for tall microstructures
+## LIGA: deep X-rays for tall microstructures, 1982–2025
 
 X-ray shadow printing did find a lasting home, at much harder X-rays and much larger scales.
 At the Kernforschungszentrum Karlsruhe, E. W. Becker, W. Ehrfeld and colleagues combined
@@ -85,27 +65,106 @@ Institute of Technology, successor to the Kernforschungszentrum, still runs thre
 at its KARA synchrotron, covering 2.2–20 keV for mask making, deep and ultra-deep X-ray
 lithography [9].
 
-!!! info "LIGA in highuvlith"
-    Deep-X-ray lithography is modeled directly (see
-    [LIGA deep X-ray](../processes/liga-deep-xray.md), 🔶 Simplified overall: the depth dose and
-    exposure time are ✅, the proximity diffraction ✅/🔶). A bending-magnet white beam, computed
-    with the same flux function as the [synchrotron source](../sources/synchrotron.md), passes
-    filters, a membrane and a partly transparent gold absorber. For every energy bin, scalar
-    Fresnel (angular-spectrum) propagation carries the transmitted field across the gap and
-    down through the PMMA. The model yields the spectral depth dose, the top-to-bottom dose
-    ratio, a damage-ceiling check, the exposure time for an absolute beam, and the developed
-    depth. It does not model photoelectron transport, beam divergence, beamline mirrors, or the
-    electroforming and moulding steps.
+"Almost no diffraction" is a quantitative statement, and the simulator can put a number on
+it: across a 100 µm gap, the Fresnel scale √(λg) of an 8 keV beam is a few hundred nanometres,
+against about 3 µm for g-line light over a 20 µm gap.
+
+<figure markdown="span">
+
+![Left: dose across an absorber edge at 8 keV, where Fresnel diffraction gives the knife-edge 0.25 at the edge and ringing up to 1.37, unlike the smooth legacy Gaussian blur; right: dose across the edge at five depths of the polychromatic beam, the developed edge moving about 300 nm over 500 µm.](../assets/images/sim/liga-fresnel-edge-light.png#gh-light-mode-only)
+![Left: dose across an absorber edge at 8 keV, where Fresnel diffraction gives the knife-edge 0.25 at the edge and ringing up to 1.37, unlike the smooth legacy Gaussian blur; right: dose across the edge at five depths of the polychromatic beam, the developed edge moving about 300 nm over 500 µm.](../assets/images/sim/liga-fresnel-edge-dark.png#gh-dark-mode-only)
+
+<figcaption><strong>Proximity diffraction at a LIGA absorber edge.</strong> (a) Monochromatic 8 keV straight edge, 100 µm gap: the default Fresnel (angular-spectrum) model gives the knife-edge pattern — 0.25 at the geometric edge, a 1.37 maximum and ringing — while the legacy <code>gaussian</code> option smooths the step with σ = ½√(λg); both curves are simulator output. (b) Polychromatic bending-magnet beam, no filter: absorbed dose across the edge at five depths and the developed edge at a 2.5 kJ/cm³ threshold. <em>Model: LIGA proximity diffraction ✅ (🔶 thin-screen absorber; no photo- or secondary-electron transport).</em></figcaption>
+</figure>
+
+**What highuvlith models here: deep-X-ray lithography is modelled directly, from a
+bending-magnet white beam through filters, a membrane and a partly transparent gold absorber
+into the PMMA; it does not model photoelectron transport, beam divergence, beamline mirrors,
+or the electroforming and moulding steps.** The white beam is computed with the same flux
+function as the [synchrotron source](../sources/synchrotron.md); for every energy bin, scalar
+Fresnel (angular-spectrum) propagation carries the transmitted field across the gap and down
+through the resist, and the model yields the spectral depth dose, the top-to-bottom dose
+ratio, a damage-ceiling check, the exposure time for an absolute beam, and the developed depth.
+
+<!-- huv-table: stack -->
+
+| Issue | In highuvlith | Grade | Link |
+|---|---|---|---|
+| Depth dose and exposure time in thick PMMA | spectral depth dose with NIST μ and μ_en; bending-magnet spectrum; absolute dose rate and exposure time from ring parameters | ✅ Implemented | [LIGA deep X-ray](../processes/liga-deep-xray.md) |
+| Diffraction across the proximity gap | scalar angular-spectrum propagation of the complex Au absorber field per energy bin; thin-screen absorber, no electron transport | ✅ Implemented (🔶 thin-screen absorber) | [LIGA deep X-ray](../processes/liga-deep-xray.md) |
+| Electroforming and moulding | not modelled | — | [processes](../processes/index.md) |
+
+### Try it in highuvlith
+
+The LIGA preset uses a bending magnet with a 6.23 keV critical energy, 500 µm of PMMA and
+a 100 µm gap. The simulator reports the dose-weighted Fresnel scale √(λg): a few hundred
+nanometres for its X-rays, against about 3 µm for g-line light across a 20 µm gap.
+Unfiltered, the soft part of the beam overdoses the top of the resist; the next example
+shows the cure.
+
+<!-- verify-example -->
+```python
+import highuvlith as huv
+
+# Deep X-ray shadow printing: 500 um PMMA, 5 um lines on a 10 um pitch, 100 um gap.
+result = huv.simulate_liga(critical_energy_kev=6.23, resist_thickness_um=500.0,
+                           grid_size=128, pixel_nm=78.125, nz=32)  # 10 um field
+top, bottom = result.fresnel_scale_nm  # dose-weighted sqrt(lambda * g), nm
+print(f"X-rays, 100 um gap: sqrt(lambda g) = {top:.0f} nm (top), {bottom:.0f} nm (bottom)")
+print(f"g-line light, 20 um gap: sqrt(lambda g) = {(436.0 * 20e3) ** 0.5:.0f} nm")
+print(f"top/bottom dose ratio {result.dose_ratio:.1f}, "
+      f"damage ceiling exceeded: {result.exceeds_damage_ceiling}")
+```
+
+???+ success "Output"
+
+    ```text
+    X-rays, 100 um gap: sqrt(lambda g) = 227 nm (top), 331 nm (bottom)
+    g-line light, 20 um gap: sqrt(lambda g) = 2953 nm
+    top/bottom dose ratio 20.8, damage ceiling exceeded: True
+    ```
+
+## Dose through half a millimetre of PMMA
+
+Soft photons are absorbed near the top of thick PMMA, so the top receives far more dose
+than the bottom. The bottom must reach the clearing dose (3 kJ/cm³ here) while the top
+stays below the damage ceiling (20 kJ/cm³), so the top-to-bottom ratio must stay below
+about 6.7. A harder white beam (a higher critical energy) helps a little. An upstream
+filter that absorbs the soft photons helps much more.
+
+### Try it in highuvlith
+
+<!-- verify-example -->
+```python
+import highuvlith as huv
+
+# (bending-magnet critical energy in keV, upstream filters as (material, thickness in um))
+cases = [(3.0, None), (6.23, None), (10.0, None), (6.23, [("Al", 20.0)])]
+for e_c, filters in cases:
+    result = huv.simulate_liga(critical_energy_kev=e_c, resist_thickness_um=500.0,
+                               filters=filters, grid_size=128, pixel_nm=78.125, nz=32)
+    print(f"E_c {e_c:5.2f} keV, filters {filters}: top/bottom dose ratio "
+          f"{result.dose_ratio:5.2f}, damage ceiling exceeded: {result.exceeds_damage_ceiling}")
+```
+
+???+ success "Output"
+
+    ```text
+    E_c  3.00 keV, filters None: top/bottom dose ratio 46.57, damage ceiling exceeded: True
+    E_c  6.23 keV, filters None: top/bottom dose ratio 20.79, damage ceiling exceeded: True
+    E_c 10.00 keV, filters None: top/bottom dose ratio 15.37, damage ceiling exceeded: True
+    E_c  6.23 keV, filters [('Al', 20.0)]: top/bottom dose ratio  2.86, damage ceiling exceeded: False
+    ```
 
 <figure markdown="span">
 
 ![Depth-dose curves through 500 micrometres of PMMA for bending-magnet spectra with critical energies 3, 6.23 and 10 keV and for 6.23 keV behind 20 micrometres of aluminium; softer spectra put far more dose at the top for the same 3 kJ/cm3 at the bottom.](../assets/images/sim/site/site-liga-critical-energy-light.png#gh-light-mode-only)
 ![Depth-dose curves through 500 micrometres of PMMA for bending-magnet spectra with critical energies 3, 6.23 and 10 keV and for 6.23 keV behind 20 micrometres of aluminium; softer spectra put far more dose at the top for the same 3 kJ/cm3 at the bottom.](../assets/images/sim/site/site-liga-critical-energy-dark.png#gh-dark-mode-only)
 
-<figcaption>The page's LIGA example as depth-dose curves: bending-magnet spectra of critical energy 3, 6.23 and 10 keV (and 6.23 keV through a 20 µm Al filter) on 500 µm PMMA behind the default 20 µm Au / 2 µm Ti mask, each scaled so the bottom receives the 3 kJ/cm³ clearing dose. Model: LIGA depth dose ✅ (NIST μ / μ<sub>en</sub>, collimated beam, no beamline mirrors).</figcaption>
+<figcaption><strong>Harder spectra expose 500 µm of PMMA more evenly.</strong> The page's LIGA example as depth-dose curves: bending-magnet spectra of critical energy 3, 6.23 and 10 keV (and 6.23 keV through a 20 µm Al filter) on 500 µm PMMA behind the default 20 µm Au / 2 µm Ti mask, each scaled so the bottom receives the 3 kJ/cm³ clearing dose. <em>Model: LIGA depth dose ✅ (NIST μ / μ<sub>en</sub>, collimated beam, no beamline mirrors).</em></figcaption>
 </figure>
 
-## Electron beams
+## Electron beams, 1960–2019
 
 An electron beam has a wavelength of a few picometres, so it is not diffraction-limited in any
 practical sense. It writes serially, one spot or shape at a time, instead of printing a whole
@@ -121,6 +180,8 @@ field at once.
   variable-shaped-beam approach (Pfeiffer, 1978) exposes
   a whole rectangle per flash [13]; IBM also used its EL-3 shaped-beam system for direct writing
   in manufacturing [14]. Variable-shaped-beam writers became the standard for advanced masks.
+  Not every mask is written with electrons: laser-scanning pattern generators, such as Applied
+  Materials' ALTA series [24], write many of the less critical layers.
 - **Projection e-beam.** Bell Labs' SCALPEL (1990) and IBM and Nikon's PREVAIL (1999) tried to
   project electrons through a mask like a scanner [15, 16]. ASML and Applied Materials formed a
   joint venture, eLITH, to commercialize SCALPEL in 1999 and closed it by the end of 2000
@@ -134,13 +195,10 @@ field at once.
   (alpha tool 2014, production MBMW-101 from 2016), writing with 512 × 512 = 262,144 beamlets at
   50 keV [20, 21, 22]. Intel first invested in IMS in 2009 [20]. Multi-beam writing is what made
   curvilinear masks practical. An IMS executive put it bluntly in 2018: "It's a must for EUV"
-  [23].
+  [23]. Where mask writing and direct write may go next is on
+  [alternatives to projection](../future/alternative-patterning.md#electron-beams-indispensable-for-masks-too-slow-for-wafers).
 
-!!! note "Laser writers too"
-    Not every mask is written with electrons. Laser-scanning pattern generators, such as Applied
-    Materials' ALTA series [24], write many of the less critical layers.
-
-## Ion beams
+## Ion beams, 1987–2009
 
 Ions scatter less than electrons in resist and can be focused tightly. **Ion projection
 lithography** was developed in Europe through the 1990s. IMS in Vienna built an IPL prototype that
@@ -151,7 +209,7 @@ application, together with ion-induced deposition for rewiring circuits [26]. FI
 circuit edit remain standard. Helium-ion microscopes (introduced in 2006) have since written
 lines below 10 nm in research [27, 28].
 
-## Nanoimprint
+## Nanoimprint, 1995–2024
 
 Nanoimprint lithography replaces optics with a mould. In 1995 Stephen Chou, Peter Krauss and
 Preston Renstrom pressed a patterned mould into a heated polymer and made vias and trenches
@@ -173,7 +231,7 @@ lower power use and possibly lower cost of ownership than projection tools [33].
 2024 Canon delivered one to the Texas Institute for Electronics [34]. Sreenivasan's 2017 review
 describes how imprint steppers were engineered for semiconductor volume production [35].
 
-## Directed self-assembly
+## Directed self-assembly, 2001–2023
 
 Block copolymers, two polymers chemically joined end to end, separate into regular domains with
 periods of a few tens of nanometres. **Directed self-assembly** (DSA) uses a coarse
@@ -185,13 +243,18 @@ method was largely shelved for pitch multiplication [39]. By 2023 it was returni
 role: smoothing and "rectifying" EUV patterns, whose stochastic defects, according to the same
 report, now make up more than half of the total error budget [39].
 
-!!! info "DSA in highuvlith"
-    The DSA research module is 🔶 Simplified. It renders analytic morphologies (lamellae,
-    cylinders, spheres), registers lamellae to graphoepitaxy trench walls with a
-    strong-segregation commensurability penalty, and reports a heuristic defect index. It does
-    not solve self-consistent-field theory. See [research modules](../research-modules.md).
+**What highuvlith models here: the DSA research module renders analytic morphologies and
+registers lamellae to graphoepitaxy trench walls; its defect index is an uncalibrated
+heuristic, and it does not solve self-consistent-field theory.**
 
-## Interference lithography
+<!-- huv-table: stack -->
+
+| Issue | In highuvlith | Grade | Link |
+|---|---|---|---|
+| Block-copolymer morphologies and registration | analytic lamellae, cylinders and spheres; lamellar graphoepitaxy registration with a strong-segregation commensurability penalty; mean-field ODT check | 🔶 Simplified | [research modules](../research-modules.md) |
+| Defectivity | a defect index that is an uncalibrated heuristic; not SCFT | 🔶 Simplified | [research modules](../research-modules.md) |
+
+## Interference lithography, 1836–2011
 
 Two coherent beams crossing at a half-angle θ make fringes with period λ/(2 sin θ), with no mask
 and no lens. Interference lithography is a standard way to write large, precise gratings; at MIT,
@@ -206,29 +269,58 @@ that integrating the transmitted field over one Talbot period of mask-to-wafer d
 image that does not depend on the gap. They called the method displacement Talbot lithography
 and used it to print linear gratings and hexagonal arrays of holes [43].
 
-!!! info "Interference in highuvlith"
-    Multi-beam interference lithography (two-beam gratings, three-beam hexagonal and four-beam
-    lattices) and two-photon exposure are ✅/🔶: the vector-sum field is exact, while absorption
-    is per-beam scalar. See
-    [interference and volumetric exposure](../processes/interference-volumetric.md). The Talbot
-    carpet, displacement and achromatic Talbot lithography, and two-grating EUV interference
-    are 🔶 Simplified: scalar thin-mask gratings under coherent normal illumination. See
-    [Talbot and EUV interference lithography](../processes/talbot.md).
+**What highuvlith models here: multi-beam interference and two-photon exposure have an exact
+vector-sum field with per-beam scalar absorption, and the Talbot family is a scalar thin-mask
+model under coherent normal illumination.**
+
+<!-- huv-table: stack -->
+
+| Issue | In highuvlith | Grade | Link |
+|---|---|---|---|
+| Two-, three- and four-beam interference, two-photon exposure | analytic vector-component plane-wave superposition; per-beam scalar absorption, no substrate reflection | ✅ Implemented (🔶 two-photon) | [interference and volumetric exposure](../processes/interference-volumetric.md) |
+| Talbot carpet, displacement and achromatic Talbot | scalar thin-mask grating orders with exact angular-spectrum propagation; coherent normal illumination | 🔶 Simplified | [Talbot lithography](../processes/talbot.md) |
+| Two-grating EUV interference | fringe period p/(2m) and visibility for ideal TE beams; no zero-order background or mask 3-D | 🔶 Simplified | [Talbot lithography](../processes/talbot.md) |
+
+### Try it in highuvlith
+
+Two beams at a 30° half-angle in air give a fringe period of λ/(2 sin θ) = 193 nm for 193 nm
+light, whatever the resist index.
+
+<!-- verify-example -->
+```python
+import math
+import highuvlith as huv
+
+wavelength, half_angle = 193.0, 30.0
+result = huv.simulate_interference("two_beam", wavelength_nm=wavelength, n_medium=1.7,
+                                   half_angle_deg=half_angle, nx=128, ny=4, nz=8,
+                                   x_span_nm=772.0, y_span_nm=100.0, z_span_nm=100.0)
+period = wavelength / (2 * math.sin(math.radians(half_angle)))
+pac = result.values[0, 0, :]  # top slice, one row across the grating
+print(f"fringe period {period:.0f} nm; PAC ranges from {pac.min():.2f} to {pac.max():.2f}")
+```
+
+???+ success "Output"
+
+    ```text
+    fringe period 193 nm; PAC ranges from 0.92 to 1.00
+    ```
 
 <figure markdown="span">
 
 ![Left: a two-beam interference pattern recorded as a photoactive-compound map with a 193 nm fringe period. Middle: the Talbot carpet behind a 1 micrometre grating lit at 193 nm. Right: the displacement-Talbot image, which has half the grating period.](../assets/images/sim/site/site-interference-and-talbot-light.png#gh-light-mode-only)
 ![Left: a two-beam interference pattern recorded as a photoactive-compound map with a 193 nm fringe period. Middle: the Talbot carpet behind a 1 micrometre grating lit at 193 nm. Right: the displacement-Talbot image, which has half the grating period.](../assets/images/sim/site/site-interference-and-talbot-dark.png#gh-dark-mode-only)
 
-<figcaption>Lensless patterning at 193 nm. (a) The page's two-beam example (30° half-angle in air, resist n = 1.7): fringe period λ/(2 sin θ) = 193 nm, shown as the Dill photoactive compound (PAC) through depth; at the example's default dose the PAC only falls from 1.00 to 0.92 (colour scale stretched). (b) Self-imaging behind a 1 µm binary amplitude grating, exact angular-spectrum propagation; (c) averaging over a scanned gap (DTL) gives a stationary image at half the period. Models: multi-beam interference ✅/🔶 (per-beam scalar absorption, no substrate reflection); Talbot/DTL 🔶 (scalar thin mask, coherent normal illumination).</figcaption>
+<figcaption><strong>Lensless patterning at 193 nm.</strong> (a) The page's two-beam example (30° half-angle in air, resist n = 1.7): a 193 nm fringe period shown as the Dill photoactive compound (PAC) through depth — at the example's default dose the PAC only falls from 1.00 to 0.92, so the colour scale is stretched; (b) self-imaging behind a 1 µm binary amplitude grating by exact angular-spectrum propagation; (c) averaging over a scanned gap (DTL) gives a stationary image at half the period. <em>Model: multi-beam interference ✅ (per-beam scalar absorption, no substrate reflection) · Talbot / DTL 🔶 (scalar thin mask, coherent normal illumination).</em></figcaption>
 </figure>
 
 ## Where each path survived
 
 Where these alternatives may go next, from nanoimprint and DSA to multi-beam writing, is the
 subject of [alternatives to projection lithography](../future/alternative-patterning.md) in the
-future section; [beyond EUV](../future/beyond-euv.md) returns to X-ray proximity printing.
+future section; [beyond EUV](../future/beyond-euv.md#where-x-rays-still-pattern-liga) returns to X-ray proximity printing.
 
+<!-- huv-table: stack -->
 | Path | Proposed as successor for | What stopped it | Where it lives on |
 |---|---|---|---|
 | Proximity X-ray (≈ 1 nm) | sub-100 nm chips (1980s–1990s) | 1:1 membrane masks, synchrotron sources | LIGA and deep X-ray microfabrication [9] |
@@ -237,61 +329,7 @@ future section; [beyond EUV](../future/beyond-euv.md) returns to X-ray proximity
 | Ion projection | sub-100 nm (1990s) | industry moved to EUV [20] | IMS's multi-beam writers; FIB repair and circuit edit [26] |
 | Nanoimprint | sub-20 nm patterning, with Canon from 2014 [32] | not displaced; a tool at a NAND fab since 2017, general launch in 2023; volume production not confirmed | Canon FPA-1200NZ2C [33, 34, 45] |
 | Directed self-assembly | pitch multiplication | defectivity [39] | EUV line rectification (research) [39] |
-
-## Try it
-
-!!! example "Try it in highuvlith: harder X-rays, more uniform LIGA exposure"
-    Soft photons are absorbed near the top of thick PMMA, so the top receives far more dose
-    than the bottom. The bottom must reach the clearing dose (3 kJ/cm³ here) while the top
-    stays below the damage ceiling (20 kJ/cm³), so the top-to-bottom ratio must stay below
-    about 6.7. A harder white beam (a higher critical energy) helps a little. An upstream
-    filter that absorbs the soft photons helps much more.
-
-    <!-- verify-example -->
-    ```python
-    import highuvlith as huv
-
-    # (bending-magnet critical energy in keV, upstream filters as (material, thickness in um))
-    cases = [(3.0, None), (6.23, None), (10.0, None), (6.23, [("Al", 20.0)])]
-    for e_c, filters in cases:
-        result = huv.simulate_liga(critical_energy_kev=e_c, resist_thickness_um=500.0,
-                                   filters=filters, grid_size=128, pixel_nm=78.125, nz=32)
-        print(f"E_c {e_c:5.2f} keV, filters {filters}: top/bottom dose ratio "
-              f"{result.dose_ratio:5.2f}, damage ceiling exceeded: {result.exceeds_damage_ceiling}")
-    ```
-
-    ??? success "Output"
-
-        ```text
-        E_c  3.00 keV, filters None: top/bottom dose ratio 46.57, damage ceiling exceeded: True
-        E_c  6.23 keV, filters None: top/bottom dose ratio 20.79, damage ceiling exceeded: True
-        E_c 10.00 keV, filters None: top/bottom dose ratio 15.37, damage ceiling exceeded: True
-        E_c  6.23 keV, filters [('Al', 20.0)]: top/bottom dose ratio  2.86, damage ceiling exceeded: False
-        ```
-
-!!! example "Try it in highuvlith: a 193 nm-period interference grating"
-    Two beams at a 30° half-angle in air give a fringe period of λ/(2 sin θ) = 193 nm for 193 nm
-    light, whatever the resist index.
-
-    <!-- verify-example -->
-    ```python
-    import math
-    import highuvlith as huv
-
-    wavelength, half_angle = 193.0, 30.0
-    result = huv.simulate_interference("two_beam", wavelength_nm=wavelength, n_medium=1.7,
-                                       half_angle_deg=half_angle, nx=128, ny=4, nz=8,
-                                       x_span_nm=772.0, y_span_nm=100.0, z_span_nm=100.0)
-    period = wavelength / (2 * math.sin(math.radians(half_angle)))
-    pac = result.values[0, 0, :]  # top slice, one row across the grating
-    print(f"fringe period {period:.0f} nm; PAC ranges from {pac.min():.2f} to {pac.max():.2f}")
-    ```
-
-    ??? success "Output"
-
-        ```text
-        fringe period 193 nm; PAC ranges from 0.92 to 1.00
-        ```
+| Interference and Talbot | gratings and periodic arrays, never random logic | one period per exposure; no arbitrary patterns | large-area gratings [41]; displacement Talbot lithography [43]; EUV interference test beds |
 
 ## Key takeaways
 
@@ -299,12 +337,13 @@ future section; [beyond EUV](../future/beyond-euv.md) returns to X-ray proximity
   roughly 10¹⁵ pixels per second.
 - Proximity X-ray lithography failed on the 1:1 mask. Deep X-rays live on in LIGA.
 - Electron beams write the masks that optical and EUV scanners print. Multi-beam writers made
-  curvilinear and EUV masks practical.
-- Ion projection faded, but its beam-array know-how became the multi-beam mask writer, and
-  focused ion beams repair masks and edit circuits.
+  curvilinear and EUV masks practical; ion projection faded, but its beam-array know-how became
+  the multi-beam mask writer, and focused ion beams repair masks and edit circuits.
 - A nanoimprint tool has been at a memory fab since 2017, and Canon's went on general sale in
   2023; volume production is not confirmed. DSA was shelved for pitch multiplication and is
   returning as an aid to EUV.
+
+**Where next:** ← [The road to EUV](euv.md) · [Process nodes](../nodes/index.md) → · Related: [Alternatives to projection](../future/alternative-patterning.md) · [LIGA deep X-ray](../processes/liga-deep-xray.md) · [Capability matrix](../capability-matrix.md#deep-layer-and-non-projection-processes)
 
 ## References and further reading
 

@@ -6,10 +6,16 @@ After Markdown rendering this hook
 
 * adds ``class="huv-status huv-status--<grade>"`` to the page's leading ``**Status:**``
   paragraph (the first marker in it picks the grade), so it renders as a callout, and
-* wraps each marker in ``<span class="huv-badge huv-badge--<grade>" title="<Grade>">``,
-  giving readers a tooltip and screen readers a name. A marker already followed by its
-  own label ("✅ Implemented") is hidden from screen readers instead, so the grade is
-  not announced twice.
+* turns a marker that is directly followed by its own word ("✅ Implemented") into a
+  **chip** — ``<span class="huv-chip huv-chip--<grade>"><span class="huv-chip__glyph"
+  aria-hidden="true">✅</span>Implemented</span>`` — so the grade reads once and the
+  Markdown stays plain ``✅ Implemented`` on GitHub, and
+* wraps every other marker in ``<span class="huv-badge huv-badge--<grade>" title="<Grade>"
+  role="img" aria-label="<Grade>">``, giving readers a tooltip and screen readers a name. A
+  mismatched label ("✅ Simplified") keeps the bare badge and the label text unchanged.
+
+The chip lives in exactly four places by convention (DESIGN §4.7): Status lines, at-a-glance /
+model tables, caption trailers and the legend; the hook does not know pages, it knows markup.
 
 Text inside code, pre, script, style, svg, textarea and kbd elements is left untouched.
 The styles live in docs/stylesheets/extra.css.
@@ -32,9 +38,11 @@ BADGES = {
     "🗺": ("planned", "Planned"),
 }
 
+# The marker, its optional variation selector and — consumed, not looked ahead at — an
+# optional label: one space (or NBSP) and one of the four grade words (DESIGN §4.7).
 _MARKER = re.compile(
-    "(?P<marker>[" + "".join(BADGES) + "])️?"
-    r"(?=(?P<label>\s*(?:Implemented|Simplified|Theoretical|Planned)\b))?"
+    "(?P<marker>[" + "".join(BADGES) + "])(?P<vs>\ufe0f?)"
+    r"(?P<label>[ \u00a0]?(?:Implemented|Simplified|Theoretical|Planned)\b)?"
 )
 _TOKEN = re.compile(r"<!--.*?-->|<[^>]*>", re.S)
 _OPEN = re.compile(r"<([A-Za-z][A-Za-z0-9-]*)\b")
@@ -48,14 +56,19 @@ _STATUS_P = re.compile(r"<p>(?=\s*<strong>Status:</strong>)(?P<body>.*?)</p>", r
 
 
 def _badge(match: re.Match[str]) -> str:
-    marker = match.group(0)
-    slug, label = BADGES[match.group("marker")]
-    named = match.group("label")
-    if named is not None and named.strip() == label:
-        a11y = 'aria-hidden="true"'
-    else:
-        a11y = f'role="img" aria-label="{label}"'
-    return f'<span class="huv-badge huv-badge--{slug}" title="{label}" {a11y}>{marker}</span>'
+    glyph = match.group("marker") + (match.group("vs") or "")
+    slug, word = BADGES[match.group("marker")]
+    label = match.group("label")
+    if label is not None and label.strip() == word:
+        return (
+            f'<span class="huv-chip huv-chip--{slug}">'
+            f'<span class="huv-chip__glyph" aria-hidden="true">{glyph}</span>{word}</span>'
+        )
+    badge = (
+        f'<span class="huv-badge huv-badge--{slug}" title="{word}" '
+        f'role="img" aria-label="{word}">{glyph}</span>'
+    )
+    return badge + (label or "")
 
 
 def wrap_badges(html: str) -> str:
@@ -84,7 +97,7 @@ def wrap_badges(html: str) -> str:
         name = opened.group(1).lower()
         if name in _VOID:
             continue
-        if stack or name in _SKIP or (name == "span" and "huv-badge" in tag):
+        if stack or name in _SKIP or (name == "span" and ("huv-badge" in tag or "huv-chip" in tag)):
             stack.append(name)
     tail = html[pos:]
     out.append(tail if stack else _MARKER.sub(_badge, tail))
@@ -92,14 +105,21 @@ def wrap_badges(html: str) -> str:
 
 
 def mark_status_paragraph(html: str) -> str:
-    """Give the first ``<p><strong>Status:</strong> …</p>`` its callout classes."""
+    """Give the first ``<p><strong>Status:</strong> …</p>`` its callout classes.
+
+    The grade is the *first* marker in the paragraph (the headline grade of a split grade
+    such as ``✅ Implemented (🔶 coherence bound)``); it is also exposed as ``data-huv-grade``.
+    """
     match = _STATUS_P.search(html)
     if not match:
         return html
     first = _MARKER.search(match.group("body"))
     grade = BADGES[first.group("marker")][0] if first else "unknown"
     start = match.start()
-    return f'{html[:start]}<p class="huv-status huv-status--{grade}">{html[start + 3 :]}'
+    return (
+        f'{html[:start]}<p class="huv-status huv-status--{grade}" data-huv-grade="{grade}">'
+        f"{html[start + 3 :]}"
+    )
 
 
 def on_page_content(html: str, page: Page, config: MkDocsConfig, files: Files) -> str:

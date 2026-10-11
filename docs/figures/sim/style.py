@@ -1,10 +1,10 @@
 """One visual language for every simulator-driven figure (README, site, notebooks).
 
-Every script in ``docs/figures/sim/`` draws through this module, and
-``highuvlith.viz`` mirrors the same tokens, so a chart reads the same wherever it
-appears. The values follow the data-viz method used across the site (the same
-palette as the Process Nodes charts): a fixed categorical order, one-hue
-sequential ramps, a blue <-> red diverging pair, thin marks and recessive chrome.
+Every script in ``docs/figures/sim/`` draws through this module. The palette, chrome,
+fonts and ramps come from ``docs/figures/tokens.py`` — the single source the site CSS,
+the scripted SVGs and ``highuvlith.viz`` share — so a chart reads the same wherever it
+appears: a fixed categorical order, one-hue sequential ramps, a blue <-> red diverging
+pair, thin marks and recessive chrome.
 
 Surfaces
     Figures are drawn on a transparent background and validated against the two
@@ -13,43 +13,48 @@ Surfaces
     violet hue 250). They also read on GitHub's ``#ffffff`` / ``#0d1117``.
 
 Categorical palette (identity; assign slots in order, never cycle)
-    Light: ``#2a78d6 #eb6834 #1baf7a #eda100 #e87ba4 #008300 #4a3aa7 #e34948``
-    Dark:  ``#3987e5 #d95926 #199e70 #c98500 #d55181 #008300 #9085e9 #e66767``
-    Validated with the palette checker on the surfaces above: adjacent pairs pass
-    in both modes (worst CVD Delta E 9.1 light / 8.4 dark, normal vision 19.6 /
-    19.3); the first three slots also pass all-pairs (scatter). Light-mode aqua,
-    yellow and magenta sit below 3:1 on white, so charts that use them carry
-    direct labels (and captions/tables carry the numbers).
+    ``tokens.SERIES`` — light ``#2a78d6 #eb6834 #1baf7a #eda100 #e87ba4 #008300 #4a3aa7 #e34948``,
+    dark ``#3987e5 #d95926 #199e70 #c98500 #d55181 #008300 #9085e9 #e66767``. Validated with the
+    palette checker on the surfaces above: adjacent pairs pass in both modes (worst CVD
+    Delta E 9.1 light / 8.4 dark, normal vision 19.6 / 19.3); the first three slots also
+    pass all-pairs (scatter). Light-mode aqua, yellow and magenta sit below 3:1 on
+    white, so charts that use them carry direct labels (and captions/tables carry the numbers).
 
 Field ramp (2D images of intensity, dose, height; mode-invariant)
-    One blue hue, OKLab-interpolated through the documented blue ramp
-    (steps 100-700) and extended at both ends to near-black and near-white.
-    Dark means "no light / no dose", light means "full" in BOTH themes: these
-    images depict light, so brightness carries the quantity. Every such image
-    has a colour bar.
+    One blue hue, OKLab-interpolated through ``tokens.FIELD_ANCHORS_OKLCH`` (the documented
+    blue ramp steps 100-700, extended at both ends to near-black and near-white). Dark means
+    "no light / no dose", light means "full" in BOTH themes: these images depict light, so
+    brightness carries the quantity. Every such image has a colour bar.
 
 Diverging pair
-    blue ``#2a78d6`` <-> red ``#e34948`` with a neutral grey midpoint
-    (light ``#f0efec``, dark ``#3b3943``).
+    ``tokens.DIVERGING``: blue <-> red with a neutral grey midpoint (light ``#f0efec``, dark ``#3b3943``).
 
 Chrome
-    Light: ink ``#0b0b0b``, secondary ``#52514e`` (7.9:1), muted ``#6b6a65``
-    (5.4:1), grid ``#e1e0d9``, axis ``#c3c2b7``.
-    Dark:  ink ``#f4f3f8``, secondary ``#c3c2b7`` (9.2:1), muted ``#9b99a3``
-    (5.9:1), grid ``#32303a``, axis ``#4d4b54``.
+    ``tokens.THEMES``: light ink ``#0b0b0b``, secondary ``#52514e`` (7.9:1), muted ``#6b6a65``
+    (5.4:1), grid ``#e1e0d9``, axis ``#c3c2b7``; dark ink ``#f4f3f8``, secondary ``#c3c2b7``
+    (9.2:1), muted ``#9b99a3`` (5.9:1), grid ``#32303a``, axis ``#4d4b54``.
     Text never wears a series colour; identity comes from the mark beside it.
 
 Type and marks
-    System sans (Helvetica Neue / Helvetica / Arial / Liberation Sans / DejaVu
-    Sans, first available). Base 9.5 pt at 100 dpi logical, rendered at 2x.
-    Lines 2 px, markers >= 8 px with a 2 px surface ring, hairline solid grid,
-    dashed lines only for limits, thresholds and projections.
+    ``tokens.FONT_MPL`` (Helvetica Neue / Helvetica / Arial / Liberation Sans / DejaVu Sans,
+    first available). Base 9.5 pt at 100 dpi logical, rendered at 2x. Lines 2 px, markers
+    >= 8 px with a 2 px surface ring, hairline solid grid, dashed lines only for limits,
+    thresholds and projections.
+
+Outputs (``save_figure`` / ``render_variants``)
+    A matplotlib figure -> 2x PNG (losslessly optimized, metadata in the ``Source`` chunk)
+    or SVG; an SVG *string* (svgkit) -> written verbatim, with the designed still derived
+    for a two-layer animation; a *list of figures* -> an APNG (``-anim-<theme>.png``, per-frame
+    8-bit palette with alpha, ``loop=0``), the resting frame as ``-still-<theme>.png`` at 2x
+    and, with ``extra={"gif": True}``, a README GIF (<= 128 colours, no dithering). Pillow is
+    imported lazily inside the writers, so ``--check`` and ``--verify`` never need it.
 """
 
 from __future__ import annotations
 
 import io
 import math
+import sys
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -62,13 +67,17 @@ import matplotlib.patches  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
 import matplotlib.transforms  # noqa: E402
 from matplotlib.colors import LinearSegmentedColormap, to_rgb  # noqa: E402
-from PIL import Image, PngImagePlugin  # noqa: E402
+
+_HERE = Path(__file__).resolve().parent
+if str(_HERE.parent) not in sys.path:
+    sys.path.insert(0, str(_HERE.parent))
+import tokens  # noqa: E402
 
 # ---------------------------------------------------------------------------
-# Tokens
+# Tokens (read from docs/figures/tokens.py)
 # ---------------------------------------------------------------------------
 
-FONT_STACK = ["Helvetica Neue", "Helvetica", "Arial", "Liberation Sans", "DejaVu Sans"]
+FONT_STACK = list(tokens.FONT_MPL)
 
 
 def font_families() -> list[str]:
@@ -92,6 +101,10 @@ EXPORT_SCALE = 2
 FULL_WIDTH = 8.0
 WIDE_WIDTH = 9.6
 
+#: Animation frames render at 1x and 800 px wide (DESIGN §5.0); at most this many frames.
+MAX_FRAMES = 48
+ANIM_WIDTH_PX = 800
+
 
 @dataclass(frozen=True)
 class Theme:
@@ -114,42 +127,26 @@ class Theme:
             raise ValueError(f"categorical slot {slot} outside 1..{len(self.series)}")
         return self.series[slot - 1]
 
+    @property
+    def grades(self) -> dict[str, str]:
+        """Grade colours of this theme (slug -> hex), for chips drawn with ``tokens.chip``."""
+        return tokens.theme(self.name)["grades"]
 
-LIGHT = Theme(
-    name="light",
-    surface="#ffffff",
-    ink="#0b0b0b",
-    ink2="#52514e",
-    muted="#6b6a65",
-    grid="#e1e0d9",
-    axis="#c3c2b7",
-    series=("#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"),
-    diverging_mid="#f0efec",
-    band="#f0efec",
-)
 
-DARK = Theme(
-    name="dark",
-    surface="#201e29",
-    ink="#f4f3f8",
-    ink2="#c3c2b7",
-    muted="#9b99a3",
-    grid="#32303a",
-    axis="#4d4b54",
-    series=("#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"),
-    diverging_mid="#3b3943",
-    band="#2c2a35",
-)
+def _theme(name: str) -> Theme:
+    t = tokens.THEMES[name]
+    return Theme(name=name, surface=t["surface"], ink=t["ink"], ink2=t["ink2"], muted=t["muted"], grid=t["grid"],
+                 axis=t["axis"], series=tuple(tokens.SERIES[name]), diverging_mid=tokens.DIVERGING[name][1], band=t["band"])
 
+
+LIGHT = _theme("light")
+DARK = _theme("dark")
 THEMES = (LIGHT, DARK)
 
 #: Ordinal ramps (ordered classes such as doses): one hue, monotone lightness,
 #: validated with the palette checker's --ordinal mode on each surface. Light
 #: mode runs light -> dark (more = darker); dark mode runs dark -> light.
-ORDINAL = {
-    "light": ("#86b6ef", "#5598e7", "#2a78d6", "#1c5cab", "#104281"),
-    "dark": ("#184f95", "#256abf", "#3987e5", "#6da7ec", "#9ec5f4"),
-}
+ORDINAL = tokens.ORDINAL
 
 
 def ordinal(theme: "Theme", n: int) -> list[str]:
@@ -162,35 +159,10 @@ def ordinal(theme: "Theme", n: int) -> list[str]:
     return [ramp[round(i * (len(ramp) - 1) / (n - 1))] for i in range(n)]
 
 #: Documented blue ramp (steps 100..700), light -> dark.
-BLUE_RAMP = (
-    "#cde2fb", "#b7d3f6", "#9ec5f4", "#86b6ef", "#6da7ec", "#5598e7", "#3987e5",
-    "#2a78d6", "#256abf", "#1c5cab", "#184f95", "#104281", "#0d366b",
-)
+BLUE_RAMP = tokens.FIELD_RAMP
 
-# Field-ramp anchors (OKLCH L, C, h), dark -> light. The middle thirteen are the
-# documented blue steps (OKLCH measured from BLUE_RAMP; L falls 0.047 per step);
-# the ramp continues that spacing to L 0.15 (chroma tapering) and up to L 0.985.
-_FIELD_ANCHORS_OKLCH = (
-    (0.150, 0.035, 257.5),
-    (0.197, 0.055, 257.4),
-    (0.244, 0.075, 257.2),
-    (0.291, 0.090, 257.1),
-    (0.338, 0.103, 256.9),
-    (0.385, 0.118, 256.7),
-    (0.433, 0.128, 256.5),
-    (0.480, 0.142, 256.1),
-    (0.527, 0.150, 255.9),
-    (0.575, 0.163, 255.5),
-    (0.622, 0.161, 255.1),
-    (0.671, 0.136, 253.8),
-    (0.717, 0.118, 253.6),
-    (0.764, 0.097, 253.2),
-    (0.812, 0.079, 253.4),
-    (0.858, 0.057, 254.1),
-    (0.905, 0.041, 252.8),
-    (0.950, 0.022, 253.0),
-    (0.985, 0.008, 253.0),
-)
+# Field-ramp anchors (OKLCH L, C, h), dark -> light.
+_FIELD_ANCHORS_OKLCH = tokens.FIELD_ANCHORS_OKLCH
 
 
 # ---------------------------------------------------------------------------
@@ -289,12 +261,35 @@ def text_on(fill_rgb: Sequence[float], theme: Theme) -> str:
     return "#0b0b0b" if lum > 0.25 else "#ffffff"
 
 
+def chip(ax, grade: str, xy, theme: Theme, **kw):
+    """A grade / rung chip on ``ax`` with the shared CHIP geometry (see ``tokens.chip``)."""
+    return tokens.chip(ax, grade, xy, theme.name, **kw)
+
+
+def provenance_style(kind: str, color: str, theme: Theme) -> dict:
+    """matplotlib marker/patch kwargs for one ``tokens.PROVENANCE`` class (measured, calibrated, reported,
+    assumed, announced, projection/roadmap). Charts that use it carry the legend."""
+    p = tokens.PROVENANCE[kind]
+    kw: dict = {}
+    if p.get("hatch"):
+        kw.update(facecolor="none", edgecolor=color, hatch=p["hatch"], linewidth=HAIR_PT)
+    elif p.get("fill", False):
+        kw.update(facecolor=color, edgecolor=theme.surface if not p.get("ring") else color, linewidth=RING_PT if not p.get("ring") else 2.4 * 72 / LOGICAL_DPI)
+        if p.get("alpha"):
+            kw["alpha"] = p["alpha"]
+    else:
+        kw.update(facecolor="none", edgecolor=color, linewidth=1.6 * 72 / LOGICAL_DPI)
+        if p.get("dash"):
+            kw["linestyle"] = (0, p["dash"])
+    return kw
+
+
 # ---------------------------------------------------------------------------
 # matplotlib setup
 # ---------------------------------------------------------------------------
 
-BASE_PT = 9.5
-SMALL_PT = 8.5
+BASE_PT = tokens.TYPE["mpl_base_pt"]
+SMALL_PT = tokens.TYPE["mpl_small_pt"]
 TITLE_PT = 10.5
 LINE_PT = 2.0 * 72 / LOGICAL_DPI  # 2 px
 HAIR_PT = 1.0 * 72 / LOGICAL_DPI  # 1 px
@@ -567,14 +562,19 @@ def rounded_bars(ax, positions, values, color: str, theme: Theme, thickness_px: 
 # ---------------------------------------------------------------------------
 
 
-def _optimize_png(buf: bytes, meta: dict[str, str]) -> bytes:
+def _optimize_png(buf: bytes, meta: dict[str, str], palette: int | None = None) -> bytes:
     """Re-encode a matplotlib PNG losslessly with maximum zlib effort and text metadata.
 
-    (Palette quantization was tried and rejected: the fast octree quantizer
-    collapses a smooth field ramp to ~40 colours, i.e. visible banding.)
+    ``palette`` (e.g. 64) quantizes flat-colour drawings (tile maps, schematics) to an
+    8-bit palette with alpha; smooth field ramps must stay truecolour (the fast octree
+    quantizer bands them to ~40 colours).
     """
+    from PIL import Image, PngImagePlugin  # noqa: PLC0415 - Pillow only where a PNG is written
+
     img = Image.open(io.BytesIO(buf))
     img.load()
+    if palette:
+        img = img.convert("RGBA").quantize(colors=palette, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
     info = PngImagePlugin.PngInfo()
     for k, v in meta.items():
         info.add_text(k, v)
@@ -583,28 +583,169 @@ def _optimize_png(buf: bytes, meta: dict[str, str]) -> bytes:
     return out.getvalue()
 
 
-def save_figure(fig, path: Path, meta: dict[str, str] | None = None, fmt: str = "png") -> Path:
-    """Write ``fig`` to ``path`` (2x PNG, palette-optimized; or SVG) and close it."""
+def save_figure(fig, path: Path, meta: dict[str, str] | None = None, fmt: str = "png", *, palette: int | None = None) -> Path:
+    """Write ``fig`` to ``path`` and close it: a 2x optimized PNG, a matplotlib SVG, or — when
+    ``fig`` is a string — that SVG text verbatim (svgkit output)."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     meta = dict(meta or {})
+    if isinstance(fig, str):
+        path.write_text(fig, encoding="utf-8")
+        return path
     if fmt == "svg":
         fig.savefig(path, format="svg", bbox_inches="tight", pad_inches=0.08,
                     metadata={"Title": meta.get("Title", path.stem), "Date": None})
     else:
         buf = io.BytesIO()
         fig.savefig(buf, format="png", dpi=LOGICAL_DPI * EXPORT_SCALE, bbox_inches="tight", pad_inches=0.08)
-        path.write_bytes(_optimize_png(buf.getvalue(), meta))
+        path.write_bytes(_optimize_png(buf.getvalue(), meta, palette))
     plt.close(fig)
     return path
 
 
+def _frame_image(fig, scale: float):
+    """Render ``fig`` at ``scale`` × LOGICAL_DPI as a Pillow RGBA image (figure left open)."""
+    from PIL import Image  # noqa: PLC0415
+
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", dpi=LOGICAL_DPI * scale, bbox_inches=None)
+    img = Image.open(buf)
+    img.load()
+    return img.convert("RGBA")
+
+
+def write_frames(frames: Sequence, stem_anim: Path, stem_still: Path, *, theme_name: str, still_frame: int = 0,
+                 duration_ms: int = 100, gif: Path | None = None, meta: dict[str, str] | None = None,
+                 frames_limit: int | None = None) -> list[Path]:
+    """The APNG / still / GIF writer (Pillow imported here, never at module level).
+
+    ``frames`` is a list of matplotlib figures drawn at 1x and 800 px wide (DESIGN §5.0);
+    at most ``MAX_FRAMES``. Writes ``stem_anim`` (an APNG stored as .png, ``loop=0``),
+    ``stem_still`` (frame ``still_frame`` at 2x, transparent, through the PNG optimiser) and,
+    when ``gif`` is given, a README GIF with <= 128 colours and no dithering. Every figure is
+    closed afterwards.
+
+    The animation frames are flattened onto the theme surface and share **one** 8-bit palette
+    (built from a montage of sample frames): Pillow's APNG writer cannot composite palette
+    frames whose palettes differ, and a shared palette can only be built from opaque RGB — so
+    the APNG and GIF are opaque while the designed still keeps its alpha.
+    """
+    from PIL import Image, PngImagePlugin  # noqa: PLC0415
+
+    frames = list(frames)
+    if frames_limit:
+        frames = frames[:frames_limit]
+    if not frames:
+        raise ValueError("write_frames: no frames")
+    if len(frames) > MAX_FRAMES:
+        raise ValueError(f"write_frames: {len(frames)} frames; the budget is {MAX_FRAMES} (DESIGN §5.0)")
+    still_frame = max(0, min(still_frame, len(frames) - 1))
+    stem_anim, stem_still = Path(stem_anim), Path(stem_still)
+    stem_anim.parent.mkdir(parents=True, exist_ok=True)
+    meta = dict(meta or {})
+    # the designed still at 2x, straight from its figure (before the frames are rasterised)
+    still_buf = io.BytesIO()
+    frames[still_frame].savefig(still_buf, format="png", dpi=LOGICAL_DPI * EXPORT_SCALE, bbox_inches=None)
+    stem_still.write_bytes(_optimize_png(still_buf.getvalue(), {**meta, "Title": stem_still.stem}))
+    images = [_frame_image(f, 1.0) for f in frames]
+    for f in frames:
+        plt.close(f)
+    w, h = images[0].size
+    if w != ANIM_WIDTH_PX:
+        print(f"  note  {stem_anim.name}: frames are {w} px wide (DESIGN §5.0 asks for {ANIM_WIDTH_PX}); the still is 2x")
+    # flatten onto the theme surface (opaque RGB) so every frame can share one palette
+    surface = Image.new("RGBA", images[0].size, _theme(theme_name).surface)
+    flat = [Image.alpha_composite(surface, im).convert("RGB") for im in images]
+    step = max(1, len(flat) // 8)
+    sample = flat[::step]
+    montage = Image.new("RGB", (w, h * len(sample)))
+    for i, im in enumerate(sample):
+        montage.paste(im, (0, i * h))
+    master = montage.quantize(colors=255, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
+    pal = [im.quantize(palette=master, dither=Image.Dither.NONE) for im in flat]
+    info = PngImagePlugin.PngInfo()
+    for k, v in {**meta, "Title": stem_anim.stem}.items():
+        info.add_text(k, v)
+    pal[0].save(stem_anim, format="PNG", save_all=True, append_images=pal[1:], duration=duration_ms, loop=0,
+                optimize=True, pnginfo=info, disposal=0, blend=0)
+    out = [stem_anim, stem_still]
+    if gif is not None:
+        gif = Path(gif)
+        master128 = montage.quantize(colors=128, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
+        g = [im.quantize(palette=master128, dither=Image.Dither.NONE) for im in flat]
+        g[0].save(gif, format="GIF", save_all=True, append_images=g[1:], duration=duration_ms, loop=0, optimize=True,
+                  disposal=1)
+        if gif.stat().st_size > 1024 * 1024:
+            print(f"  note  {gif.name} is {gif.stat().st_size / 1024:.0f} KB (> 1 MB): reduce to 36 frames before touching resolution or colours (DESIGN §5.0)")
+        out.append(gif)
+    return out
+
+
+def write_crop(src: Path, dst: Path, box: tuple[float, float, float, float], meta: dict[str, str] | None = None) -> Path:
+    """Write the pixel box (x, y, w, h) of a rendered PNG, or the sub-viewBox of an SVG, as ``dst``."""
+    src, dst = Path(src), Path(dst)
+    if src.suffix == ".svg":
+        import svgkit  # noqa: PLC0415
+
+        dst.write_text(svgkit._crop_svg(src.read_text(encoding="utf-8"), box), encoding="utf-8")
+        return dst
+    from PIL import Image  # noqa: PLC0415
+
+    x, y, w, h = (int(round(v)) for v in box)
+    img = Image.open(src)
+    img.load()
+    out = io.BytesIO()
+    img.crop((x, y, x + w, y + h)).save(out, format="PNG")
+    dst.write_bytes(_optimize_png(out.getvalue(), dict(meta or {})))
+    return dst
+
+
 def render_variants(draw: Callable[[object, Theme], object], data: object, out_stem: Path,
-                    meta: dict[str, str] | None = None, fmt: str = "png") -> list[Path]:
-    """Draw ``data`` once per theme and write ``<stem>-light`` / ``<stem>-dark``."""
-    paths = []
+                    meta: dict[str, str] | None = None, fmt: str = "png", *, spec=None,
+                    crops: dict[str, tuple[float, float, float, float]] | None = None,
+                    frames_limit: int | None = None) -> list[Path]:
+    """Draw ``data`` once per theme and write every variant of the spec.
+
+    ``draw`` may return a matplotlib figure (PNG / SVG), an SVG string (written verbatim;
+    for a two-layer animation the still is derived with ``svgkit.still_of``), or a list of
+    figures (the APNG / still / GIF set). ``crops`` = {crop: box} also writes
+    ``<stem>-<crop>-<theme>.<ext>`` from the rendered output.
+    """
+    import registry  # noqa: PLC0415
+
+    out_stem = Path(out_stem)
+    out_dir = out_stem.parent.parent if spec is not None and getattr(spec, "subdir", "") else out_stem.parent
+    paths: list[Path] = []
     for theme in THEMES:
         with use(theme):
-            fig = draw(data, theme)
-            paths.append(save_figure(fig, Path(f"{out_stem}-{theme.name}.{fmt}"), meta, fmt))
+            result = draw(data, theme)
+        if isinstance(result, str):
+            main = registry.main_file(spec, theme.name, out_dir) if spec is not None else Path(f"{out_stem}-{theme.name}.svg")
+            paths.append(save_figure(result, main, meta, "svg"))
+            if spec is not None and registry.is_animated(spec):
+                import svgkit  # noqa: PLC0415
+
+                still = registry.still_file(spec, theme.name, out_dir)
+                still.write_text(svgkit.still_of(result), encoding="utf-8")
+                paths.append(still)
+        elif isinstance(result, (list, tuple)):
+            if spec is not None:
+                anim = registry.main_file(spec, theme.name, out_dir)
+                still = registry.still_file(spec, theme.name, out_dir)
+                gif = registry.gif_file(spec, theme.name, out_dir)
+                sf = getattr(spec, "still_frame", 0)
+                dur = int(spec.extra.get("duration_ms", 100))
+            else:
+                anim, still, gif, sf, dur = Path(f"{out_stem}-anim-{theme.name}.png"), Path(f"{out_stem}-still-{theme.name}.png"), None, 0, 100
+            paths += write_frames(result, anim, still, theme_name=theme.name, still_frame=sf, duration_ms=dur, gif=gif,
+                                  meta=meta, frames_limit=frames_limit)
+        else:
+            main = Path(f"{out_stem}-{theme.name}.{fmt}")
+            paths.append(save_figure(result, main, meta, fmt, palette=(spec.extra.get("png_palette") if spec is not None else None)))
+            for crop, box in (crops or {}).items():
+                if box is None:
+                    continue
+                parent_name = out_stem.name
+                dst = out_stem.parent / f"{parent_name}-{crop}-{theme.name}.{fmt}"
+                paths.append(write_crop(main, dst, box, meta))
     return paths
